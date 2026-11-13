@@ -13,10 +13,16 @@ export const BODY_LIMIT = 100 * 1024;
 // entry point, behind the base's middlewares. /graphql refuses a request
 // without `x-storix-client` (src/http/csrf.ts), which Apollo Sandbox is given.
 // /ready answers 503 while MongoDB does not (a ping).
-export function createApp(options: { schema?: typeof schema } = {}) {
+export function createApp(
+  options: {
+    schema?: typeof schema;
+    // Whether MongoDB answers (GET /ready); injected by specs.
+    mongo?: () => Promise<boolean>;
+  } = {},
+) {
   return (
     createBase()
-      .plugin(probes())
+      .plugin(probes(options.mongo ?? mongoAnswers))
       // A body past 100 KiB is refused (413) before it is read: a query is a few
       // kilobytes (alxia's production guide, "Cap the body").
       .bodyLimit(BODY_LIMIT)
@@ -36,10 +42,10 @@ export function createApp(options: { schema?: typeof schema } = {}) {
 }
 
 // /health and /ready: Mongo answers a ping within a second.
-function probes() {
+function probes(mongo: () => Promise<boolean>) {
   return health({
     checks: {
-      mongo: mongoAnswers,
+      mongo,
     },
   });
 }
