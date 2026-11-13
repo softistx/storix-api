@@ -1,0 +1,50 @@
+import { health } from "@alxia/core";
+import { graphql } from "@alxia/graphql";
+import { closeDatabases, mongoAnswers } from "./config/db";
+import { createBase } from "./http/context";
+import { clientHeader } from "./http/csrf";
+import { graphqlPlugins } from "./http/graphql-plugins";
+import { schema } from "./http/schema";
+
+// The largest body /graphql reads.
+export const BODY_LIMIT = 100 * 1024;
+
+// The probes (GET /health, GET /ready), then POST and GET /graphql, the one
+// entry point, behind the base's middlewares. /graphql refuses a request
+// without `x-storix-client` (src/http/csrf.ts), which Apollo Sandbox is given.
+// /ready answers 503 while MongoDB does not (a ping).
+export function createApp(options: { schema?: typeof schema } = {}) {
+  return (
+    createBase()
+      .plugin(probes())
+      // A body past 100 KiB is refused (413) before it is read: a query is a few
+      // kilobytes (alxia's production guide, "Cap the body").
+      .bodyLimit(BODY_LIMIT)
+      .plugin((app) =>
+        graphql(app, {
+          schema: options.schema ?? schema,
+          context: () => ({}),
+          plugins: graphqlPlugins,
+          ide: "apollo-sandbox",
+          sandbox: { initialHeaders: { [clientHeader]: "apollo-sandbox" } },
+        }),
+      )
+      .onStop(async () => {
+        await closeDatabases();
+      })
+  );
+}
+
+// /health and /ready: Mongo answers a ping within a second.
+function probes() {
+  return health({
+    checks: {
+      mongo: mongoAnswers,
+    },
+  });
+}
+
+// The app the server runs.
+export const app = createApp();
+
+export type App = typeof app;

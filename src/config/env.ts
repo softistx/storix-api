@@ -1,0 +1,131 @@
+import { defineEnv } from "@alxia/env";
+import { z } from "zod";
+
+const production = Bun.env.NODE_ENV === "production";
+
+// A comma separated list; an empty value is unset.
+const trustedProxies = z
+  .string()
+  .transform((value) =>
+    value
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean),
+  )
+  .transform((list) => (list.length > 0 ? list : undefined));
+
+// Required in production; elsewhere `fallback` stands in.
+const inProduction = <T extends z.ZodType>(schema: T, fallback: string) =>
+  production ? schema : schema.prefault(fallback as never);
+
+// Optional outside production, required in it: an empty value is unset.
+const orUnset = (schema: z.ZodType<string, string>) =>
+  production
+    ? schema
+    : z
+        .string()
+        .transform((value) => value || undefined)
+        .pipe(schema.optional())
+        .optional();
+
+const unsetIfEmpty = z
+  .string()
+  .transform((value) => value || undefined)
+  .optional();
+
+const smtpUrl = z
+  .string()
+  .regex(/^smtps?:\/\/[^/]/, "not an smtp:// or smtps:// URL");
+
+const flag = z.preprocess(
+  (value) => (typeof value === "string" ? value.trim().toLowerCase() : value),
+  z
+    .enum(["", "0", "false", "no", "off", "1", "true", "yes", "on"])
+    .default("")
+    .transform((value) => ["1", "true", "yes", "on"].includes(value)),
+);
+
+// Read once, at import: a malformed variable stops the process before it
+// listens. `.env.example` lists them; Bun loads `.env` on every command.
+export const env = defineEnv({
+  // mongodb:// or mongodb+srv://. Transactions need a replica set:
+  // docker-compose.yml starts a one-node one. The URI names no database: the
+  // core database and each workspace's are named below.
+  MONGO_URI: z.string().regex(/^mongodb(\+srv)?:\/\//, "not a MongoDB URI"),
+  // The shared database: the workspace registry, janus's collections, the
+  // invitations and the translations.
+  MONGO_CORE_DATABASE: z
+    .string()
+    .regex(/^[A-Za-z0-9_]{1,40}$/, "letters, digits and _ only")
+    .default("storix_core"),
+  // A workspace's database is `<prefix><workspace id>`.
+  MONGO_WORKSPACE_PREFIX: z
+    .string()
+    .regex(/^[A-Za-z0-9_]{1,30}$/, "letters, digits and _ only")
+    .default("storix_ws_"),
+  // How many workspaces' databases stay open (least recently used out).
+  MONGO_WORKSPACE_CACHE_SIZE: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(10_000)
+    .default(100),
+  // MONGO_AUTO_SYNC: create the validators and indexes of a collection on its
+  // first use. Always on outside production; in production only when this is
+  // 1, true, yes or on.
+  MONGO_AUTO_SYNC: flag,
+  // UI_ORIGIN: storix-ui's origin, which every link of a mail starts with.
+  // https in production.
+  UI_ORIGIN: inProduction(
+    z
+      .url({ protocol: production ? /^https$/ : /^https?$/ })
+      .transform((url) => url.replace(/\/+$/, "")),
+    "http://localhost:5173",
+  ),
+  // MAIL_FROM: the address every mail is sent from.
+  MAIL_FROM: inProduction(z.email(), "noreply@storix.test"),
+  // MAIL_URL: the SMTP server mails leave through. Required in production;
+  // unset elsewhere, mails are printed to the console.
+  MAIL_URL: orUnset(smtpUrl),
+  // REDIS_URL: redis:// or rediss://. Rate limits, queues and tokens.
+  // Required in production; unset elsewhere.
+  REDIS_URL: orUnset(
+    z.string().regex(/^rediss?:\/\/[^/]/, "not a redis:// or rediss:// URL"),
+  ),
+  // TRUSTED_PROXIES: the proxies in front of the API, as addresses or CIDR
+  // ranges, comma separated. The client address is read from X-Forwarded-For
+  // past these proxies only. Required in production.
+  TRUSTED_PROXIES: production
+    ? trustedProxies.pipe(
+        z.array(z.string(), { error: "required in production" }),
+      )
+    : trustedProxies.optional(),
+  // API_PROXY_SECRET: the secret storix-ui's server sends as
+  // `x-storix-proxy-secret` (the same variable on both services). Set, the
+  // forwarded client address is honoured only on a request that carries it.
+  // Required in production, at least 32 characters.
+  API_PROXY_SECRET: production
+    ? z.string().min(32, "at least 32 characters")
+    : z
+        .string()
+        .transform((secret) => secret || undefined)
+        .pipe(z.string().min(32, "at least 32 characters").optional())
+        .optional(),
+  // S3_*: the S3-compatible store of the files (SeaweedFS locally). All
+  // optional: without S3_BUCKET, S3_ACCESS_KEY and S3_SECRET_KEY the media
+  // routes answer 503. An empty value is unset.
+  S3_ENDPOINT: z
+    .string()
+    .transform((value) => value || undefined)
+    .pipe(z.url({ protocol: /^https?$/ }).optional())
+    .optional(),
+  S3_REGION: unsetIfEmpty,
+  S3_BUCKET: unsetIfEmpty,
+  S3_ACCESS_KEY: unsetIfEmpty,
+  S3_SECRET_KEY: unsetIfEmpty,
+  // An empty PORT= is unset, not port 0.
+  PORT: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.coerce.number().int().min(1).max(65_535).default(3000),
+  ),
+});
