@@ -35,3 +35,5 @@ curl localhost:3000/health
 | `src/http/`                     | the base (request id, client address), the schema, the Yoga plugins |
 | `docker-compose.yml`, `docker/` | the development services                                            |
 | `CONTEXT.md`                    | the domain glossary and the error-code table                        |
+
+The runtime dependencies are declared up front for the v1 slices, so some are not imported yet; `mongodb` and `nodemailer` are peers of `@softistx/mongo` and `@softistx/mail-smtp` (which asks for `nodemailer` `>=7 <11`, `mongodb` `>=7 <8`), hence listed here.
