@@ -847,3 +847,50 @@ with its own issues and roadmap entries; nothing here is a v1 slice. Outline:
    removal of the old module and bucket.
 
 The same path then serves pulsarix's attachments and any other product's files.
+
+## Tracking
+
+Effort issues (each lists its slices; slice issues are linked from them). Upstream issues UP-1 to UP-11 are tracked privately as softistx/storix-api#1 to #11.
+
+**storix-api**
+
+- E0: https://github.com/softistx/storix-api/issues/12
+- E1: https://github.com/softistx/storix-api/issues/13
+- E2: https://github.com/softistx/storix-api/issues/14
+- E3: https://github.com/softistx/storix-api/issues/15
+- E4: https://github.com/softistx/storix-api/issues/16
+- E5: https://github.com/softistx/storix-api/issues/17
+- E6: https://github.com/softistx/storix-api/issues/18
+- E7: https://github.com/softistx/storix-api/issues/19
+- E8: https://github.com/softistx/storix-api/issues/20
+
+**storix-ui**
+
+- E0: https://github.com/softistx/storix-ui/issues/1
+- E1: https://github.com/softistx/storix-ui/issues/2
+- E2: https://github.com/softistx/storix-ui/issues/3
+- E3: https://github.com/softistx/storix-ui/issues/4
+- E4: https://github.com/softistx/storix-ui/issues/5
+- E5: https://github.com/softistx/storix-ui/issues/6
+- E6: https://github.com/softistx/storix-ui/issues/7
+- E7: https://github.com/softistx/storix-ui/issues/8
+- E8: https://github.com/softistx/storix-ui/issues/9
+
+**storix-widget**
+
+- E0: https://github.com/softistx/storix-widget/issues/1
+- E7: https://github.com/softistx/storix-widget/issues/2
+
+**Upstream** (tracking issue in storix-api has the same number as UP-n)
+
+- UP-1: softistx/alxia#756
+- UP-2: softistx/alxia#757
+- UP-3: softistx/alxia#758 (not blocking v1)
+- UP-4: softistx/nxgt-data#403 (not blocking v1)
+- UP-5: softistx/nxgt-data#404
+- UP-6: softistx/nxgt-data#405 (not blocking v1)
+- UP-7: softistx/nxgt-material#4714
+- UP-8: softistx/nxgt-material#4715
+- UP-9: softistx/nxgt-material#4716
+- UP-10: softistx/nxgt-material#4717
+- UP-11: softistx/nxgt-ai#154 (optional)

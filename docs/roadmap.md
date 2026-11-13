@@ -4,18 +4,18 @@ What a user gets, in order. An entry moves Next, Now, Shipped as its effort star
 
 ## Now
 
-- **E0 Bootstrap**: a running API skeleton with health, error catalogue and the verify script.
+- **E0 Bootstrap**: a running API skeleton with health, error catalogue and the verify script. ([issue](https://github.com/softistx/storix-api/issues/12))
 
 ## Next
 
-- **E1 Accounts and workspaces**: sign in, create a workspace, invite members, group them in teams, with every change in an audit log.
-- **E2 Files and folders**: upload, organise, tag, copy and move files, with thumbnails, previews, image crops around a focal point and a storage quota.
-- **E3 Versions and trash**: keep earlier versions of a file and get deleted files back for 30 days.
-- **E4 Sharing**: share a file or a folder with people and teams as viewer or editor, and be notified.
-- **E5 Share links**: a link with an expiry and a password, to download or to receive files.
-- **E6 Search**: find a file by its name, its content, its tags, or what an AI reads in it (AI is opt-in per workspace).
-- **E7 For integrators**: an API key per workspace (built on the identity provider's keys), short-lived scoped tokens for the widget, and where each file is used.
-- **E8 Release**: a deploy stack, an end-to-end run on the real stack, and v1.
+- **E1 Accounts and workspaces**: sign in, create a workspace, invite members, group them in teams, with every change in an audit log. ([issue](https://github.com/softistx/storix-api/issues/13))
+- **E2 Files and folders**: upload, organise, tag, copy and move files, with thumbnails, previews, image crops around a focal point and a storage quota. ([issue](https://github.com/softistx/storix-api/issues/14))
+- **E3 Versions and trash**: keep earlier versions of a file and get deleted files back for 30 days. ([issue](https://github.com/softistx/storix-api/issues/15))
+- **E4 Sharing**: share a file or a folder with people and teams as viewer or editor, and be notified. ([issue](https://github.com/softistx/storix-api/issues/16))
+- **E5 Share links**: a link with an expiry and a password, to download or to receive files. ([issue](https://github.com/softistx/storix-api/issues/17))
+- **E6 Search**: find a file by its name, its content, its tags, or what an AI reads in it (AI is opt-in per workspace). ([issue](https://github.com/softistx/storix-api/issues/18))
+- **E7 For integrators**: an API key per workspace (built on the identity provider's keys), short-lived scoped tokens for the widget, and where each file is used. ([issue](https://github.com/softistx/storix-api/issues/19))
+- **E8 Release**: a deploy stack, an end-to-end run on the real stack, and v1. ([issue](https://github.com/softistx/storix-api/issues/20))
 
 ## Later
 
