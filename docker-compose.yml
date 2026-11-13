@@ -7,10 +7,11 @@
 # Redis: redis://localhost:6381 (rate limits, queues, tokens).
 # Mailpit: SMTP smtp://localhost:1027, messages at http://localhost:8027.
 # SeaweedFS: S3 API http://localhost:8333, storix-dev / storix-dev-secret (docker/seaweedfs-s3.json).
+# Images are pinned (mongo 8.0, SeaweedFS 4.47 by multi-arch index digest, the bucket client by digest): bump them on purpose.
 name: storix-api
 services:
   mongo:
-    image: mongo:8
+    image: mongo:8.0
     command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
       - "127.0.0.1:${MONGO_PORT:-27019}:27017"
@@ -46,7 +47,7 @@ services:
 
   # SeaweedFS: master, volume server and S3 gateway in one process.
   seaweedfs:
-    image: chrislusf/seaweedfs:latest
+    image: chrislusf/seaweedfs:4.47@sha256:ce9e796f1fe6f06968f4c04bdaf8f678dad9c8acdfef3d244133d71bfa6bf882
     command:
       ["server", "-dir=/data", "-s3", "-s3.config=/etc/seaweedfs/s3.json"]
     ports:
