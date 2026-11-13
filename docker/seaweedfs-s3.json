@@ -1,0 +1,11 @@
+{
+  "identities": [
+    {
+      "name": "storix-dev",
+      "credentials": [
+        { "accessKey": "storix-dev", "secretKey": "storix-dev-secret" }
+      ],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

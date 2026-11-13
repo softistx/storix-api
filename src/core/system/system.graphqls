@@ -1,0 +1,26 @@
+type Query {
+  # The API's version (package.json).
+  version: String!
+}
+
+"""
+The direction of a list's `orderBy`. Every sorted list also orders by `id` after
+its `orderBy`, so a cursor page across a sort neither skips nor repeats a row.
+"""
+enum SortDirection {
+  ASC
+  DESC
+}
+
+"""
+Where a page of a list ends. Paging is forward only: `endCursor` is the
+`after` of the next page; to go back, a client keeps the cursors it has
+visited. `startCursor` is the `after` this page was asked with, and
+`hasPreviousPage` says whether it was given.
+"""
+type PageInfo {
+  startCursor: String
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+}

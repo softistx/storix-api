@@ -1,0 +1,304 @@
+schema {
+  query: Query
+}
+
+"""
+Validates an argument or an input field when the request arrives, before the resolver runs. A value that breaks a constraint is refused with a BAD_USER_INPUT error whose extensions list each issue with its path and the constraint that refused it; null and omitted values are not checked. Each argument below is one constraint, and they combine on one field.
+"""
+directive @constraint(
+  """
+  The string must contain this text (case-sensitive). Refused otherwise with a BAD_USER_INPUT error naming the constraint. Applies to String and ID values.
+  """
+  contains: String
+  """
+  The string must end with this text (case-sensitive). Refused otherwise with a BAD_USER_INPUT error naming the constraint. Applies to String and ID values.
+  """
+  endsWith: String
+  """
+  The number must be strictly less than this value (the value itself is refused). Refused otherwise with a BAD_USER_INPUT error naming the constraint. Applies to Int and Float values.
+  """
+  exclusiveMax: Float
+  """
+  The number must be strictly greater than this value (the value itself is refused). Refused otherwise with a BAD_USER_INPUT error naming the constraint. Applies to Int and Float values.
+  """
+  exclusiveMin: Float
+  """
+  The string must match this named format: byte, date, date-time, email, ipv4, ipv6, uri or uuid, or a format the server registered. An unknown name fails at server startup. Refused otherwise with a BAD_USER_INPUT error naming the constraint. Applies to String and ID values.
+  """
+  format: String
+  """
+  The number must be less than or equal to this value (inclusive). Refused otherwise with a BAD_USER_INPUT error naming the constraint. Applies to Int and Float values.
+  """
+  max: Float
+  """
+  The list must hold at most this many items (inclusive). Refused otherwise with a BAD_USER_INPUT error naming the constraint. Applies to list values.
+  """
+  maxItems: Int
+  """
+  The string must be at most this many characters long (UTF-16 code units, inclusive). Refused otherwise with a BAD_USER_INPUT error naming the constraint. Applies to String and ID values.
+  """
+  maxLength: Int
+  """
+  The number must be greater than or equal to this value (inclusive). Refused otherwise with a BAD_USER_INPUT error naming the constraint. Applies to Int and Float values.
+  """
+  min: Float
+  """
+  The list must hold at least this many items (inclusive). Refused otherwise with a BAD_USER_INPUT error naming the constraint. Applies to list values.
+  """
+  minItems: Int
+  """
+  The string must be at least this many characters long (UTF-16 code units, inclusive). Refused otherwise with a BAD_USER_INPUT error naming the constraint. Applies to String and ID values.
+  """
+  minLength: Int
+  """
+  The number must be a whole multiple of this value (for example 5 accepts 0, 5 and 10). Refused otherwise with a BAD_USER_INPUT error naming the constraint. Applies to Int and Float values.
+  """
+  multipleOf: Float
+  """
+  The string must not contain this text (case-sensitive). Refused otherwise with a BAD_USER_INPUT error naming the constraint. Applies to String and ID values.
+  """
+  notContains: String
+  """
+  The string must match this regular expression (JavaScript syntax, not anchored unless it uses ^ and $). An invalid expression fails at server startup. Refused otherwise with a BAD_USER_INPUT error naming the constraint. Applies to String and ID values.
+  """
+  pattern: String
+  """
+  The string must start with this text (case-sensitive). Refused otherwise with a BAD_USER_INPUT error naming the constraint. Applies to String and ID values.
+  """
+  startsWith: String
+) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
+
+"""Standard base64 with padding, in its canonical spelling."""
+scalar Base64 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc4648#section-4")
+
+"""URL-safe base64 without padding, in its canonical spelling."""
+scalar Base64URL @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc4648#section-5")
+
+"""
+An integer of any size, as a decimal string (a safe-integer number is accepted as input).
+"""
+scalar BigInt
+
+"""An IPv4 block in CIDR notation, such as 10.0.0.0/8."""
+scalar CIDRv4 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc4632")
+
+"""An IPv6 block in CIDR notation, such as 2001:db8::/32."""
+scalar CIDRv6 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc4291")
+
+"""An ISO 3166-1 alpha-2 country code, such as FR."""
+scalar CountryCode @specifiedBy(url: "https://www.iso.org/iso-3166-country-codes.html")
+
+"""
+A cuid2: a lowercase letter, then lowercase letters and digits, 2 to 32 in all.
+"""
+scalar Cuid2 @specifiedBy(url: "https://github.com/paralleldrive/cuid2")
+
+"""An ISO 4217 currency code, such as EUR."""
+scalar Currency @specifiedBy(url: "https://www.iso.org/iso-4217-currency-codes.html")
+
+"""A calendar date, YYYY-MM-DD, with no time and no time zone."""
+scalar Date @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc3339#section-5.6")
+
+"""An instant: an RFC 3339 date-time with its offset."""
+scalar DateTime @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc3339")
+
+"""An ISO 8601 duration, such as P1DT2H or PT0.5S."""
+scalar Duration @specifiedBy(url: "https://www.iso.org/iso-8601-date-and-time-format.html")
+
+"""An email address."""
+scalar EmailAddress
+
+"""One emoji, such as 👍."""
+scalar Emoji @specifiedBy(url: "https://www.unicode.org/reports/tr51/")
+
+"""A GUID: 8-4-4-4-12 hexadecimal digits, with no version check."""
+scalar GUID
+
+"""A CSS hsl() color, such as hsl(120, 100%, 50%)."""
+scalar HSL @specifiedBy(url: "https://www.w3.org/TR/css-color-4/#the-hsl-notation")
+
+"""A CSS hsla() color, such as hsla(120, 100%, 50%, 0.5)."""
+scalar HSLA @specifiedBy(url: "https://www.w3.org/TR/css-color-4/#the-hsl-notation")
+
+"""A CSS hexadecimal color, such as #ff0000."""
+scalar HexColorCode @specifiedBy(url: "https://www.w3.org/TR/css-color-4/#hex-notation")
+
+"""A non-empty string of hexadecimal digits."""
+scalar Hexadecimal
+
+"""A host name, such as api.example.com."""
+scalar Hostname @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc1123")
+
+"""
+An International Bank Account Number, electronic form, such as FR1420041010050500013M02606.
+"""
+scalar IBAN @specifiedBy(url: "https://www.iso.org/standard/81090.html")
+
+"""An IPv4 or IPv6 address."""
+scalar IP @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc4291")
+
+"""An IPv4 address in dotted-quad form."""
+scalar IPv4 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc791")
+
+"""An IPv6 address."""
+scalar IPv6 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc4291")
+
+"""An ISBN-10 or ISBN-13, digits only, with its check digit verified."""
+scalar ISBN @specifiedBy(url: "https://www.isbn-international.org/content/isbn-users-manual/29")
+
+"""Any JSON value."""
+scalar JSON @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc8259")
+
+"""A JSON object."""
+scalar JSONObject @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc8259#section-4")
+
+"""
+A signed JSON Web Token in compact form. Its signature is not verified.
+"""
+scalar JWT @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc7519")
+
+"""A KSUID: 27 characters of base62."""
+scalar KSUID @specifiedBy(url: "https://github.com/segmentio/ksuid")
+
+"""A latitude in decimal degrees, from -90 to 90."""
+scalar Latitude
+
+"""A date and a time with no offset, such as 2024-03-10T10:15:30."""
+scalar LocalDateTime
+
+"""A time of day with no offset, such as 10:15 or 10:15:30."""
+scalar LocalTime
+
+"""A BCP 47 language tag in canonical form, such as fr-FR."""
+scalar Locale @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc5646")
+
+"""
+A signed 64-bit integer, as a decimal string (a safe-integer number is accepted as input).
+"""
+scalar Long
+
+"""A longitude in decimal degrees, from -180 to 180."""
+scalar Longitude
+
+"""
+A MAC address: six hex pairs separated by colons (not the IEEE hyphen form).
+"""
+scalar MAC
+
+"""A Nano ID: 21 characters of A-Z, a-z, 0-9, _ and -."""
+scalar NanoID @specifiedBy(url: "https://github.com/ai/nanoid")
+
+"""A finite number below 0."""
+scalar NegativeFloat
+
+"""An integer from -2147483648 to -1."""
+scalar NegativeInt
+
+"""A string that is not empty and not only white space."""
+scalar NonEmptyString
+
+"""A finite number, 0 or above."""
+scalar NonNegativeFloat
+
+"""An integer from 0 to 2147483647."""
+scalar NonNegativeInt
+
+"""A finite number, 0 or below."""
+scalar NonPositiveFloat
+
+"""An integer from -2147483648 to 0."""
+scalar NonPositiveInt
+
+"""A MongoDB ObjectId: 24 hexadecimal digits."""
+scalar ObjectID @specifiedBy(url: "https://www.mongodb.com/docs/manual/reference/method/ObjectId/")
+
+"""
+Where a page of a list ends. Paging is forward only: `endCursor` is the
+`after` of the next page; to go back, a client keeps the cursors it has
+visited. `startCursor` is the `after` this page was asked with, and
+`hasPreviousPage` says whether it was given.
+"""
+type PageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+}
+
+"""A phone number in E.164 form, such as +33612345678."""
+scalar PhoneNumber @specifiedBy(url: "https://www.itu.int/rec/T-REC-E.164")
+
+"""A TCP or UDP port number, from 0 to 65535."""
+scalar Port
+
+"""A finite number above 0."""
+scalar PositiveFloat
+
+"""An integer from 1 to 2147483647."""
+scalar PositiveInt
+
+type Query {
+  version: String!
+}
+
+"""A CSS rgb() color, such as rgb(255, 0, 0)."""
+scalar RGB @specifiedBy(url: "https://www.w3.org/TR/css-color-4/#rgb-functions")
+
+"""A CSS rgba() color, such as rgba(255, 0, 0, 0.5)."""
+scalar RGBA @specifiedBy(url: "https://www.w3.org/TR/css-color-4/#rgb-functions")
+
+"""A SHA-256 digest: 64 hexadecimal digits."""
+scalar SHA256 @specifiedBy(url: "https://csrc.nist.gov/pubs/fips/180-4/upd1/final")
+
+"""A SHA-512 digest: 128 hexadecimal digits."""
+scalar SHA512 @specifiedBy(url: "https://csrc.nist.gov/pubs/fips/180-4/upd1/final")
+
+"""An integer from -9007199254740991 to 9007199254740991."""
+scalar SafeInt
+
+"""A Semantic Versioning 2.0.0 version, such as 1.0.0-rc.1."""
+scalar SemVer @specifiedBy(url: "https://semver.org/spec/v2.0.0.html")
+
+"""
+The direction of a list's `orderBy`. Every sorted list also orders by `id` after
+its `orderBy`, so a cursor page across a sort neither skips nor repeats a row.
+"""
+enum SortDirection {
+  ASC
+  DESC
+}
+
+"""A time of day with its offset, such as 10:15:30Z (RFC 3339 full-time)."""
+scalar Time @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc3339#section-5.6")
+
+"""An IANA time zone name, such as Europe/Paris."""
+scalar TimeZone @specifiedBy(url: "https://www.iana.org/time-zones")
+
+"""
+An instant, as an integer number of milliseconds since 1970-01-01T00:00:00Z.
+"""
+scalar Timestamp
+
+"""A ULID: 26 characters of Crockford base32."""
+scalar ULID @specifiedBy(url: "https://github.com/ulid/spec")
+
+"""An absolute http or https URL."""
+scalar URL @specifiedBy(url: "https://url.spec.whatwg.org/")
+
+"""A UUID in its 8-4-4-4-12 hexadecimal form."""
+scalar UUID @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc9562")
+
+"""A version 4 (random) UUID."""
+scalar UUIDv4 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc9562")
+
+"""A version 7 (time-ordered) UUID."""
+scalar UUIDv7 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc9562")
+
+"""A UTC offset from -12:00 to +14:00, such as +05:30."""
+scalar UtcOffset
+
+"""No value: always null."""
+scalar Void
+
+"""An xid: 20 characters of lowercase base32hex."""
+scalar XID @specifiedBy(url: "https://github.com/rs/xid")

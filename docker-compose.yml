@@ -1,0 +1,78 @@
+# Development services (ports bound to 127.0.0.1 only), started by `bun run dev` (`bun run services:up`). Host ports come
+# from .env and default to the values below, which differ from pulsarix-api's and operix-api's so the
+# stacks can run side by side. Nothing here is a deployment.
+#
+# MongoDB: a one-node replica set (transactions need one) at
+# mongodb://localhost:27019/?replicaSet=rs0&directConnection=true.
+# Redis: redis://localhost:6381 (rate limits, queues, tokens).
+# Mailpit: SMTP smtp://localhost:1027, messages at http://localhost:8027.
+# SeaweedFS: S3 API http://localhost:8333, storix-dev / storix-dev-secret (docker/seaweedfs-s3.json).
+# Images are pinned (mongo 8.0, SeaweedFS 4.47 by multi-arch index digest, the bucket client by digest): bump them on purpose.
+name: storix-api
+services:
+  mongo:
+    image: mongo:8.0
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    ports:
+      - "127.0.0.1:${MONGO_PORT:-27019}:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - "try { rs.status() } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] }) }; quit(db.hello().isWritablePrimary ? 0 : 1)"
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 5s
+
+  redis:
+    image: redis:7.4
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6381}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1027}:1025"
+      - "127.0.0.1:${MAILPIT_WEB_PORT:-8027}:8025"
+
+  # SeaweedFS: master, volume server and S3 gateway in one process.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.47@sha256:ce9e796f1fe6f06968f4c04bdaf8f678dad9c8acdfef3d244133d71bfa6bf882
+    command:
+      ["server", "-dir=/data", "-s3", "-s3.config=/etc/seaweedfs/s3.json"]
+    ports:
+      - "127.0.0.1:${S3_PORT:-8333}:8333"
+    volumes:
+      - seaweed-data:/data
+      - ./docker/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9333/cluster/status"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  # One-shot: creates the private bucket and exits.
+  media-bucket:
+    image: cgr.dev/chainguard/minio-client@sha256:59f1924e417b6fcfdc0aca321e3bdebe8a56fd0efa7da80037d5eb65a203d687
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      MC_HOST_local: http://storix-dev:storix-dev-secret@seaweedfs:8333
+    command: ["mb", "--ignore-existing", "local/storix-files"]
+    restart: on-failure
+
+volumes:
+  mongo-data:
+  seaweed-data:
