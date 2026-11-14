@@ -23,6 +23,8 @@ curl localhost:3000/health
 | `bun run verify`       | the green bar: generate, schema check, Biome, context and dependency checks, `bun check`, tests, build |
 | `bun run verify:pr`    | the same with only the specs a diff against `origin/develop` affects                                   |
 | `bun run generate`     | scalars and validation SDL, then resolver types and Zod schemas into `src/generated/`                  |
+| `bun run db:migrate`   | applies the pending core migrations (`--dry-run`, `--status`, `--rollback-to <id>`)                    |
+| `bun run db:sync`      | creates the core collections' indexes and validators (`--dry-run` to preview)                          |
 | `bun run schema:print` | writes `schema.graphql`, the committed contract storix-ui generates its client from                    |
 
 ## Layout
@@ -31,9 +33,14 @@ curl localhost:3000/health
 | ------------------------------- | ------------------------------------------------------------------- |
 | `src/core/`                     | the kernel: modules every other module may use                      |
 | `src/modules/registry.ts`       | the one list of modules                                             |
+| `src/i18n/`                     | the error inventory (`defineCodes`, `ErrorCode`), `fail`, the i18n instance |
 | `src/config/`                   | `env.ts` (read once at import), the MongoDB handle                  |
 | `src/http/`                     | the base (request id, client address), the schema, the Yoga plugins |
 | `docker-compose.yml`, `docker/` | the development services                                            |
 | `CONTEXT.md`                    | the domain glossary and the error-code table                        |
 
 The runtime dependencies are declared up front for the v1 slices, so some are not imported yet; `mongodb` and `nodemailer` are peers of `@softistx/mongo` and `@softistx/mail-smtp` (which asks for `nodemailer` `>=7 <11`, `mongodb` `>=7 <8`), hence listed here.
+
+## Errors
+
+Every refusal carries a stable code `<module>.errors.<slug>` (`defineCodes` in `src/i18n/`), raised with `fail(code, { params })`. Messages are ICU, in English and French, stored as `translations` rows (one per code and language) by migrations and served by the public `Query.errorCatalogue(language)`, whose `version` changes with any text. `src/i18n/coverage.spec.ts` fails when a code has no message in both languages. The server applies pending migrations at boot outside production; in production run `bun run db:migrate` first.

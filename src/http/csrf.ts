@@ -1,4 +1,5 @@
-import { createGraphQLError, type Plugin } from "graphql-yoga";
+import type { Plugin } from "graphql-yoga";
+import { fail } from "../i18n/fail";
 
 // The header every /graphql request carries, any non-empty value (the
 // client's name: "storix-ui", "apollo-sandbox"…). A browser sends a custom
@@ -9,13 +10,11 @@ export const clientHeader = "x-storix-client";
 
 // A Yoga plugin (src/app.ts): a request without the header is refused before
 // it is parsed, 403. Yoga's `useCSRFPrevention` checks only the requests a
-// browser does not preflight; this one checks every request. A1 turns the
-// refusal into the `auth.errors.client-header-required` code.
+// browser does not preflight; this one checks every request. The refusal
+// is `auth.errors.client-header-required`.
 export const requireClientHeader: Plugin = {
   onRequestParse({ request }) {
     if (request.headers.get(clientHeader)?.trim()) return;
-    throw createGraphQLError(`The ${clientHeader} header is required`, {
-      extensions: { http: { status: 403 } },
-    });
+    throw fail("auth.errors.client-header-required", { status: 403 });
   },
 };

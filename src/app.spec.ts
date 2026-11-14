@@ -45,7 +45,9 @@ describe("graphql", () => {
   test("a request without the client header is refused 403", async () => {
     const response = await graphql("{ version }");
     expect(response.status).toBe(403);
-    expect(JSON.stringify(await response.json())).toContain(clientHeader);
+    expect(JSON.stringify(await response.json())).toContain(
+      "auth.errors.client-header-required",
+    );
   });
 
   test("a whitespace-only client header is refused 403", async () => {

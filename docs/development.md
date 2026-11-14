@@ -37,6 +37,13 @@ replica set.
 - `verify:pr` selects the specs that are, or import, a changed file (`src/scripts/affected-tests.ts`);
   a change to shared infrastructure runs them all.
 
+## Migrations and indexes
+
+- `bun run db:migrate` applies the pending core migrations (the `translations` rows for now). Flags: `--dry-run` lists them, `--status` shows applied and pending, `--rollback-to <id>` rolls back down to a migration.
+- `bun run db:sync` creates the indexes and validators of the core collections (`--dry-run` previews).
+- Outside production the server migrates at boot; in production it refuses to start while a migration is pending, so deploy order is `db:sync`, `db:migrate`, then the new version.
+- A new error code needs its `defineCodes` entry, a migration with both languages, and a CONTEXT.md row: `coverage.spec.ts` and `bun run context:check` fail otherwise.
+
 ## The proxy secret
 
 `@alxia/core` 0.23's `requireProxySecret({ paths, secret })` refuses a request to a path that

@@ -1,6 +1,6 @@
+import { apiErrors } from "./api-errors";
 import { requireClientHeader } from "./csrf";
 import { noStore } from "./no-store";
 
-// The Yoga plugins of /graphql, in order. A1 adds the error plugin
-// (`apiErrors`) in front of `noStore`.
-export const graphqlPlugins = [requireClientHeader, noStore];
+// The Yoga plugins of /graphql, in order.
+export const graphqlPlugins = [requireClientHeader, apiErrors, noStore];

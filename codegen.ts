@@ -21,7 +21,9 @@ const config: CodegenConfig = {
         useTypeImports: true,
         useIndexSignature: true,
         enumsAsTypes: true,
-        mappers: {},
+        mappers: {
+          ErrorCatalogue: "@/core/translations/translations.load#CatalogueView",
+        },
       },
     },
     "src/generated/graphql/zod.ts": {
