@@ -2,8 +2,7 @@ import { Glob } from "bun";
 
 // Keeps CONTEXT.md's "Error codes" current: every code the API can answer is
 // declared with `defineCodes("<module>", [slugs])`. This lists them from the
-// source and fails, naming each, when CONTEXT.md does not. A0 declares none
-// yet, so an empty scan passes as long as CONTEXT.md exists.
+// source and fails, naming each, when CONTEXT.md does not.
 //
 // A code is documented when its row (a line starting with
 // "| `<module>.errors.`") holds the full code or the slug in backticks, which

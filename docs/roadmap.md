@@ -4,7 +4,7 @@ What a user gets, in order. An entry moves Next, Now, Shipped as its effort star
 
 ## Now
 
-- **E0 Bootstrap**: a running API skeleton with health, error catalogue and the verify script (the skeleton is in; the error catalogue follows). ([issue](https://github.com/softistx/storix-api/issues/12))
+- **E0 Bootstrap**: a running API skeleton with health, error catalogue and the verify script (the skeleton and the error catalogue are in). ([issue](https://github.com/softistx/storix-api/issues/12))
 
 ## Next
 

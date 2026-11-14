@@ -1,10 +1,12 @@
 import { alxia, defineMiddleware } from "@alxia/core";
 import type { GraphQLContext } from "@alxia/graphql";
 import { env } from "../config/env";
+import { i18n } from "../i18n";
 import { clientIp } from "./client-ip";
 
 // The base: what every resolver reads, decorated or derived here: `env` and
-// `requestId`. E1 adds the request's language (A1) and the viewer.
+// `requestId`, and the request's language (`language`, `t`: src/i18n). E1 adds
+// the viewer.
 export function createBase() {
   // `requestId` names the request in logs and audit trails. alxia exposes none,
   // so the base makes one: always generated here, never read from
@@ -30,7 +32,7 @@ export function createBase() {
         }),
       })
     : alxia();
-  return base.decorate({ env }).use(requestIdOf);
+  return base.decorate({ env }).use(requestIdOf).use(i18n);
 }
 
 export type Base = ReturnType<typeof createBase>;

@@ -1,5 +1,7 @@
 # Development
 
+See [troubleshooting.md](troubleshooting.md) for the messages the server and its scripts print.
+
 ## Install
 
 `@softistx/*` packages come from GitHub Packages, mapped by the committed `.npmrc`, which reads
@@ -36,6 +38,29 @@ replica set.
   `@softistx/janus*` package (the identity seam, plan §3.11).
 - `verify:pr` selects the specs that are, or import, a changed file (`src/scripts/affected-tests.ts`);
   a change to shared infrastructure runs them all.
+
+## Migrations and indexes
+
+- `bun run db:migrate` applies the pending core migrations (the `translations` rows for now). Flags: `--dry-run` lists them, `--status` lists every id with its state (applied, pending, missing), `--rollback-to <id>` undoes everything after `<id>` (the migration `<id>` itself stays applied).
+- `bun run db:sync` creates the indexes and validators of the core collections (`--dry-run` previews).
+- A new error code needs its `defineCodes` entry, a migration with both languages, and a CONTEXT.md row: `coverage.spec.ts` and `bun run context:check` fail otherwise.
+- A migration that creates codes undoes them with `removeTexts`; one that rewords codes an earlier migration created undoes the rewording with `restoreTexts(previous)` (`translations.seeds.ts`).
+
+## Boot and deploy
+
+The boot rule, once: outside production the server applies the pending migrations itself. In production it refuses to start while a migration is pending (`MigrationsOutOfSyncError`), since the migration is a deployment step, not something every instance races to do. A migration recorded in the database but not in the build (a newer build already ran it) logs a warning, applies nothing (in dev too) and the server starts, so an old instance restarting during a rollout or a code rollback still comes up. Then the server loads the translations and refuses to start when a code has no text in the fallback language. Each message is in [troubleshooting.md](troubleshooting.md).
+
+```sh
+# Deploy: schema first, then data, then code
+bun run db:sync                      # indexes and validators
+bun run db:migrate                   # pending migrations
+# ...roll out the new version
+
+# Rollback: code first, then data
+# ...roll back to the previous version (it boots: it only warns about the newer migrations)
+bun run db:migrate --status          # list the ids
+bun run db:migrate --rollback-to <id>  # undo everything after <id>
+```
 
 ## The proxy secret
 

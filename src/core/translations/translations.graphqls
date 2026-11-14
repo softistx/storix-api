@@ -1,0 +1,36 @@
+"The languages the API speaks."
+enum Language {
+  EN
+  FR
+}
+
+extend type Query {
+  """
+  The API's error messages in one language, for a client that words refusals
+  itself. A refusal carries `extensions.code` and `extensions.params`; the
+  client finds the code in `messages` and fills the message with the params.
+  The language defaults to the request's. Cache a catalogue per language by
+  `version`.
+  """
+  errorCatalogue(language: Language): ErrorCatalogue!
+}
+
+type ErrorCatalogue {
+  language: Language!
+  """
+  Changes whenever a text of the language's catalogue, or of English's which
+  fills it, changes (a deploy that adds or rewords one); it is the same after a
+  restart. It may also change for a text that is no error message. Selecting
+  it alone reads no message.
+  """
+  version: String!
+  "Every error code in code order, each in the language or, where it has no text, in English (the fallback)."
+  messages: [ErrorMessage!]!
+}
+
+type ErrorMessage {
+  "`<module>.errors.<slug>`: the `extensions.code` the API answers."
+  code: String!
+  "The ICU message, uninterpolated, that `extensions.params` fill."
+  message: String!
+}

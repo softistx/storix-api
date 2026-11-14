@@ -7,7 +7,8 @@ import { MongoMemoryReplSet } from "mongodb-memory-server-core";
 // database and the workspace databases are named by the defaults
 // (storix_core, storix_ws_<id>), on that one server. Nothing here needs
 // Docker or the developer's .env, so CI runs the same specs.
-const replSet = await MongoMemoryReplSet.create({
+const START_TIMEOUT_MS = 60_000;
+const starting = MongoMemoryReplSet.create({
   replSet: { count: 1, storageEngine: "wiredTiger" },
   instanceOpts: [
     {
@@ -18,7 +19,32 @@ const replSet = await MongoMemoryReplSet.create({
     },
   ],
 });
+const replSet = await withTimeout(starting);
 Bun.env["MONGO_URI"] = replSet.getUri();
+
+// A replica set that stalls while it starts (a download, a lock, a full disk)
+// fails the run with a clear error instead of hanging it. Its server, when it
+// comes up late, is stopped.
+async function withTimeout(
+  start: Promise<MongoMemoryReplSet>,
+): Promise<MongoMemoryReplSet> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      start.then((late) => late.stop()).catch(() => {});
+      reject(
+        new Error(
+          `test/setup.ts: the in-memory MongoDB replica set did not start within ${START_TIMEOUT_MS / 1000} s`,
+        ),
+      );
+    }, START_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([start, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // Specs mail through a memory mailer they inject, never through an SMTP server
 // of the developer's .env.

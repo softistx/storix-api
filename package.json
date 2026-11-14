@@ -7,6 +7,8 @@
     "generate": "nxgt-graphql-scalars typedefs --out && nxgt-graphql-validation typedefs --out && graphql-codegen --config codegen.ts",
     "dev": "bun scripts/dev.ts",
     "dev:api": "NODE_ENV=development bun --watch src/server.ts",
+    "db:sync": "bun src/scripts/db-sync.ts",
+    "db:migrate": "bun src/scripts/db-migrate.ts",
     "services:up": "docker compose up -d --wait mongo redis mailpit seaweedfs && docker compose up -d media-bucket",
     "services:down": "docker compose down",
     "build": "bun run generate && bun build src/server.ts --target=bun --outdir=dist --minify --sourcemap=linked",
