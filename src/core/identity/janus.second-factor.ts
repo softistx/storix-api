@@ -32,6 +32,10 @@ export function secondFactorFlows(deps: Deps): Flows {
     }
   };
 
+  // Temporary, until nxgt-janus#770 (a recovery code spent outside a sign-in,
+  // with per-user attempts): janus counts the tries per challenge, so this
+  // detour is throttled only by the per-address limit of the resolver.
+  //
   // Spends a recovery code of the account: janus redeems one only to sign in,
   // so the account is signed in as proven (the session's own freshness is what
   // let the caller here), the code redeems that sign-in's challenge, and the
@@ -45,11 +49,17 @@ export function secondFactorFlows(deps: Deps): Flows {
       throw fail("identity.errors.second-factor-state", { status: 409 });
     }
     const opened = await users.secondFactor.recover(started.challenge, code);
-    await accounts.signOut(
-      new Request("http://localhost/", {
-        headers: { authorization: `Bearer ${opened.token}` },
-      }),
-    );
+    try {
+      await accounts.signOut(
+        new Request("http://localhost/", {
+          headers: { authorization: `Bearer ${opened.token}` },
+        }),
+      );
+    } catch (error) {
+      console.error(
+        `storix-api: the sign-out after spending a recovery code failed: ${error instanceof Error ? error.message : error}`,
+      );
+    }
   }
 
   return {

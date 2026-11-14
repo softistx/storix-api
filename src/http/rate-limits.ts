@@ -3,6 +3,9 @@ import type { RedisClient } from "bun";
 import { GraphQLError } from "graphql";
 import { rateLimited } from "../i18n/fail";
 
+// The longest a check may take before the request goes through unchecked.
+export const CHECK_TIMEOUT_MS = 750;
+
 // One window of attempts: `limit` per `per` milliseconds.
 export interface Window {
   limit: number;
@@ -34,12 +37,14 @@ const unlimited: Limits = {
 // operation). Without a client (REDIS_URL unset, development) nothing is
 // limited. A Redis that cannot answer lets the request through, logged: a
 // sign-in must not stop because the counter is down, and janus's per-account
-// throttles still hold.
+// throttles still hold. A Redis that answers slowly is cut at
+// `CHECK_TIMEOUT_MS`; a request with no address is not limited (logged once).
 export function createLimits(
   client: RedisClient | undefined,
   config: LimitsConfig,
 ): Limits {
   if (!client) return unlimited;
+  let noAddressLogged = false;
   const guard = (name: string, window: Window) => {
     const bound = bindRateLimit(
       client,
@@ -50,8 +55,26 @@ export function createLimits(
       }),
     );
     return async (ip: string | undefined) => {
+      if (!ip) {
+        if (!noAddressLogged) {
+          noAddressLogged = true;
+          console.error(
+            "storix-api: a request without a client address is not rate limited",
+          );
+        }
+        return;
+      }
+      let timer: ReturnType<typeof setTimeout> | undefined;
       try {
-        const result = await bound.consume({ ip: ip ?? "unknown" });
+        const result = await Promise.race([
+          bound.consume({ ip }),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error(`no answer in ${CHECK_TIMEOUT_MS} ms`)),
+              CHECK_TIMEOUT_MS,
+            );
+          }),
+        ]);
         if (!result.allowed) {
           throw rateLimited(Math.max(1, Math.ceil(result.retryAfter / 1000)));
         }
@@ -60,6 +83,8 @@ export function createLimits(
         console.error(
           `storix-api: the ${name} rate limit could not be checked: ${error instanceof Error ? error.message : error}`,
         );
+      } finally {
+        clearTimeout(timer);
       }
     };
   };
