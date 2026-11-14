@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { seedsOf } from "@alxia/i18n";
 import { defineMigration, migrate, rollback } from "@softistx/mongo/migrations";
 import { authValidationErrors } from "../core/translations/migrations/2026-11-13-auth-validation-errors.migration";
 import { texts } from "../core/translations/migrations/2026-11-13-auth-validation-errors.texts";
-import { seedsOf } from "../core/translations/translations.seeds";
 import { connection } from "./db";
 import {
   assertMigrated,

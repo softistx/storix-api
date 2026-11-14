@@ -7,7 +7,7 @@ The v1 plan is split into efforts E0 to E8, each a tracking issue with its slice
 ## Run it
 
 ```sh
-GITHUB_TOKEN=$(gh auth token) bun install   # @softistx/* comes from GitHub Packages
+bun install   # @softistx/* comes from npm.softistx.com (NPM_REGISTRY_TOKEN)
 cp .env.example .env
 bun run dev                                  # starts the Docker services, then the API on :3000
 curl localhost:3000/health

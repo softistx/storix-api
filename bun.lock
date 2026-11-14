@@ -6,12 +6,12 @@
       "name": "storix-api",
       "dependencies": {
         "@alxia/access": "^0.2.3",
-        "@alxia/core": "^0.23.0",
+        "@alxia/core": "^0.24.0",
         "@alxia/env": "^0.5.0",
-        "@alxia/graphql": "^0.16.2",
-        "@alxia/i18n": "^0.5.4",
-        "@alxia/language": "^0.3.19",
-        "@alxia/media": "^0.7.0",
+        "@alxia/graphql": "^0.16.3",
+        "@alxia/i18n": "^0.6.0",
+        "@alxia/language": "^0.3.20",
+        "@alxia/media": "^0.7.1",
         "@alxia/modules": "^0.4.0",
         "@alxia/tenancy": "^0.6.0",
         "@graphql-tools/merge": "^10.0.6",
@@ -24,7 +24,6 @@
         "@softistx/ai-telemetry": "^0.3.1",
         "@softistx/image": "^0.6.0",
         "@softistx/janus": "^0.61.0",
-        "@softistx/janus-graphql": "^0.27.0",
         "@softistx/janus-mail": "^0.26.1",
         "@softistx/janus-mongo": "^0.27.1",
         "@softistx/mail": "^1.5.0",
@@ -58,17 +57,17 @@
   "packages": {
     "@alxia/access": ["@alxia/access@0.2.3", "", { "peerDependencies": { "@alxia/modules": "^0.4.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-YRnLOqqCdsQRqVJlNcwV5fkh0OezTWCgKDfy+I7SKOQTQ4MTtGtJtMGXirkVNy61nH4YjcIRiofwNF8ReD0Sew=="],
 
-    "@alxia/core": ["@alxia/core@0.23.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-8wThXJXra9ewv0wywfxHWfnN7+IYZoiXJ5AcXZ4+EnIoxbSrBu7bJY84qx236DEHZO7tlS//OkJvTvbQBfFZmQ=="],
+    "@alxia/core": ["@alxia/core@0.24.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-RaOi0d5zT7voX0Oml7z8Z9MCFhGMgZQ4L1GwSoO33Azm682x9JW18T4n3m4+0F6ni2JWKi3jA9DaDDPQ0nsrRQ=="],
 
     "@alxia/env": ["@alxia/env@0.5.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" }, "bin": { "alxia-env": "dist/cli/index.js" } }, "sha512-DhZMLwIFJUA3LZ/BzYKQQm+7O9nMH2DXfvKfkt01WcKccDySAsiHg735irOT0ymehxuRa22EzJzalX3n/fjN+w=="],
 
-    "@alxia/graphql": ["@alxia/graphql@0.16.2", "", { "peerDependencies": { "@alxia/core": "^0.23.0", "graphql": "^16.11.0 || ^17.0.0", "graphql-ws": "^6.1.0", "graphql-yoga": "^5.16.0 || ^6.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["graphql-ws"] }, "sha512-l+72cxlxYL82e99JBzjeq4h+DHGnSDX6BT06mKQRjit5xTpCvm4nyVV7Nh/NgeP5Ta1nDBm2/nqWs3h4TSVPZw=="],
+    "@alxia/graphql": ["@alxia/graphql@0.16.3", "", { "peerDependencies": { "@alxia/core": "^0.24.0", "graphql": "^16.11.0 || ^17.0.0", "graphql-ws": "^6.1.0", "graphql-yoga": "^5.16.0 || ^6.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["graphql-ws"] }, "sha512-WGnYmN1CoJ3kHqzzYB2VN5qfkZM/fuEI/kOWhIvtkFv9xtSmFDS5AmdCLnbqGkRjl6tOLn8qxK+euA8O01Ol4g=="],
 
-    "@alxia/i18n": ["@alxia/i18n@0.5.4", "", { "peerDependencies": { "@alxia/core": "^0.23.0", "@alxia/language": "^0.3.19", "@softistx/i18n": "^3.2.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-JOoxVCl9Rec2eBODcmvi00FaxLw8Yu0vl1TYBW4MIHhi6wksdQmjiynyCSFx/ahgiDoznzFqZ4NtkFOgK3WoMg=="],
+    "@alxia/i18n": ["@alxia/i18n@0.6.0", "", { "peerDependencies": { "@alxia/core": "^0.24.0", "@alxia/language": "^0.3.20", "@softistx/i18n": "^3.2.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-npPJCcojdFSIPf8Z4dpK05/Xst28qvKZgFe1NFFufIuoSKPOvFikYZtfwBWU+Okat7l3uG+mHX93HwFkKEweTQ=="],
 
-    "@alxia/language": ["@alxia/language@0.3.19", "", { "peerDependencies": { "@alxia/core": "^0.23.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-+rDyz4Vt4vFBXZLGXnpkdHE+ytZGtZRJLZbFa5jQxRQzrvsHed53uKes375tOZt4AqzDj3DEUBWZWP0iRZvODw=="],
+    "@alxia/language": ["@alxia/language@0.3.20", "", { "peerDependencies": { "@alxia/core": "^0.24.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-7ywMtPXt5Inv3mQXLgZTBVTc3coJ/gW1pzBoDxN8fFoDiytyrOmJtg752fB1ZiCw4cckgsXHolXNCJIQEE1lCA=="],
 
-    "@alxia/media": ["@alxia/media@0.7.0", "", { "peerDependencies": { "@alxia/core": "^0.23.0", "@softistx/image": "^0.5.0", "@softistx/s3": "^0.13.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/image"] }, "sha512-Bd8VfQDuL2Lcti39VamwEBfieXJzzA7MBAPl41dLtTYyoOZwO6X+WxcdebIu5+XP5hPfHDnBFx4SBdwgC/dvug=="],
+    "@alxia/media": ["@alxia/media@0.7.1", "", { "peerDependencies": { "@alxia/core": "^0.24.0", "@softistx/image": "^0.5.0", "@softistx/s3": "^0.13.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/image"] }, "sha512-uzh+60xKZVIpFJaq9VSGG588eGJO5j1XQGtib/MWc4uzMC/pg/C60wvaUBXSiUcuMpB8zRa6fjD1rS46QMnGsw=="],
 
     "@alxia/modules": ["@alxia/modules@0.4.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-kzmHJpf9ZzhFhNvH/LoQJSaQ+xOMzbSffnV+F6zkvmOkLUZJzPa3t7/47cQ5mzGfC1InimCMystRP9VFqK26gg=="],
 
@@ -322,39 +321,37 @@
 
     "@repeaterjs/repeater": ["@repeaterjs/repeater@3.1.0", "", {}, "sha512-TaoVksZRSx2KWYYpyLQtMQXXeS98VsgZImzW65xmiVgbYhXLk+aEsmzPLirqVuE4/XuUapH2iMtxUzaBNDzdSQ=="],
 
-    "@softistx/ai-anthropic": ["@softistx/ai-anthropic@0.4.0", "https://npm.pkg.github.com/download/@softistx/ai-anthropic/0.4.0/4071270a71a4bfeb0b6427c04ca7db39b6124140", { "peerDependencies": { "@softistx/ai-core": "^0.7.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-dPa8sDe9x4N6twKMrSeLMlFT59GKUXxp2/fi4SSLTtzEEWcMCNUDTbv0kVfWnAOWP1cPvfdZWH+aplLX6AWy+A=="],
+    "@softistx/ai-anthropic": ["@softistx/ai-anthropic@0.4.0", "https://npm.softistx.com/@softistx/ai-anthropic/-/ai-anthropic-0.4.0.tgz", { "peerDependencies": { "@softistx/ai-core": "^0.7.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-dPa8sDe9x4N6twKMrSeLMlFT59GKUXxp2/fi4SSLTtzEEWcMCNUDTbv0kVfWnAOWP1cPvfdZWH+aplLX6AWy+A=="],
 
-    "@softistx/ai-core": ["@softistx/ai-core@0.7.0", "https://npm.pkg.github.com/download/@softistx/ai-core/0.7.0/9d448daf756f6d74f07c29814d472a37dacc4c50", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-Xj5IWRlmCTl9MSJQW8vqNV94kI/PD0WLat2O6z4hWLx/kC696IuB60s6fb+0peSuNs8UyplT96n8/6uJoRZcjQ=="],
+    "@softistx/ai-core": ["@softistx/ai-core@0.7.0", "https://npm.softistx.com/@softistx/ai-core/-/ai-core-0.7.0.tgz", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-Xj5IWRlmCTl9MSJQW8vqNV94kI/PD0WLat2O6z4hWLx/kC696IuB60s6fb+0peSuNs8UyplT96n8/6uJoRZcjQ=="],
 
-    "@softistx/ai-ollama": ["@softistx/ai-ollama@0.3.1", "https://npm.pkg.github.com/download/@softistx/ai-ollama/0.3.1/d796205c32c24d256874f20e2abc416a6536e38c", { "peerDependencies": { "@softistx/ai-core": "^0.7.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-FR2EBgjasK/D4aHxSC8zVn5Jd+lPr88hR3ILD+io9w4Vm9R9AO4KkfpBw6DiUQ4uwCnz5U0VskJqrwye4MvRfg=="],
+    "@softistx/ai-ollama": ["@softistx/ai-ollama@0.3.1", "https://npm.softistx.com/@softistx/ai-ollama/-/ai-ollama-0.3.1.tgz", { "peerDependencies": { "@softistx/ai-core": "^0.7.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-FR2EBgjasK/D4aHxSC8zVn5Jd+lPr88hR3ILD+io9w4Vm9R9AO4KkfpBw6DiUQ4uwCnz5U0VskJqrwye4MvRfg=="],
 
-    "@softistx/ai-telemetry": ["@softistx/ai-telemetry@0.3.1", "https://npm.pkg.github.com/download/@softistx/ai-telemetry/0.3.1/d27c324d10e314612c0b04928b47d27780c53419", { "peerDependencies": { "@softistx/ai-core": "^0.7.0", "@softistx/telemetry": ">=0.3.0 <0.4.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-O5lnZ4dC2oGLgoyyuHicMeNuFpGiJx8r6xM/Uyet8U/22+Xd99mKREALHLJrjyH11cvn65mIf4KHZmV9DkLcCw=="],
+    "@softistx/ai-telemetry": ["@softistx/ai-telemetry@0.3.1", "https://npm.softistx.com/@softistx/ai-telemetry/-/ai-telemetry-0.3.1.tgz", { "peerDependencies": { "@softistx/ai-core": "^0.7.0", "@softistx/telemetry": ">=0.3.0 <0.4.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-O5lnZ4dC2oGLgoyyuHicMeNuFpGiJx8r6xM/Uyet8U/22+Xd99mKREALHLJrjyH11cvn65mIf4KHZmV9DkLcCw=="],
 
-    "@softistx/ai-testing": ["@softistx/ai-testing@0.3.0", "https://npm.pkg.github.com/download/@softistx/ai-testing/0.3.0/46a7b230802bf02aef1418219c72d07d5348ff7d", { "peerDependencies": { "@softistx/ai-core": "^0.7.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-HPTimYpsI9V+9RyMvjjLMpDAgRnTPcH4LSfwYajrr4SySh5VnZ7kknPwmSKLKFuaLq2OKfRNVx70hTU8O/QIJw=="],
+    "@softistx/ai-testing": ["@softistx/ai-testing@0.3.0", "https://npm.softistx.com/@softistx/ai-testing/-/ai-testing-0.3.0.tgz", { "peerDependencies": { "@softistx/ai-core": "^0.7.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-HPTimYpsI9V+9RyMvjjLMpDAgRnTPcH4LSfwYajrr4SySh5VnZ7kknPwmSKLKFuaLq2OKfRNVx70hTU8O/QIJw=="],
 
-    "@softistx/i18n": ["@softistx/i18n@3.2.0", "https://npm.pkg.github.com/download/@softistx/i18n/3.2.0/4ff3ef8ccca00d6e653b6c4d8fc090967bb3239d", { "dependencies": { "@formatjs/icu-messageformat-parser": "^3.5.20", "intl-messageformat": "^12.1.2", "lodash": "^4.18.1" }, "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-A3EIW8MEd2gOJH3tisUGVBBAEOn/IxPrLCXRPOFCjG+h8cR7nePB61xVqJ9K0aJTP1W9WqDijiV4lhvSnoaSNg=="],
+    "@softistx/i18n": ["@softistx/i18n@3.2.0", "https://npm.softistx.com/@softistx/i18n/-/i18n-3.2.0.tgz", { "dependencies": { "@formatjs/icu-messageformat-parser": "^3.5.20", "intl-messageformat": "^12.1.2", "lodash": "^4.18.1" }, "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-A3EIW8MEd2gOJH3tisUGVBBAEOn/IxPrLCXRPOFCjG+h8cR7nePB61xVqJ9K0aJTP1W9WqDijiV4lhvSnoaSNg=="],
 
-    "@softistx/image": ["@softistx/image@0.6.0", "https://npm.pkg.github.com/download/@softistx/image/0.6.0/8ef8f958f10eb16732fc428be1a30cdb920aad51", { "peerDependencies": { "@napi-rs/canvas": "^1.1.0", "@softistx/s3": "^0.13.0", "pdfjs-dist": "^6.5.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-YFgHQ2m1GZrdsh3SUhAU/xDurUNXqAHPJ5Ea7OTB4kmaZbLcj7D1CjnLRklDy8fkKFlaMzERB+qTn3ZJ/XtYZQ=="],
+    "@softistx/image": ["@softistx/image@0.6.0", "https://npm.softistx.com/@softistx/image/-/image-0.6.0.tgz", { "peerDependencies": { "@napi-rs/canvas": "^1.1.0", "@softistx/s3": "^0.13.0", "pdfjs-dist": "^6.5.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-YFgHQ2m1GZrdsh3SUhAU/xDurUNXqAHPJ5Ea7OTB4kmaZbLcj7D1CjnLRklDy8fkKFlaMzERB+qTn3ZJ/XtYZQ=="],
 
-    "@softistx/janus": ["@softistx/janus@0.61.0", "https://npm.pkg.github.com/download/@softistx/janus/0.61.0/4bd8f6e89e1084a223ba065064bbd1365392ea5e", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-osaqzGDlGnXGEr8SKy9pJpohNWJ7r7F0QWlfPVv4xtvcO0s5+13mM9WdtZAGnLAK1twiFyMNfclOvd4xNdrwrQ=="],
+    "@softistx/janus": ["@softistx/janus@0.61.1", "https://npm.softistx.com/@softistx/janus/-/janus-0.61.1.tgz", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-0f86WOCDwx+kOOwuDef3RRazvOyd2MOX8+Y2k4eTxvGl0LWYv/klSqpn0rtGSrB+fhusZST2cndLorvYPWmW4Q=="],
 
-    "@softistx/janus-graphql": ["@softistx/janus-graphql@0.27.1", "https://npm.pkg.github.com/download/@softistx/janus-graphql/0.27.1/9b34f57a2606423e455e7554477dd89797f690c8", { "peerDependencies": { "@envelop/core": "^5.0.0 || ^6.0.0", "@graphql-tools/utils": ">=10.0.0 <14", "@softistx/janus": "^0.61.0", "graphql": "^16.9.0 || ^17.0.0", "graphql-ws": "^6.0.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-34BOrhdVsrua7ucGesAeAA5Blf24VKXZhT3S0gkArOCtiSIL8GxlvomcZ4w2lxruI9bGHcoQMt7t2dQD3ED7fg=="],
+    "@softistx/janus-mail": ["@softistx/janus-mail@0.26.3", "https://npm.softistx.com/@softistx/janus-mail/-/janus-mail-0.26.3.tgz", { "peerDependencies": { "@softistx/janus": "^0.62.0", "@softistx/mail": ">=1.5.0 <2", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-H/vpxq+KsTPfsGj8C9y8pQKY5T3iacvyB/LWDwlUrXdqh7BewIaRKmzkNoYRZgY551qCxnpgtpw3Kqy+jlNGQg=="],
 
-    "@softistx/janus-mail": ["@softistx/janus-mail@0.26.1", "https://npm.pkg.github.com/download/@softistx/janus-mail/0.26.1/6b76746f912499336ecc0f292700ee47a5c11193", { "peerDependencies": { "@softistx/janus": "^0.61.0", "@softistx/mail": ">=1.5.0 <2", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-DAbpXBEgx6kY1zKoWhhZhzCb7K4Y7Ip2Re85h5Vw4bZGLmJ8sFf0y10doINS9sLj4rATBKKWwq5Z9TkPwWPSaQ=="],
+    "@softistx/janus-mongo": ["@softistx/janus-mongo@0.27.3", "https://npm.softistx.com/@softistx/janus-mongo/-/janus-mongo-0.27.3.tgz", { "peerDependencies": { "@softistx/janus": "^0.62.0", "@softistx/mongo": ">=0.27.0 <1", "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-ht1Qb6xqgRakbM74vpduA4rLuNxzCbry4UbN7cYS8jvmToeix/o+nWqke2x0xQcCWCd5BhTGUkLUuw3q+96nMA=="],
 
-    "@softistx/janus-mongo": ["@softistx/janus-mongo@0.27.1", "https://npm.pkg.github.com/download/@softistx/janus-mongo/0.27.1/74cf90d15d280a6dd32cd35c93792f5a3bf121d7", { "peerDependencies": { "@softistx/janus": "^0.61.0", "@softistx/mongo": ">=0.27.0 <1", "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-mxXbBaxm8p3ruo6OtdoPjR06ovJyjuHCdji56lhC06AMkyhmfpc/RBxrJcDnB5GvAss5PDegxoEpO4FbQdFSjA=="],
+    "@softistx/mail": ["@softistx/mail@1.5.0", "https://npm.softistx.com/@softistx/mail/-/mail-1.5.0.tgz", { "peerDependencies": { "@opentelemetry/api": "^1.9.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-Uli7pJE07nz2IhKKs3s7Jyq4QuHkHoS2YWNlC4mBPnUTWQCa2IIzEBc2ko/ExYAU9lMjgUMM4UI4SkW1De39bg=="],
 
-    "@softistx/mail": ["@softistx/mail@1.5.0", "https://npm.pkg.github.com/download/@softistx/mail/1.5.0/d0b70a52f9638beca562c1c3c00b6318dcc0fc79", { "peerDependencies": { "@opentelemetry/api": "^1.9.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-Uli7pJE07nz2IhKKs3s7Jyq4QuHkHoS2YWNlC4mBPnUTWQCa2IIzEBc2ko/ExYAU9lMjgUMM4UI4SkW1De39bg=="],
+    "@softistx/mail-smtp": ["@softistx/mail-smtp@1.1.0", "https://npm.softistx.com/@softistx/mail-smtp/-/mail-smtp-1.1.0.tgz", { "peerDependencies": { "@softistx/mail": "^1.3.0", "nodemailer": ">=7.0.0 <11", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-+8gFDtoSqXEKmEob8OCq++PJjonwCMr+FMAWg+Zz11xo4Nc3nXLUTJjQOjqDSLyj39XHDxfN5thX5nxDLi83ng=="],
 
-    "@softistx/mail-smtp": ["@softistx/mail-smtp@1.1.0", "https://npm.pkg.github.com/download/@softistx/mail-smtp/1.1.0/cc16a5e7fceb86282696158e5ea3b95d3c602393", { "peerDependencies": { "@softistx/mail": "^1.3.0", "nodemailer": ">=7.0.0 <11", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-+8gFDtoSqXEKmEob8OCq++PJjonwCMr+FMAWg+Zz11xo4Nc3nXLUTJjQOjqDSLyj39XHDxfN5thX5nxDLi83ng=="],
+    "@softistx/mongo": ["@softistx/mongo@0.29.0", "https://npm.softistx.com/@softistx/mongo/-/mongo-0.29.0.tgz", { "peerDependencies": { "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-f9Y4ci1BOW94sj1nGmvxI4TrmyrcYwYSEgT4utL6RuemuO7xqBonTivGC4beXSYcfwhjCFIgsYHvSDqdQ/YmDA=="],
 
-    "@softistx/mongo": ["@softistx/mongo@0.29.0", "https://npm.pkg.github.com/download/@softistx/mongo/0.29.0/4a08cb8c07c351064784f5f97242145a6fb574e0", { "peerDependencies": { "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-f9Y4ci1BOW94sj1nGmvxI4TrmyrcYwYSEgT4utL6RuemuO7xqBonTivGC4beXSYcfwhjCFIgsYHvSDqdQ/YmDA=="],
+    "@softistx/redis": ["@softistx/redis@0.21.0", "https://npm.softistx.com/@softistx/redis/-/redis-0.21.0.tgz", { "peerDependencies": { "redis-memory-server": ">=0.17.1 <0.18", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-kN7fYxEGoi8VXu02GI+VxnifhmQ2Vmehn4LzZh3XgnSR1Hl5VI3rzKSwjNTUcWifkPelGR6igU6b9qYO4WwOFw=="],
 
-    "@softistx/redis": ["@softistx/redis@0.21.0", "https://npm.pkg.github.com/download/@softistx/redis/0.21.0/cec79a94f05e1e4c6479cf128358d086ece64947", { "peerDependencies": { "redis-memory-server": ">=0.17.1 <0.18", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-kN7fYxEGoi8VXu02GI+VxnifhmQ2Vmehn4LzZh3XgnSR1Hl5VI3rzKSwjNTUcWifkPelGR6igU6b9qYO4WwOFw=="],
+    "@softistx/s3": ["@softistx/s3@0.13.0", "https://npm.softistx.com/@softistx/s3/-/s3-0.13.0.tgz", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-0U0zavWQ4R4AwPfUFXA1QNRENsjxyV4reu10mkqC1MYTk94X3CqBXcbQFO+LpZmy7K8Y6xWY1mrqw4yGtN3aNw=="],
 
-    "@softistx/s3": ["@softistx/s3@0.13.0", "https://npm.pkg.github.com/download/@softistx/s3/0.13.0/67fcf5e89a28b555c5467f2e5a6d0a61c68a7b78", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-0U0zavWQ4R4AwPfUFXA1QNRENsjxyV4reu10mkqC1MYTk94X3CqBXcbQFO+LpZmy7K8Y6xWY1mrqw4yGtN3aNw=="],
-
-    "@softistx/telemetry": ["@softistx/telemetry@0.3.0", "https://npm.pkg.github.com/download/@softistx/telemetry/0.3.0/19886f05ba2ad41d201405e592d775453dca1f56", { "peerDependencies": { "typescript": "^6.0.3" } }, "sha512-0uX+DQxx+LundZq8Gd47aqjdKCRMiT1H8d9RKosU9LBk6/pNf9v3i/9NvUUqE8bkre5N1E6pTXhWHtP/f1nOkg=="],
+    "@softistx/telemetry": ["@softistx/telemetry@0.3.0", "https://npm.softistx.com/@softistx/telemetry/-/telemetry-0.3.0.tgz", { "peerDependencies": { "typescript": "^6.0.3" } }, "sha512-0uX+DQxx+LundZq8Gd47aqjdKCRMiT1H8d9RKosU9LBk6/pNf9v3i/9NvUUqE8bkre5N1E6pTXhWHtP/f1nOkg=="],
 
     "@types/bun": ["@types/bun@1.4.4", "", { "dependencies": { "bun-types": "1.4.4" } }, "sha512-9wkRDXUXK124pEnAutE6n/l18j+i9GC5IAHK8TmX/2nlySETmky0OU6yL5U8pW1AoKh++AN9auDCr647BfurjQ=="],
 

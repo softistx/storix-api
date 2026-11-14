@@ -1,22 +1,21 @@
+import {
+  assertCoverage,
+  catalogueOf,
+  type MessageView,
+  resolveCatalogue,
+  type TextRow,
+  type Tree,
+} from "@alxia/i18n";
 import type { ModuleCoreHandle } from "@alxia/modules";
 import type { core } from "@/config/db";
 import { FALLBACK_LANGUAGE, i18n, type Language } from "@/i18n";
 import { errorCodes } from "@/i18n/codes";
-import { missingMessages } from "@/i18n/missing-messages";
-import {
-  catalogueOf,
-  type ErrorMessageView,
-  messagesOf,
-  type Row,
-  type Tree,
-  versionOf,
-} from "./translations.catalogue";
 
 // The module's handle on the core database: its own collection only.
 export type TranslationsMongo = ModuleCoreHandle<"translations", typeof core>;
 
 interface Served {
-  messages: ErrorMessageView[];
+  messages: MessageView[];
   version: string;
 }
 
@@ -38,7 +37,7 @@ export const catalogueOfLanguage = (language: string): CatalogueView => {
   return { language, version: entry.version };
 };
 
-export const errorMessages = (language: string): ErrorMessageView[] =>
+export const errorMessages = (language: string): MessageView[] =>
   servedOf(language).messages;
 
 function servedOf(language: string): Served {
@@ -55,22 +54,23 @@ export const translationsLoaded = () => loaded;
 // one catalogue per language the rows hold, the fallback's the last step of
 // every chain, and the version of each chain.
 export function buildServed(
-  rows: readonly Row[],
+  rows: readonly TextRow[],
   codes: readonly string[] = errorCodes,
 ): { trees: Record<string, Tree>; served: Map<string, Served> } {
   const languages = [...new Set(rows.map((row) => row.language))].sort();
-  const trees = Object.fromEntries(
-    languages.map((language) => [language, catalogueOf(rows, language)]),
-  );
-  const fallback = trees[FALLBACK_LANGUAGE];
+  const hasFallback = languages.includes(FALLBACK_LANGUAGE);
+  const trees: Record<string, Tree> = {};
   const built = new Map<string, Served>();
   for (const language of languages) {
-    const own = trees[language] as Tree;
-    const chain =
-      fallback && language !== FALLBACK_LANGUAGE ? [own, fallback] : [own];
+    const chain: [string, ...string[]] =
+      hasFallback && language !== FALLBACK_LANGUAGE
+        ? [language, FALLBACK_LANGUAGE]
+        : [language];
+    const resolved = resolveCatalogue(rows, chain);
+    trees[language] = resolved.chain[0] as Tree;
     built.set(language, {
-      messages: messagesOf(chain, codes),
-      version: versionOf(chain),
+      messages: resolved.messages(codes),
+      version: resolved.version,
     });
   }
   return { trees, served: built };
@@ -84,7 +84,7 @@ export async function loadTranslations(
   mongo: TranslationsMongo,
 ): Promise<void> {
   const rows = (await mongo.db.translations.raw.find({}).toArray()).map(
-    ({ code, language, text }) => ({ code, language, text }),
+    ({ code, language, text }): TextRow => ({ key: code, language, text }),
   );
   const built = buildServed(rows);
   if (!built.trees[FALLBACK_LANGUAGE]) {
@@ -92,13 +92,9 @@ export async function loadTranslations(
       `no translations in the fallback language "${FALLBACK_LANGUAGE}"`,
     );
   }
-  // Temporary, until alxia#773 (tracking: storix-api#56): this coverage check moves to alxia.
-  const missing = missingMessages(errorCodes, rows, [FALLBACK_LANGUAGE]);
-  if (missing.length > 0) {
-    throw new Error(
-      `translations: no fallback-language text for ${missing.join(", ")}`,
-    );
-  }
+  assertCoverage(errorCodes, catalogueOf(rows, FALLBACK_LANGUAGE), {
+    language: FALLBACK_LANGUAGE,
+  });
   i18n.setResources(built.trees as Record<Language, never>);
   served.clear();
   for (const [language, entry] of built.served) served.set(language, entry);

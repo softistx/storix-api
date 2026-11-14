@@ -4,11 +4,11 @@ See [troubleshooting.md](troubleshooting.md) for the messages the server and its
 
 ## Install
 
-`@softistx/*` packages come from GitHub Packages, mapped by the committed `.npmrc`, which reads
-`GITHUB_TOKEN` (a token with `read:packages`). `@alxia/*` and `@nxgt/*` come from npmjs.
+`@softistx/*` packages come from npm.softistx.com, mapped by the committed `.npmrc` and `bunfig.toml`,
+which read `NPM_REGISTRY_TOKEN` (exported by `~/.zshenv`). `@alxia/*` and `@nxgt/*` come from npmjs.
 
 ```sh
-GITHUB_TOKEN=$(gh auth token) bun install
+bun install
 ```
 
 ## Run
@@ -44,7 +44,7 @@ replica set.
 - `bun run db:migrate` applies the pending core migrations (the `translations` rows for now). Flags: `--dry-run` lists them, `--status` lists every id with its state (applied, pending, missing), `--rollback-to <id>` undoes everything after `<id>` (the migration `<id>` itself stays applied).
 - `bun run db:sync` creates the indexes and validators of the core collections and of the identity's own (janus's users, sessions, tokens, relations and API keys; `--dry-run` previews). Outside production the server syncs the identity's collections at boot, before the migrations; in production only with `MONGO_AUTO_SYNC`, otherwise `db:sync` is the deployment step.
 - A new error code needs its `defineCodes` entry, a migration with both languages, and a CONTEXT.md row: `coverage.spec.ts` and `bun run context:check` fail otherwise.
-- A migration that creates codes undoes them with `removeTexts`; one that rewords codes an earlier migration created undoes the rewording with `restoreTexts(previous)` (`translations.seeds.ts`).
+- A migration that creates codes undoes them with `removeTexts`; one that rewords codes an earlier migration created undoes the rewording with `restoreTexts(previous)` (`@alxia/i18n`, over `translations.store.ts`).
 
 ## Boot and deploy
 

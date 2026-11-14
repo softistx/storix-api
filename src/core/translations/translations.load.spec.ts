@@ -21,9 +21,9 @@ beforeAll(async () => {
 
 describe("buildServed", () => {
   const rows = [
-    { code: "x.errors.a", language: "en", text: "A" },
-    { code: "x.errors.b", language: "en", text: "B" },
-    { code: "x.errors.a", language: "fr", text: "Fa" },
+    { key: "x.errors.a", language: "en", text: "A" },
+    { key: "x.errors.b", language: "en", text: "B" },
+    { key: "x.errors.a", language: "fr", text: "Fa" },
   ];
 
   test("fills a code a language lacks from English, in code order", () => {
@@ -41,7 +41,7 @@ describe("buildServed", () => {
       ["x.errors.a"],
     ).served;
     const englishEdited = buildServed(
-      rows.map((r) => (r.code === "x.errors.b" ? { ...r, text: "B2" } : r)),
+      rows.map((r) => (r.key === "x.errors.b" ? { ...r, text: "B2" } : r)),
       ["x.errors.a"],
     ).served;
     expect(frenchEdited.get("fr")?.version).not.toBe(before.get("fr")?.version);
@@ -107,7 +107,7 @@ describe("loadTranslations", () => {
     try {
       await core.db.translations.raw.deleteOne(filter);
       await expect(loadTranslations(core)).rejects.toThrow(
-        "no fallback-language text for auth.errors.forbidden (en)",
+        '1 declared code(s) have no text in "en": auth.errors.forbidden',
       );
     } finally {
       if (original) await core.db.translations.raw.insertOne(original);

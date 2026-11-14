@@ -1,5 +1,6 @@
+import { removeTexts, upsertTexts } from "@alxia/i18n";
 import { defineMigration } from "@softistx/mongo/migrations";
-import { removeTexts, upsertTexts } from "../translations.seeds";
+import { textStore } from "../translations.store";
 import { texts } from "./2026-11-13-auth-validation-errors.texts";
 
 // The messages of the shared namespaces, `auth.errors.*` and
@@ -8,9 +9,9 @@ import { texts } from "./2026-11-13-auth-validation-errors.texts";
 export const authValidationErrors = defineMigration({
   id: "2026-11-13-auth-validation-errors",
   async up({ db, session }) {
-    await upsertTexts(db, session, texts);
+    await upsertTexts(textStore(db, session), texts);
   },
   async down({ db, session }) {
-    await removeTexts(db, session, texts);
+    await removeTexts(textStore(db, session), texts);
   },
 });
