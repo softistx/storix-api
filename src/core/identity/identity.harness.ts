@@ -1,5 +1,6 @@
 import { graphqlClient } from "@alxia/graphql/testing";
 import { fixedClock, scryptHasher } from "@softistx/janus";
+import { totpCode } from "@softistx/janus/testing";
 import { createMongoAdapter, createMongoApiKeys } from "@softistx/janus-mongo";
 import { createMemoryMailer } from "@softistx/mail";
 import { createApp } from "@/app";
@@ -80,6 +81,19 @@ export async function harness(
     };
   }
 
+  // Turns the second factor on for an account (its authenticator code is the
+  // current one of the fixed clock): the ten recovery codes.
+  async function enableSecondFactor(user: {
+    principal: Parameters<typeof identity.enrolSecondFactor>[0];
+  }) {
+    const { secret } = await identity.enrolSecondFactor(user.principal);
+    const { recoveryCodes } = await identity.activateSecondFactor(
+      user.principal,
+      totpCode(secret, clock.now()),
+    );
+    return recoveryCodes;
+  }
+
   // A personal API key of an account, made through a second janus over the same
   // stores (the port has no key operation yet): its token, shown once.
   function keysOf() {
@@ -134,6 +148,7 @@ export async function harness(
     tokenFor,
     codeFor,
     account,
+    enableSecondFactor,
     apiKey,
     deactivate,
     revokeKeys,

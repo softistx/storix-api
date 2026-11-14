@@ -7,7 +7,6 @@ import {
   spyOn,
   test,
 } from "bun:test";
-import { totpCode } from "@softistx/janus/testing";
 import { startTestRedis, type TestRedis } from "@softistx/redis/testing";
 import { RedisClient } from "bun";
 import { redisOptions } from "@/config/redis-options";
@@ -203,11 +202,7 @@ describe("over /graphql", () => {
       limits: atAddress(createLimits(client, config)),
     });
     const user = await h.account();
-    const { secret } = await h.identity.enrolSecondFactor(user.principal);
-    await h.identity.activateSecondFactor(
-      user.principal,
-      totpCode(secret, h.clock.now()),
-    );
+    await h.enableSecondFactor(user);
     const codes: unknown[] = [];
     for (let i = 0; i < 10; i++) {
       const result = await h.client.query(
