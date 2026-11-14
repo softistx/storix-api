@@ -14,6 +14,18 @@ const trustedProxies = z
   )
   .transform((list) => (list.length > 0 ? list : undefined));
 
+// "<count>/<seconds>": at most <count> attempts per <seconds> from one client
+// address, as the count and the window in milliseconds.
+const attempts = (fallback: string) =>
+  z
+    .string()
+    .regex(/^[1-9]\d{0,5}\/[1-9]\d{0,6}$/, 'not "<count>/<seconds>"')
+    .default(fallback)
+    .transform((value) => {
+      const [limit = 0, seconds = 0] = value.split("/").map(Number);
+      return { limit, per: seconds * 1000 };
+    });
+
 // Required in production; elsewhere `fallback` stands in.
 const inProduction = <T extends z.ZodType>(schema: T, fallback: string) =>
   production ? schema : schema.prefault(fallback as never);
@@ -44,6 +56,57 @@ const flag = z.preprocess(
     .default("")
     .transform((value) => ["1", "true", "yes", "on"].includes(value)),
 );
+
+// A development key, refused in production: 32 bytes in base64.
+const devTotpKey = "c3RvcmF4LWRldmVsb3BtZW50LXRvdHAta2V5LTMhISE";
+
+// TOTP_KEYS: "id:key,id:key", each key 32 random bytes in base64
+// (`openssl rand -base64 32`). The first seals every new TOTP secret, every one
+// opens: to rotate, put the new one first and keep the old one. janus checks
+// the bytes when it is built; here a malformed list stops the process before it
+// listens.
+const totpKeys = z
+  .string()
+  .transform((list) =>
+    list
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((entry) => {
+        const at = entry.indexOf(":");
+        // No `id:` prefix: an empty id, which the id check below refuses.
+        if (at <= 0) return { id: "", key: entry };
+        return { id: entry.slice(0, at), key: entry.slice(at + 1) };
+      }),
+  )
+  .pipe(
+    z
+      .array(
+        z.object({
+          id: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/, "not a key id"),
+          key: z
+            .string()
+            .regex(/^[A-Za-z0-9+/_-]{43}=?$/, "not 32 bytes in base64"),
+        }),
+      )
+      .min(1, "at least one id:key")
+      .refine(
+        (keys) => new Set(keys.map((entry) => entry.id)).size === keys.length,
+        "two keys have the same id",
+      ),
+  )
+  .transform((keys) => keys as [(typeof keys)[number], ...typeof keys])
+  .refine(
+    (keys) =>
+      !production ||
+      keys.every(
+        (entry) =>
+          !Buffer.from(entry.key, "base64").equals(
+            Buffer.from(devTotpKey, "base64"),
+          ),
+      ),
+    "the development key is refused in production",
+  );
 
 // Read once, at import: a malformed variable stops the process before it
 // listens. `.env.example` lists them; Bun loads `.env` on every command.
@@ -87,6 +150,16 @@ export const env = defineEnv({
   // MAIL_URL: the SMTP server mails leave through. Required in production;
   // unset elsewhere, mails are printed to the console.
   MAIL_URL: orUnset(smtpUrl),
+  // TOTP_KEYS: the sealing keys of the accounts' TOTP secrets. Required in
+  // production; a development key stands in elsewhere.
+  TOTP_KEYS: inProduction(totpKeys, `dev:${devTotpKey}`),
+  // RATE_LIMIT_SIGN_UP, RATE_LIMIT_SIGN_IN, RATE_LIMIT_PASSWORD_RESET:
+  // "<count>/<seconds>", the attempts one client address may make of signUp,
+  // signIn (and the second-factor codes of a sign-in) and requestPasswordReset.
+  // Counted in Redis, so they apply only when REDIS_URL is set.
+  RATE_LIMIT_SIGN_UP: attempts("10/3600"),
+  RATE_LIMIT_SIGN_IN: attempts("30/900"),
+  RATE_LIMIT_PASSWORD_RESET: attempts("10/3600"),
   // REDIS_URL: redis:// or rediss://. Rate limits, queues and tokens.
   // Required in production; unset elsewhere.
   REDIS_URL: orUnset(

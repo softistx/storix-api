@@ -13,6 +13,9 @@ product (French is offered). Terms join this table slice by slice; the full mode
 | `Kernel`    | `src/core/`: what every module may use. It depends on no business module. Business modules live in `src/modules/`.                                                   |
 | `Workspace` | The tenant. Registered in the core database, with its own database `storix_ws_<id>` (`MONGO_WORKSPACE_PREFIX`). Built by E1.                                         |
 | `Principal` | Who a request is from, as the `Identity` port (`src/core/identity`) gives it. The rest of the API stores an `accountId` as an opaque string and never imports janus. |
+| `Identity` | The port (`src/core/identity`) behind which accounts live: sign-up, sign-in, reset, the second factor, step-up. janus is its adapter and is imported nowhere else (`bun run deps:check`). |
+| `Viewer` | The `Principal` of the request as the GraphQL type `Viewer` (null when anonymous). A personal API key is a viewer with `apiKeyId` and no session; keys are accepted on `/graphql`, `/media`, `/health` and `/ready` only. |
+| `Step-up` | A fresh proof of identity (an authenticator code, else a code mailed to the account) that makes a session "fresh" for 10 minutes, for sensitive operations. An API key is never fresh. |
 
 ## Error codes
 
@@ -30,7 +33,13 @@ when a code lacks a message in English or French.
 | `auth.errors.step-up-required` | The operation needs a recent re-authentication. |
 | `auth.errors.second-factor-required` | The sign-in needs the account's second factor. |
 | `auth.errors.rate-limited` | Too many attempts; `params.minutes` says when to retry. |
-| `auth.errors.api-key-not-accepted` | An API key reached a path it may not (401). |
+| `auth.errors.api-key-not-accepted` | An API key reached a path or an account operation it may not (401). |
+| `identity.errors.invalid-credentials` | A sign-in failed: a wrong password, an unknown address or a deactivated account, which are never told apart (401). |
+| `identity.errors.email-unverified` | The operation needs a verified e-mail address (403). |
+| `identity.errors.token-invalid` | A link or challenge token is unknown, spent, expired or stale (400). |
+| `identity.errors.second-factor-invalid` | A second-factor or step-up code is wrong or already used; `extensions.attemptsLeft` says how many tries remain (400). |
+| `identity.errors.second-factor-state` | The second factor is not in the state the operation needs: not enrolled, or already active (409). |
+| `identity.errors.unavailable` | The identity store cannot answer; try again (503). |
 | `validation.errors.invalid-input` | An input was refused as a whole; `extensions.fields` lists each field (400). |
 | `validation.errors.invalid` | A field's value is not valid. |
 | `validation.errors.out-of-range` | A number is outside its bounds. |

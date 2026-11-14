@@ -45,10 +45,9 @@
     "@softistx/ai-ollama": "^0.3.1",
     "@softistx/ai-telemetry": "^0.3.1",
     "@softistx/image": "^0.6.0",
-    "@softistx/janus": "^0.60.0",
-    "@softistx/janus-graphql": "^0.27.0",
-    "@softistx/janus-mail": "^0.26.0",
-    "@softistx/janus-mongo": "^0.27.0",
+    "@softistx/janus": "^0.62.0",
+    "@softistx/janus-mail": "^0.26.3",
+    "@softistx/janus-mongo": "^0.27.3",
     "@softistx/mail": "^1.5.0",
     "@softistx/mail-smtp": "^1.1.0",
     "@softistx/mongo": "^0.29.0",
@@ -72,6 +71,7 @@
     "@types/bun": "^1.4.4",
     "@types/nodemailer": "^8.0.2",
     "mongodb-memory-server-core": "^11.3.0",
+    "redis-memory-server": "^0.17.2",
     "typescript": "^7.0.2"
   }
 }

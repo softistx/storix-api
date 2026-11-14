@@ -29,11 +29,23 @@ export const validation = defineCodes("validation", [
   "invalid-format",
 ]);
 
+// The account flows (src/core/identity). A refusal says what the client can
+// act on, never which of janus's reasons it was: an unknown address, a
+// deactivated account and a wrong password are one `invalid-credentials`.
+export const identity = defineCodes("identity", [
+  "invalid-credentials",
+  "email-unverified",
+  "token-invalid",
+  "second-factor-invalid",
+  "second-factor-state",
+  "unavailable",
+]);
+
 // Every code the API answers with, in module order: the inventory. tsc refuses
 // a code that is not in it (`fail`, `FieldIssue`), the coverage spec requires
 // a message for each in every shipped language and a row in CONTEXT.md, and
 // that every registered module's `codes` are in it. A slice that adds a module
 // with codes adds its `codes` here, beside the manifest's.
-export const errorCodes = [...auth, ...validation] as const;
+export const errorCodes = [...auth, ...validation, ...identity] as const;
 
 export type ErrorCode = (typeof errorCodes)[number];

@@ -1,0 +1,169 @@
+"""
+Who is calling. `viewer` is null for an anonymous request. A session and a
+personal API key both answer here; a key has no session (`apiKeyId` is set and
+the session fields are null).
+"""
+type Viewer {
+  "The account's opaque id."
+  id: ID!
+  email: EmailAddress!
+  name: String!
+  "Whether the address was proved (the verification link)."
+  emailVerified: Boolean!
+  "The language of the account's mails."
+  locale: Language!
+  "Whether an authenticator app protects the account."
+  hasSecondFactor: Boolean!
+  "When the session ends; null for an API key."
+  sessionExpiresAt: DateTime
+  "Until when the session counts as fresh for sensitive operations (sign-in or last step-up, plus 10 minutes); null for an API key, which is never fresh."
+  sessionConfirmedUntil: DateTime
+  "The id of the API key the call came in with; null for a session."
+  apiKeyId: ID
+}
+
+"How a step-up is confirmed."
+enum StepUpMethod {
+  "A code of the authenticator app: the account has an active second factor. Nothing is mailed."
+  AUTHENTICATOR
+  "A six-digit code mailed to the account's current address."
+  EMAIL
+}
+
+"A step-up under way: keep `challenge` (never in a URL) and post it to confirmStepUp with the code."
+type StepUpChallenge {
+  method: StepUpMethod!
+  "Opaque, single-use value to post to `confirmStepUp` with the code."
+  challenge: String!
+  "When the challenge and its code stop working."
+  expiresAt: DateTime!
+}
+
+"What a sign-in or sign-up step answered and what the client does next."
+enum SignInStatus {
+  "Signed in: `token` is the session's, to send as `Authorization: Bearer`."
+  SIGNED_IN
+  "The password was right and the account has a second factor: send a code with `challenge` to confirmSecondFactor (or a recovery code to recoverSecondFactor) before `expiresAt`."
+  SECOND_FACTOR
+  "A sign-up was accepted: the verification link is mailed and no session was opened, whether or not the address already held an account."
+  VERIFICATION_SENT
+}
+
+type SignInPayload {
+  status: SignInStatus!
+  "The session token, set only with SIGNED_IN."
+  token: String
+  "SIGNED_IN: when the session ends. SECOND_FACTOR: when the challenge does."
+  expiresAt: DateTime
+  "SECOND_FACTOR: keep it for the next call only."
+  challenge: String
+  "The signed-in account, set only with SIGNED_IN."
+  viewer: Viewer
+}
+
+"The credentials of a password sign-in."
+input SignInInput {
+  "The account's address, at most 320 characters."
+  email: String! @constraint(maxLength: 320)
+  "The password, at most 1024 characters."
+  password: String! @constraint(maxLength: 1024)
+}
+
+"What opening an account needs. No password: the visitor chooses it from the verification link."
+input SignUpInput {
+  "The address to verify and sign in with."
+  email: EmailAddress!
+  "Display name, 1 to 200 characters."
+  name: String! @constraint(minLength: 1, maxLength: 200)
+  "The language of the mails to this account."
+  locale: Language!
+}
+
+"The authenticator-app secret of a second factor being enrolled."
+type SecondFactorEnrolment {
+  "Base32, for a user who types it in."
+  secret: String!
+  "otpauth://, to show as a QR code."
+  uri: String!
+}
+
+"The recovery codes of a second factor: ten single-use codes, shown once."
+type RecoveryCodes {
+  recoveryCodes: [String!]!
+}
+
+extend type Query {
+  "The caller, or null when anonymous."
+  viewer: Viewer
+  "Whether the caller's second factor is on and how many recovery codes are left. 401 `auth.errors.unauthenticated`."
+  secondFactorStatus: SecondFactorStatus!
+}
+
+type SecondFactorStatus {
+  enabled: Boolean!
+  "Null when the factor is off."
+  recoveryCodesLeft: Int
+}
+
+type Mutation {
+  """
+  Opens an account with NO password, unverified, and mails the verification
+  link. Opens no session: answers VERIFICATION_SENT. An address that already
+  holds an account answers the very same payload and creates nothing (its owner
+  is mailed a notice), so the answer never tells whether an address is taken.
+  """
+  signUp(input: SignUpInput!): SignInPayload!
+  """
+  Ends a sign-up: the token of the verification mail and the password the
+  visitor chose, posted together. Proves the address, sets the password and
+  signs in. 400 `identity.errors.token-invalid`; 400
+  `validation.errors.invalid-input` (`too-short` on `password`) with the link
+  NOT spent.
+  """
+  completeSignUp(
+    token: String! @constraint(maxLength: 200)
+    password: String! @constraint(maxLength: 1024)
+  ): SignInPayload!
+  """
+  Signs in with a password. 401 `identity.errors.invalid-credentials` for a
+  wrong password, an unknown address and a deactivated account alike; 429
+  `auth.errors.rate-limited`.
+  """
+  signIn(input: SignInInput!): SignInPayload!
+  "The code of the authenticator app, for the challenge signIn answered. 400 `identity.errors.second-factor-invalid` (with `attemptsLeft`); 400 `identity.errors.token-invalid`."
+  confirmSecondFactor(
+    challenge: String! @constraint(maxLength: 200)
+    code: String! @constraint(maxLength: 40)
+  ): SignInPayload!
+  "A recovery code instead of the app's; each works once. Refused as confirmSecondFactor."
+  recoverSecondFactor(
+    challenge: String! @constraint(maxLength: 200)
+    recoveryCode: String! @constraint(maxLength: 40)
+  ): SignInPayload!
+  "Ends the request's session. True also when there was none."
+  signOut: Boolean!
+  "Sends a password-reset link. True once accepted, whether or not the e-mail holds an account; 429 `auth.errors.rate-limited` past five per ten minutes for an address."
+  requestPasswordReset(email: String! @constraint(maxLength: 320)): Boolean!
+  "Sets a new password with the token of the reset mail and signs the account out everywhere. 400 `identity.errors.token-invalid`; 400 `validation.errors.invalid-input`."
+  resetPassword(
+    token: String! @constraint(maxLength: 200)
+    password: String! @constraint(maxLength: 1024)
+  ): Boolean!
+  "Starts a step-up of the session: a code of the app, else a code mailed to the account. 401 `auth.errors.unauthenticated`."
+  requestStepUp: StepUpChallenge!
+  "Confirms a step-up and answers until when the session is fresh. 400 `identity.errors.second-factor-invalid`."
+  confirmStepUp(
+    challenge: String! @constraint(maxLength: 200)
+    code: String! @constraint(maxLength: 40)
+  ): DateTime!
+  "Starts a second factor. Needs a verified address (403 `identity.errors.email-unverified`) and a fresh session (403 `auth.errors.step-up-required`)."
+  enrolSecondFactor: SecondFactorEnrolment!
+  "The first code of the app: the factor is active, its ten recovery codes are answered once, the account's other sessions end. Needs a fresh session."
+  activateSecondFactor(code: String! @constraint(maxLength: 40)): RecoveryCodes!
+  "Ten new recovery codes on a current code of the app; the old ones end. Needs a fresh session."
+  regenerateRecoveryCodes(
+    code: String! @constraint(maxLength: 40)
+  ): RecoveryCodes!
+  "Turns the factor off on a current code of the app, or on a recovery code when the phone is lost. Needs a fresh session."
+  disableSecondFactor(code: String! @constraint(maxLength: 40)): Boolean!
+}

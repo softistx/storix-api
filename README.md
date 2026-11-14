@@ -24,7 +24,7 @@ curl localhost:3000/health
 | `bun run verify:pr`    | the same with only the specs a diff against `origin/develop` affects                                   |
 | `bun run generate`     | scalars and validation SDL, then resolver types and Zod schemas into `src/generated/`                  |
 | `bun run db:migrate`   | applies the pending core migrations (`--dry-run`, `--status`, `--rollback-to <id>`)                    |
-| `bun run db:sync`      | creates the core collections' indexes and validators (`--dry-run` to preview)                          |
+| `bun run db:sync`      | creates the indexes and validators of the core and identity collections (`--dry-run` to preview)      |
 | `bun run schema:print` | writes `schema.graphql`, the committed contract a client generates its types from                    |
 
 ## Layout
@@ -40,6 +40,67 @@ curl localhost:3000/health
 | `CONTEXT.md`                    | the domain glossary and the error-code table                        |
 
 The runtime dependencies are declared up front for the v1 slices, so some are not imported yet; `mongodb` and `nodemailer` are peers of `@softistx/mongo` and `@softistx/mail-smtp` (which asks for `nodemailer` `>=7 <11`, `mongodb` `>=7 <8`), hence listed here.
+
+## Accounts
+
+Every operation below is a field of `POST /graphql`. A session token goes in `Authorization: Bearer <token>`; every
+operation except `viewer` refuses a personal API key (`stx_...`) with 401 `auth.errors.api-key-not-accepted`. The
+sign-up, sign-in and password-reset operations are also limited per client address (see [Rate limits](#rate-limits)).
+
+```graphql
+# 1. Sign up: passwordless. Answers VERIFICATION_SENT whether or not the address is taken.
+mutation { signUp(input: { email: "ada@example.com", name: "Ada", locale: EN }) { status } }
+
+# 2. verifyEmail: the link of the mail carries ?token=; the visitor chooses a password. Proves the address and signs in.
+mutation { completeSignUp(token: "<token>", password: "a long passphrase") { status token expiresAt viewer { id email } } }
+```
+
+There is no separate resend operation: signing up again with the same address mails a fresh link while the address is
+unverified, and a notice to the owner once it is verified.
+
+```graphql
+# 3. Sign in: SIGNED_IN, or SECOND_FACTOR with a challenge to answer
+mutation { signIn(input: { email: "ada@example.com", password: "a long passphrase" }) { status token challenge expiresAt } }
+mutation { confirmSecondFactor(challenge: "<challenge>", code: "123456") { status token } }
+mutation { recoverSecondFactor(challenge: "<challenge>", recoveryCode: "<code>") { status token } }
+
+# 4. Sign out, forgotten password
+mutation { signOut }
+mutation { requestPasswordReset(email: "ada@example.com") }
+mutation { resetPassword(token: "<token>", password: "a new passphrase") }
+
+# 5. Step-up: sensitive operations need a session confirmed in the last 10 minutes (403 auth.errors.step-up-required)
+mutation { requestStepUp { method challenge expiresAt } }
+mutation { confirmStepUp(challenge: "<challenge>", code: "123456") }
+
+# 6. Second factor (each needs a fresh session)
+mutation { enrolSecondFactor { secret uri } }
+mutation { activateSecondFactor(code: "123456") { recoveryCodes } }
+mutation { regenerateRecoveryCodes(code: "123456") { recoveryCodes } }
+mutation { disableSecondFactor(code: "123456") }   # or a recovery code, when the phone is lost
+query { secondFactorStatus { enabled recoveryCodesLeft } }
+
+# 7. Who is calling: the only operation a personal API key may use
+query { viewer { id email emailVerified hasSecondFactor sessionConfirmedUntil apiKeyId } }
+```
+
+`viewer` is null when anonymous; for an API key `apiKeyId` is set and the session fields are null. After the second
+factor is lost, sign in with a recovery code, `disableSecondFactor` with another recovery code, then enrol again.
+
+### Rate limits
+
+`signUp`, `signIn` (with `confirmSecondFactor` and `recoverSecondFactor`) and `requestPasswordReset` are limited per
+client address with `@softistx/redis`; past the limit the refusal is 429 `auth.errors.rate-limited` and `extensions.retryAfter`
+says when to retry. The limits are `<attempts>/<seconds>` in the environment:
+
+| Variable                    | Default   |
+| --------------------------- | --------- |
+| `RATE_LIMIT_SIGN_UP`        | `10/3600` |
+| `RATE_LIMIT_SIGN_IN`        | `30/900`  |
+| `RATE_LIMIT_PASSWORD_RESET` | `10/3600` |
+
+They need `REDIS_URL` (required in production); without it nothing is limited. A Redis that does not answer lets the
+request through (logged), janus's own per-account throttles still hold.
 
 ## Errors
 

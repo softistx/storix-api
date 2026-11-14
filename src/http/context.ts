@@ -1,13 +1,17 @@
 import { alxia, defineMiddleware } from "@alxia/core";
 import type { GraphQLContext } from "@alxia/graphql";
+import { GraphQLError } from "graphql";
 import { env } from "../config/env";
+import type { Identity, Principal } from "../core/identity";
 import { i18n } from "../i18n";
 import { clientIp } from "./client-ip";
+import type { Limits } from "./rate-limits";
+import { refusalError } from "./refusal";
 
 // The base: what every resolver reads, decorated or derived here: `env` and
-// `requestId`, and the request's language (`language`, `t`: src/i18n). E1 adds
-// the viewer.
-export function createBase() {
+// `requestId`, the request's language (`language`, `t`: src/i18n), the
+// `identity` port, the per-address `limits` and the request's `viewer` (a Principal or null).
+export function createBase(identity: Identity, limits: Limits) {
   // `requestId` names the request in logs and audit trails. alxia exposes none,
   // so the base makes one: always generated here, never read from
   // `X-Request-Id`, which any client could forge. It is echoed as the
@@ -32,7 +36,25 @@ export function createBase() {
         }),
       })
     : alxia();
-  return base.decorate({ env }).use(requestIdOf).use(i18n);
+  // The viewer: who the request is from, or null. `apiKey: true` lets a
+  // key-shaped bearer authenticate as its owner; src/http/key-paths.ts refuses
+  // one off the paths that accept keys. A store that cannot answer is 503
+  // (`identity.errors.unavailable`), never an anonymous request.
+  const viewerOf = defineMiddleware(async ({ request }, next) => {
+    let viewer: Principal | null;
+    try {
+      viewer = await identity.authenticate(request, { apiKey: true });
+    } catch (error) {
+      if (error instanceof GraphQLError) throw refusalError(error);
+      throw error;
+    }
+    return next({ viewer });
+  });
+  return base
+    .decorate({ env, identity, limits })
+    .use(requestIdOf)
+    .use(i18n)
+    .use(viewerOf);
 }
 
 export type Base = ReturnType<typeof createBase>;
