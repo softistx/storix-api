@@ -89,7 +89,7 @@ The server stops at startup while it reads the environment.
 
 **When:** `MAIL_URL` is not `smtp://` or `smtps://`, `UI_ORIGIN` is not an origin (`https://app.example.com`, no path), or `MAIL_FROM` is not a plain e-mail address.
 
-**Fix:** correct the variable. Unset `MAIL_URL` prints the mails to the console instead (tokens redacted outside `NODE_ENV=development`).
+**Fix:** correct the variable. Unset `MAIL_URL` prints the mails to the console instead (tokens print as `<hidden>` outside `NODE_ENV=development`).
 
 ## Sign-up or sign-in fails with a missing index or validator
 
