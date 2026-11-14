@@ -51,4 +51,19 @@ describe("boot", () => {
     await boot(db, { autoMigrate: true, list: [...migrations] });
     expect(warn).toHaveBeenCalledTimes(1);
   });
+
+  test("syncs the identity's collections first when it is given", async () => {
+    await migrate(db, [...migrations]);
+    const order: string[] = [];
+    await boot(db, {
+      autoMigrate: false,
+      identity: {
+        syncStores: async () => {
+          order.push("identity");
+          return [];
+        },
+      },
+    });
+    expect(order).toEqual(["identity"]);
+  });
 });

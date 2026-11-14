@@ -42,7 +42,7 @@ replica set.
 ## Migrations and indexes
 
 - `bun run db:migrate` applies the pending core migrations (the `translations` rows for now). Flags: `--dry-run` lists them, `--status` lists every id with its state (applied, pending, missing), `--rollback-to <id>` undoes everything after `<id>` (the migration `<id>` itself stays applied).
-- `bun run db:sync` creates the indexes and validators of the core collections (`--dry-run` previews).
+- `bun run db:sync` creates the indexes and validators of the core collections and of the identity's own (janus's users, sessions, tokens, relations and API keys; `--dry-run` previews). Outside production the server syncs the identity's collections at boot, before the migrations; in production only with `MONGO_AUTO_SYNC`, otherwise `db:sync` is the deployment step.
 - A new error code needs its `defineCodes` entry, a migration with both languages, and a CONTEXT.md row: `coverage.spec.ts` and `bun run context:check` fail otherwise.
 - A migration that creates codes undoes them with `removeTexts`; one that rewords codes an earlier migration created undoes the rewording with `restoreTexts(previous)` (`translations.seeds.ts`).
 
@@ -52,7 +52,7 @@ The boot rule, once: outside production the server applies the pending migration
 
 ```sh
 # Deploy: schema first, then data, then code
-bun run db:sync                      # indexes and validators
+bun run db:sync                      # indexes and validators (core + identity, API keys included)
 bun run db:migrate                   # pending migrations
 # ...roll out the new version
 
@@ -62,13 +62,24 @@ bun run db:migrate --status          # list the ids
 bun run db:migrate --rollback-to <id>  # undo everything after <id>
 ```
 
+## Accounts
+
+Accounts live behind the `Identity` port (`src/core/identity`); janus is its adapter and is imported
+nowhere else (`bun run deps:check`). `src/config/auth.ts` builds the port the server runs.
+
+- `TOTP_KEYS` seals the accounts' authenticator secrets: `id:key`, each key 32 random bytes in base64 (`openssl rand -base64 32`), comma-separated, the first key seals and every key opens (a new key is put first when rotating). Required in production; a development key stands in elsewhere. A lost key makes every enrolled second factor unreadable.
+- `MAIL_URL` (`smtp://` or `smtps://`) sends the mails; unset, they are printed to the console (tokens are redacted outside `NODE_ENV=development`). `UI_ORIGIN` starts every link of a mail and `MAIL_FROM` is the sender. The UI pages the links open are `/auth/verify-email`, `/auth/reset-password` and `/account/security`, each reading `?token=`.
+- A sign-up is passwordless: the account is created with no credential and its owner chooses a password from the verification link (`completeSignUp`). A taken address answers the same way and creates nothing.
+- A personal API key (`stx_...`) is read from `Authorization: Bearer` only, and only on `/graphql`, `/media`, `/health` and `/ready`; anywhere else it is refused 401 `auth.errors.api-key-not-accepted`. Creating, listing and revoking keys come with the slice that needs them; the key store is wired and synced.
+- janus throttles the mails it sends (five per address and ten minutes) and the tries of a challenge; it answers `auth.errors.rate-limited`. There is no per-IP limit yet.
+
 ## The proxy secret
 
 `@alxia/core` 0.23's `requireProxySecret({ paths, secret })` refuses a request to a path that
 does not carry the BFF's secret. storix-api has no BFF-only path: `/graphql` and `/media` are
 also reached by workspace API keys (consumer servers), and the account operations are GraphQL
-fields of `/graphql`, kept from keys by the `auth.errors.api-key-not-accepted` refusal (E1),
-not by the secret; `/public/*` is reached by browsers of other origins. So `API_PROXY_SECRET`
+fields of `/graphql`; a key is kept from every other path by the `auth.errors.api-key-not-accepted`
+refusal (`src/http/key-paths.ts`), not by the secret; `/public/*` is reached by browsers of other origins. So `API_PROXY_SECRET`
 only decides whether the forwarded client address is honoured (`src/http/client-ip.ts`), and
 `requireProxySecret` stays unwired. A BFF-only path added later (for instance an internal
 route) is the case to wire it for.

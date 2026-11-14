@@ -1,9 +1,12 @@
 import { health } from "@alxia/core";
 import { graphql } from "@alxia/graphql";
+import { identity as serverIdentity } from "./config/auth";
 import { closeDatabases, mongoAnswers } from "./config/db";
+import type { Identity } from "./core/identity";
 import { createBase } from "./http/context";
 import { clientHeader } from "./http/csrf";
 import { graphqlPlugins } from "./http/graphql-plugins";
+import { keyPathsOnly } from "./http/key-paths";
 import { schema } from "./http/schema";
 
 // The largest body /graphql reads.
@@ -18,10 +21,13 @@ export function createApp(
     schema?: typeof schema;
     // Whether MongoDB answers (GET /ready); injected by specs.
     mongo?: () => Promise<boolean>;
+    // The identity the app runs; specs inject one over an in-memory mailer.
+    identity?: Identity;
   } = {},
 ) {
   return (
-    createBase()
+    createBase(options.identity ?? serverIdentity)
+      .use(keyPathsOnly)
       .plugin(probes(options.mongo ?? mongoAnswers))
       // A body past 100 KiB is refused (413) before it is read: a query is a few
       // kilobytes (alxia's production guide, "Cap the body").

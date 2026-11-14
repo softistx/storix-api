@@ -11,6 +11,7 @@ const base = {
   REDIS_URL: "redis://localhost:6379",
   TRUSTED_PROXIES: "10.0.0.0/8",
   API_PROXY_SECRET: SECRET,
+  TOTP_KEYS: "k1:c3RvcmF4LXNwZWMtdG90cC1rZXktMzItYnl0ZXMhISE",
 };
 
 async function load(overrides: Record<string, string | undefined>) {
