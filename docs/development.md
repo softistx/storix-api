@@ -4,11 +4,11 @@ See [troubleshooting.md](troubleshooting.md) for the messages the server and its
 
 ## Install
 
-`@softistx/*` packages come from GitHub Packages, mapped by the committed `.npmrc`, which reads
-`GITHUB_TOKEN` (a token with `read:packages`). `@alxia/*` and `@nxgt/*` come from npmjs.
+`@softistx/*` packages come from npm.softistx.com, mapped by the committed `.npmrc` and `bunfig.toml`,
+which read `NPM_REGISTRY_TOKEN` (exported by `~/.zshenv`). `@alxia/*` and `@nxgt/*` come from npmjs.
 
 ```sh
-GITHUB_TOKEN=$(gh auth token) bun install
+bun install
 ```
 
 ## Run

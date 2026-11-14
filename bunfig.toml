@@ -1,2 +1,6 @@
 [test]
 preload = ["./test/setup.ts"]
+
+[install.scopes]
+# @softistx packages come from npm.softistx.com; the token is read from the environment.
+"@softistx" = { url = "https://npm.softistx.com/", token = "$NPM_REGISTRY_TOKEN" }
