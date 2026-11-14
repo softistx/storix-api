@@ -23,10 +23,10 @@
         "@softistx/ai-ollama": "^0.3.1",
         "@softistx/ai-telemetry": "^0.3.1",
         "@softistx/image": "^0.6.0",
-        "@softistx/janus": "^0.60.0",
-        "@softistx/janus-graphql": "^0.27.0",
-        "@softistx/janus-mail": "^0.26.0",
-        "@softistx/janus-mongo": "^0.27.0",
+        "@softistx/janus": "^0.61.0",
+        "@softistx/janus-graphql": "^0.27.1",
+        "@softistx/janus-mail": "^0.26.1",
+        "@softistx/janus-mongo": "^0.27.1",
         "@softistx/mail": "^1.5.0",
         "@softistx/mail-smtp": "^1.1.0",
         "@softistx/mongo": "^0.29.0",
@@ -335,13 +335,13 @@
 
     "@softistx/image": ["@softistx/image@0.6.0", "https://npm.pkg.github.com/download/@softistx/image/0.6.0/8ef8f958f10eb16732fc428be1a30cdb920aad51", { "peerDependencies": { "@napi-rs/canvas": "^1.1.0", "@softistx/s3": "^0.13.0", "pdfjs-dist": "^6.5.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-YFgHQ2m1GZrdsh3SUhAU/xDurUNXqAHPJ5Ea7OTB4kmaZbLcj7D1CjnLRklDy8fkKFlaMzERB+qTn3ZJ/XtYZQ=="],
 
-    "@softistx/janus": ["@softistx/janus@0.60.0", "https://npm.pkg.github.com/download/@softistx/janus/0.60.0/874391ae570a23260447e6759dc48f34b9f326c0", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-Iypr60AaTGNh2P/7Yw4tC2Si46FOlxLzUej9wF1K8wnu37GysR6598988zEsu+m4RULc7mTY42ZyRAeldKxzDQ=="],
+    "@softistx/janus": ["@softistx/janus@0.61.0", "https://npm.pkg.github.com/download/@softistx/janus/0.61.0/4bd8f6e89e1084a223ba065064bbd1365392ea5e", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-osaqzGDlGnXGEr8SKy9pJpohNWJ7r7F0QWlfPVv4xtvcO0s5+13mM9WdtZAGnLAK1twiFyMNfclOvd4xNdrwrQ=="],
 
-    "@softistx/janus-graphql": ["@softistx/janus-graphql@0.27.0", "https://npm.pkg.github.com/download/@softistx/janus-graphql/0.27.0/755c1b6a195c5b127af67b0fa6c2d1115bc4fbb8", { "peerDependencies": { "@envelop/core": "^5.0.0 || ^6.0.0", "@graphql-tools/utils": ">=10.0.0 <14", "@softistx/janus": "^0.60.0", "graphql": "^16.9.0 || ^17.0.0", "graphql-ws": "^6.0.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-PuXNVmvgVtvWyReSk8NMa6hgOWtRTZ886WtxYsmQYzOGgSR/DtR4bPcGFrwdxdfToPaKPmW8GvJvqJZDGY/eUw=="],
+    "@softistx/janus-graphql": ["@softistx/janus-graphql@0.27.1", "https://npm.pkg.github.com/download/@softistx/janus-graphql/0.27.1/9b34f57a2606423e455e7554477dd89797f690c8", { "peerDependencies": { "@envelop/core": "^5.0.0 || ^6.0.0", "@graphql-tools/utils": ">=10.0.0 <14", "@softistx/janus": "^0.61.0", "graphql": "^16.9.0 || ^17.0.0", "graphql-ws": "^6.0.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-34BOrhdVsrua7ucGesAeAA5Blf24VKXZhT3S0gkArOCtiSIL8GxlvomcZ4w2lxruI9bGHcoQMt7t2dQD3ED7fg=="],
 
-    "@softistx/janus-mail": ["@softistx/janus-mail@0.26.0", "https://npm.pkg.github.com/download/@softistx/janus-mail/0.26.0/c64a7876b46db2c9ca2443ab140a62ea19d39c51", { "peerDependencies": { "@softistx/janus": "^0.60.0", "@softistx/mail": ">=1.5.0 <2", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-3hbC25BIi35sR3gtlOmR17yLFn9wSBwZ+zW0/VcTxj9wADj8hzSUyo20X8rJAgpCLhJpXZDasXfpcFajT1SoFA=="],
+    "@softistx/janus-mail": ["@softistx/janus-mail@0.26.1", "https://npm.pkg.github.com/download/@softistx/janus-mail/0.26.1/6b76746f912499336ecc0f292700ee47a5c11193", { "peerDependencies": { "@softistx/janus": "^0.61.0", "@softistx/mail": ">=1.5.0 <2", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-DAbpXBEgx6kY1zKoWhhZhzCb7K4Y7Ip2Re85h5Vw4bZGLmJ8sFf0y10doINS9sLj4rATBKKWwq5Z9TkPwWPSaQ=="],
 
-    "@softistx/janus-mongo": ["@softistx/janus-mongo@0.27.0", "https://npm.pkg.github.com/download/@softistx/janus-mongo/0.27.0/985038589ce880c24af2a7a31882ddbcfbfbab94", { "peerDependencies": { "@softistx/janus": "^0.60.0", "@softistx/mongo": ">=0.27.0 <1", "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-uiMSxuUYuiHAKVY+73kPsWkG7EKT+fIEHhOwyF8ERyJ/gKzRJDvCO8rPMr4VeP8looMwdCEahBe6bA8naSX3Qw=="],
+    "@softistx/janus-mongo": ["@softistx/janus-mongo@0.27.1", "https://npm.pkg.github.com/download/@softistx/janus-mongo/0.27.1/74cf90d15d280a6dd32cd35c93792f5a3bf121d7", { "peerDependencies": { "@softistx/janus": "^0.61.0", "@softistx/mongo": ">=0.27.0 <1", "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-mxXbBaxm8p3ruo6OtdoPjR06ovJyjuHCdji56lhC06AMkyhmfpc/RBxrJcDnB5GvAss5PDegxoEpO4FbQdFSjA=="],
 
     "@softistx/mail": ["@softistx/mail@1.5.0", "https://npm.pkg.github.com/download/@softistx/mail/1.5.0/d0b70a52f9638beca562c1c3c00b6318dcc0fc79", { "peerDependencies": { "@opentelemetry/api": "^1.9.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-Uli7pJE07nz2IhKKs3s7Jyq4QuHkHoS2YWNlC4mBPnUTWQCa2IIzEBc2ko/ExYAU9lMjgUMM4UI4SkW1De39bg=="],
 
