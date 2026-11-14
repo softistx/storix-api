@@ -9,7 +9,7 @@ Global rules: `~/.claude/CLAUDE.md`. The product's: `~/workspace/dev/storix/AGEN
 - `src/core/` is the kernel and depends on no business module; `src/modules/registry.ts` is the ONE list of modules. `bun run verify` checks the boundaries (`test/boundaries.spec.ts`).
 - Type checking is `bun check`; Biome's scripts are `lint` and `fix`.
 - The identity seam: only `src/core/identity/**` and `src/config/auth.ts` import `@softistx/janus*` (`bun run deps:check`, part of `verify`). Every other module keeps `accountId` as an opaque string.
-- `@softistx/*` comes from GitHub Packages through the committed `.npmrc` (`GITHUB_TOKEN` with `read:packages`); `@alxia/*` and `@nxgt/*` from npmjs. Install with `GITHUB_TOKEN=$(gh auth token) bun install`.
+- `@softistx/*` comes from npm.softistx.com through the committed `.npmrc` and `bunfig.toml` (`NPM_REGISTRY_TOKEN`, exported by `~/.zshenv`); `@alxia/*` and `@nxgt/*` from npmjs. Install with `bun install`.
 - Dev services use ports 27019, 6381, 1027/8027 and 8333 so they run beside the other products' stacks.
 - A gap in an in-house package is filed on that package, never worked around. No third-party client where an `@alxia/*`, `@softistx/*` or `@nxgt/*` package covers the need.
 - Files are split by responsibility, one role per file named for it (`csrf.ts`, `client-ip.ts`; a spec is `<name>.spec.ts` beside its file), about 250 lines at most. Generated code lives in `src/generated/` (git-ignored, written by `bun run generate`), never next to the sources.
