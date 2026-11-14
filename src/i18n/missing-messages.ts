@@ -1,3 +1,4 @@
+// Temporary, until alxia#773 (tracking: storix-api#56).
 import type { Row } from "./row";
 
 // The `code (language)` pairs that have no message: what coverage.spec.ts

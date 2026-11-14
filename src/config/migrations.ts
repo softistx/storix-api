@@ -25,10 +25,19 @@ export async function assertMigrated(
   db: Db,
   list: readonly Migration[] = migrations,
 ): Promise<{ missing: string[] }> {
+  const { pending, missing } = await migrationState(db, list);
+  if (pending.length > 0) throw new MigrationsOutOfSyncError(pending);
+  return { missing };
+}
+
+// The ids this build lists that are not applied (`pending`) and the ids
+// recorded that this build does not list (`missing`).
+export async function migrationState(
+  db: Db,
+  list: readonly Migration[] = migrations,
+): Promise<{ pending: string[]; missing: string[] }> {
   const status = await migrationStatus(db, list);
   const ids = (state: string) =>
     status.filter((entry) => entry.state === state).map((entry) => entry.id);
-  const pending = ids("pending");
-  if (pending.length > 0) throw new MigrationsOutOfSyncError(pending);
-  return { missing: ids("missing") };
+  return { pending: ids("pending"), missing: ids("missing") };
 }

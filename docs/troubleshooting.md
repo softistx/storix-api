@@ -56,3 +56,17 @@ The server stops at startup while it loads the translations.
 ```sh
 bun run db:migrate
 ```
+
+## `no translations in the fallback language "en"`
+
+The server stops at startup while it loads the translations.
+
+**When:** the `translations` collection holds no row at all in English: the migrations were never applied to this database (a new or emptied one), or the collection was dropped.
+
+**Why:** English is the last step of every language's chain, so with no English rows no refusal can be worded.
+
+**Fix:** apply the migrations.
+
+```sh
+bun run db:migrate
+```

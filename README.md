@@ -67,7 +67,7 @@ query {
   "data": {
     "errorCatalogue": {
       "language": "fr",
-      "version": "9f2c4a1e07b3d5c8",
+      "version": "9f2c4a1e07b3d5c89f2c4a1e07b3d5c8",
       "messages": [
         { "code": "auth.errors.forbidden", "message": "Vous n’avez pas le droit de faire cela." },
         {
@@ -90,7 +90,7 @@ An input refused as a whole is one error, `validation.errors.invalid-input` (HTT
 {
   "errors": [
     {
-      "message": "Some fields are invalid.",
+      "message": "Some fields are not valid.",
       "path": ["createFolder"],
       "extensions": {
         "code": "validation.errors.invalid-input",
@@ -98,10 +98,14 @@ An input refused as a whole is one error, `validation.errors.invalid-input` (HTT
           {
             "path": "name",
             "code": "validation.errors.too-long",
-            "message": "Too long.",
+            "message": "This value is too long.",
             "params": { "max": 100 }
           },
-          { "path": "color", "code": "validation.errors.invalid" }
+          {
+            "path": "color",
+            "code": "validation.errors.invalid",
+            "message": "This value is not valid."
+          }
         ]
       }
     }

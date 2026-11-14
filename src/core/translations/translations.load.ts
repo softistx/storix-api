@@ -92,6 +92,7 @@ export async function loadTranslations(
       `no translations in the fallback language "${FALLBACK_LANGUAGE}"`,
     );
   }
+  // Temporary, until alxia#773 (tracking: storix-api#56): this coverage check moves to alxia.
   const missing = missingMessages(errorCodes, rows, [FALLBACK_LANGUAGE]);
   if (missing.length > 0) {
     throw new Error(

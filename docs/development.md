@@ -48,7 +48,7 @@ replica set.
 
 ## Boot and deploy
 
-The boot rule, once: outside production the server applies the pending migrations itself. In production it refuses to start while a migration is pending (`MigrationsOutOfSyncError`), since the migration is a deployment step, not something every instance races to do. A migration recorded in the database but not in the build (a newer build already ran it) logs a warning and the server starts, so an old instance restarting during a rollout or a code rollback still comes up. Then the server loads the translations and refuses to start when a code has no text in the fallback language. Each message is in [troubleshooting.md](troubleshooting.md).
+The boot rule, once: outside production the server applies the pending migrations itself. In production it refuses to start while a migration is pending (`MigrationsOutOfSyncError`), since the migration is a deployment step, not something every instance races to do. A migration recorded in the database but not in the build (a newer build already ran it) logs a warning, applies nothing (in dev too) and the server starts, so an old instance restarting during a rollout or a code rollback still comes up. Then the server loads the translations and refuses to start when a code has no text in the fallback language. Each message is in [troubleshooting.md](troubleshooting.md).
 
 ```sh
 # Deploy: schema first, then data, then code

@@ -1,5 +1,5 @@
 // Temporary, until nxgt-graphql#151 (tracking: storix-api#56).
-import { inputPath } from "@nxgt/graphql-validation";
+import { inputPath, type ValidationIssue } from "@nxgt/graphql-validation";
 import { GraphQLError } from "graphql";
 import type { Plugin } from "graphql-yoga";
 import type { ErrorCode } from "../i18n/codes";
@@ -23,11 +23,7 @@ const constraintCodes: Record<string, ErrorCode> = {
   pattern: "validation.errors.invalid-format",
 };
 
-interface ConstraintIssue {
-  path: readonly (string | number)[];
-  constraint?: string;
-  value?: unknown;
-}
+type ConstraintIssue = Pick<ValidationIssue, "path" | "constraint" | "value">;
 
 // The param a constraint's limit is passed on as (`maxLength: 100` is
 // `{ max: 100 }`), so a client can word the refusal itself. One refused

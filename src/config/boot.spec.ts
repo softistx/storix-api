@@ -24,7 +24,7 @@ afterEach(async () => {
   });
 });
 
-describe("boot without autoMigrate", () => {
+describe("boot", () => {
   test("refuses to boot while a migration is pending, then boots once migrated", async () => {
     const list = [...migrations, later];
     await migrate(db, [...migrations]);
@@ -43,5 +43,12 @@ describe("boot without autoMigrate", () => {
     expect(String(warn.mock.calls[0]?.[0])).toContain(
       "recorded but not in this build: 2099-01-01-later",
     );
+  });
+
+  test("with autoMigrate, a recorded-but-unknown migration warns and boots instead of failing", async () => {
+    await migrate(db, [...migrations, later]);
+    warn = spyOn(console, "warn").mockImplementation(() => {});
+    await boot(db, { autoMigrate: true, list: [...migrations] });
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 });
