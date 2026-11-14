@@ -1,4 +1,6 @@
 import {
+  type Background,
+  background,
   type Clock,
   type MailConfig,
   type PasswordHasher,
@@ -15,7 +17,7 @@ import type { Mailer } from "@softistx/mail";
 import type { Db } from "mongodb";
 import type { Account, Identity } from "./identity.port";
 import { createAccounts } from "./janus.accounts";
-import { type Background, background } from "./janus.background";
+
 import { authCall } from "./janus.errors";
 import { createMail, securityNotices } from "./janus.mail";
 import { secondFactorFlows } from "./janus.second-factor";
