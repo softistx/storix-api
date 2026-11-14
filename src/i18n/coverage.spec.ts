@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, test } from "bun:test";
+import { catalogueOf, uncovered } from "@alxia/i18n";
 import { codesOf } from "@alxia/modules";
 import { FIELD_CODES } from "@nxgt/graphql-validation";
 import { migrate } from "@softistx/mongo/migrations";
@@ -10,12 +11,13 @@ import { modules } from "../modules/registry";
 import { missingCodes } from "../scripts/context-codes-check";
 import { type ErrorCode, errorCodes } from "./codes";
 import { LANGUAGES } from "./index";
-import { missingMessages } from "./missing-messages";
 
 // The inventory in code (`ErrorCode`) against the messages in the database
 // (the migrations): every code is translated in every shipped language, no
 // code hides in the source, and CONTEXT.md lists each code.
 let rows: { code: string; language: string; text: string }[] = [];
+const textRows = () =>
+  rows.map(({ code, language, text }) => ({ key: code, language, text }));
 
 beforeAll(async () => {
   await migrate(connection.client.db(env.MONGO_CORE_DATABASE), [...migrations]);
@@ -32,7 +34,13 @@ describe("the error codes and their translations", () => {
   });
 
   test("every code has a message in every shipped language", () => {
-    expect(missingMessages(errorCodes, rows, LANGUAGES)).toEqual([]);
+    for (const language of LANGUAGES) {
+      expect(
+        uncovered(errorCodes, catalogueOf(textRows(), language)).map(
+          (code) => `${code} (${language})`,
+        ),
+      ).toEqual([]);
+    }
   });
 
   test("every text of a code namespace is a code of the inventory", () => {
