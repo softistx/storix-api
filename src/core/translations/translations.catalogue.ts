@@ -1,14 +1,12 @@
+// Temporary, until alxia#773 (tracking: storix-api#56).
 import { createHash } from "node:crypto";
+import type { Row } from "@/i18n/row";
 
 // A catalogue as @alxia/i18n reads it: the dotted code as a nested tree
 // (`auth.errors.forbidden` is `{ auth: { errors: { forbidden } } }`).
 export type Tree = { [key: string]: string | Tree };
 
-export interface Row {
-  code: string;
-  language: string;
-  text: string;
-}
+export type { Row };
 
 const unsafe = new Set(["__proto__", "constructor", "prototype"]);
 

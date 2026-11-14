@@ -1,3 +1,4 @@
+// Temporary, until alxia#773 (tracking: storix-api#56).
 import type { ClientSession, Db } from "mongodb";
 
 // Seeds for a data migration: the texts of each language by code. A code a
@@ -60,4 +61,17 @@ export async function removeTexts(
       { code: { $in: codes } },
       session === undefined ? {} : { session },
     );
+}
+
+// What a migration's `down` calls, by what the migration did:
+// - `removeTexts` when it created the codes: they go with it.
+// - `restoreTexts` when it reworded codes an earlier migration created: the
+//   previous texts are written back and the rows stay, since the earlier
+//   migration's own `down` removes them.
+export async function restoreTexts(
+  db: Db,
+  session: ClientSession | undefined,
+  previous: Texts,
+): Promise<void> {
+  await upsertTexts(db, session, previous);
 }

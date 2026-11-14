@@ -66,7 +66,7 @@ describe("the error codes and their translations", () => {
   test("the registered modules declare codes the inventory holds", () => {
     const known = new Set<string>(errorCodes);
     expect(codesOf(modules).filter((code) => !known.has(code))).toEqual([]);
-    expect(new Set(codesOf(modules))).toEqual(known);
+    expect([...codesOf(modules)].sort()).toEqual([...errorCodes].sort());
   });
 
   test("the codes of @nxgt/graphql-validation's field issues are in the inventory", () => {

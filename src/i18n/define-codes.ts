@@ -1,3 +1,4 @@
+// Temporary, until alxia#773 (tracking: storix-api#56).
 export type Code<
   Module extends string,
   Slug extends string,

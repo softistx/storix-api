@@ -13,7 +13,7 @@ export const auth = defineCodes("auth", [
 ]);
 
 // Malformed input: shared by every module, so declared here. The first five
-// are the plan's; the next six are the codes of @nxgt/graphql-validation's
+// are the plan's; the next five are the codes of @nxgt/graphql-validation's
 // `FIELD_CODES` (what `fieldIssueOf` answers for a Zod issue), which a
 // `invalid-input` error lists per field (the coverage spec keeps them in sync).
 export const validation = defineCodes("validation", [

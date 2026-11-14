@@ -26,7 +26,7 @@ when a code lacks a message in English or French.
 | ---- | ------- |
 | `auth.errors.unauthenticated` | No valid session or API key (401). |
 | `auth.errors.forbidden` | Signed in, but not allowed to do this (403). |
-| `auth.errors.client-header-required` | A `/graphql` request lacks the `x-storix-client` header (cross-site request protection). |
+| `auth.errors.client-header-required` | A `/graphql` request lacks the `x-storix-client` header (403, cross-site request protection). |
 | `auth.errors.step-up-required` | The operation needs a recent re-authentication. |
 | `auth.errors.second-factor-required` | The sign-in needs the account's second factor. |
 | `auth.errors.rate-limited` | Too many attempts; `params.minutes` says when to retry. |

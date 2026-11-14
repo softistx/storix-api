@@ -101,6 +101,20 @@ describe("loadTranslations", () => {
     expect(catalogueOfLanguage("fr").version).toBe(before);
   });
 
+  test("refuses to load when a code has no text in the fallback language", async () => {
+    const filter = { code: "auth.errors.forbidden", language: "en" };
+    const original = await core.db.translations.raw.findOne(filter);
+    try {
+      await core.db.translations.raw.deleteOne(filter);
+      await expect(loadTranslations(core)).rejects.toThrow(
+        "no fallback-language text for auth.errors.forbidden (en)",
+      );
+    } finally {
+      if (original) await core.db.translations.raw.insertOne(original);
+      await loadTranslations(core);
+    }
+  });
+
   test("a language that is not shipped is refused", async () => {
     await loadTranslations(core);
     expect(() => catalogueOfLanguage("de")).toThrow('no language "de"');

@@ -7,41 +7,28 @@ import { modules } from "../modules/registry";
 // registry's `coreMigrations`). E1 adds the workspaces' own list.
 export const migrations: readonly Migration[] = coreMigrationsOf(modules);
 
-// The database is not at the migrations this build lists: some are pending
-// (`bun run db:migrate` applies them) or recorded but unknown to this build
-// (a newer build ran them: deploy that one).
+// The database has migrations this build lists that were not applied
+// (`bun run db:migrate` applies them).
 export class MigrationsOutOfSyncError extends Error {
-  constructor(
-    readonly pending: readonly string[],
-    readonly missing: readonly string[],
-  ) {
-    super(
-      [
-        pending.length > 0 &&
-          `${pending.length} migration(s) pending: run bun run db:migrate`,
-        missing.length > 0 &&
-          `${missing.length} migration(s) recorded but not in this build: ${missing.join(", ")}`,
-      ]
-        .filter(Boolean)
-        .join("; "),
-    );
+  constructor(readonly pending: readonly string[]) {
+    super(`${pending.length} migration(s) pending: run bun run db:migrate`);
     this.name = "MigrationsOutOfSyncError";
   }
 }
 
-// Refuses a database with a pending or an unknown migration: what the server
-// checks before it listens, so no request runs on texts a migration has yet to
-// write (or on a database a newer build has moved past).
+// Refuses a database with a pending migration: what the server checks before it
+// listens, so no request runs on texts a migration has yet to write. Answers
+// the ids recorded but not in this build (a newer build already ran them: an
+// old instance restarting during a rollout or a rollback must still start, so
+// the caller warns and boots).
 export async function assertMigrated(
   db: Db,
   list: readonly Migration[] = migrations,
-): Promise<void> {
+): Promise<{ missing: string[] }> {
   const status = await migrationStatus(db, list);
   const ids = (state: string) =>
     status.filter((entry) => entry.state === state).map((entry) => entry.id);
   const pending = ids("pending");
-  const missing = ids("missing");
-  if (pending.length > 0 || missing.length > 0) {
-    throw new MigrationsOutOfSyncError(pending, missing);
-  }
+  if (pending.length > 0) throw new MigrationsOutOfSyncError(pending);
+  return { missing: ids("missing") };
 }

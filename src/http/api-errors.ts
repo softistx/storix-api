@@ -1,8 +1,10 @@
+// Temporary, until nxgt-graphql#151 (tracking: storix-api#56).
 import { inputPath } from "@nxgt/graphql-validation";
 import { GraphQLError } from "graphql";
 import type { Plugin } from "graphql-yoga";
 import type { ErrorCode } from "../i18n/codes";
 import { invalidInput } from "../i18n/fail";
+import type { Params } from "../i18n/params";
 
 // What the refusal of a `@constraint` argument becomes: @nxgt/graphql-
 // validation names the argument that refused in `issues[].constraint`. Plan
@@ -24,6 +26,29 @@ const constraintCodes: Record<string, ErrorCode> = {
 interface ConstraintIssue {
   path: readonly (string | number)[];
   constraint?: string;
+  value?: unknown;
+}
+
+// The param a constraint's limit is passed on as (`maxLength: 100` is
+// `{ max: 100 }`), so a client can word the refusal itself. One refused
+// constraint carries one limit; a limit that is no number, or a constraint
+// with no plain bound (`format`, `pattern`, `multipleOf`), sets none.
+const limitNames: Record<string, "min" | "max"> = {
+  minLength: "min",
+  maxLength: "max",
+  min: "min",
+  max: "max",
+  exclusiveMin: "min",
+  exclusiveMax: "max",
+  minItems: "min",
+  maxItems: "max",
+};
+
+function paramsOf(issue: ConstraintIssue): { params?: Params } {
+  const name = issue.constraint && limitNames[issue.constraint];
+  return name && typeof issue.value === "number"
+    ? { params: { [name]: issue.value } }
+    : {};
 }
 
 // The issues of a @constraint refusal (BAD_USER_INPUT), as the resolver threw
@@ -48,8 +73,10 @@ export function reshaped(error: GraphQLError): GraphQLError {
       code:
         (issue.constraint && constraintCodes[issue.constraint]) ||
         "validation.errors.invalid",
+      ...paramsOf(issue),
     })),
     {
+      originalError: error.originalError ?? null,
       nodes: error.nodes ?? null,
       source: error.source ?? null,
       positions: error.positions ?? null,

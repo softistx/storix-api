@@ -1,4 +1,4 @@
-import type { Row } from "../core/translations/translations.catalogue";
+import type { Row } from "./row";
 
 // The `code (language)` pairs that have no message: what coverage.spec.ts
 // requires to be empty.

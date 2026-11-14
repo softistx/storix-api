@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { defineMigration, migrate, rollback } from "@softistx/mongo/migrations";
+import { authValidationErrors } from "../core/translations/migrations/2026-11-13-auth-validation-errors.migration";
+import { texts } from "../core/translations/migrations/2026-11-13-auth-validation-errors.texts";
+import { seedsOf } from "../core/translations/translations.seeds";
 import { connection } from "./db";
 import {
   assertMigrated,
@@ -27,21 +30,24 @@ describe("the core migrations", () => {
     await assertMigrated(db, migrations);
   });
 
-  test("assertMigrated refuses a migration this build does not list", async () => {
+  test("assertMigrated reports a migration this build does not list, without refusing", async () => {
     await migrate(db, [...migrations, step]);
-    await expect(assertMigrated(db, migrations)).rejects.toThrow(
-      "recorded but not in this build",
-    );
+    expect(await assertMigrated(db, migrations)).toEqual({
+      missing: [step.id],
+    });
   });
 
-  test("the first migration rolls back and applies again", async () => {
+  test("the auth and validation texts migration applies, rolls back and applies again", async () => {
+    // This migration alone, so a later migration does not change the counts.
     const own = connection.client.db("storix_migrations_spec_down");
-    await migrate(own, [...migrations]);
+    const mine = [authValidationErrors];
+    const expected = seedsOf(texts).length;
     const count = () => own.collection("translations").countDocuments();
-    expect(await count()).toBe(34);
-    await rollback(own, [...migrations]);
+    await migrate(own, mine);
+    expect(await count()).toBe(expected);
+    await rollback(own, mine);
     expect(await count()).toBe(0);
-    await migrate(own, [...migrations]);
-    expect(await count()).toBe(34);
+    await migrate(own, mine);
+    expect(await count()).toBe(expected);
   });
 });

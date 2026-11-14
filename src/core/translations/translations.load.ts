@@ -2,6 +2,7 @@ import type { ModuleCoreHandle } from "@alxia/modules";
 import type { core } from "@/config/db";
 import { FALLBACK_LANGUAGE, i18n, type Language } from "@/i18n";
 import { errorCodes } from "@/i18n/codes";
+import { missingMessages } from "@/i18n/missing-messages";
 import {
   catalogueOf,
   type ErrorMessageView,
@@ -89,6 +90,12 @@ export async function loadTranslations(
   if (!built.trees[FALLBACK_LANGUAGE]) {
     throw new Error(
       `no translations in the fallback language "${FALLBACK_LANGUAGE}"`,
+    );
+  }
+  const missing = missingMessages(errorCodes, rows, [FALLBACK_LANGUAGE]);
+  if (missing.length > 0) {
+    throw new Error(
+      `translations: no fallback-language text for ${missing.join(", ")}`,
     );
   }
   i18n.setResources(built.trees as Record<Language, never>);
