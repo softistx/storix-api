@@ -1,95 +1,19 @@
-// Temporary, until nxgt-graphql#151 (tracking: storix-api#56).
-import { inputPath, type ValidationIssue } from "@nxgt/graphql-validation";
-import { GraphQLError } from "graphql";
+import { invalidInputOf } from "@nxgt/graphql-validation";
 import type { Plugin } from "graphql-yoga";
-import type { ErrorCode } from "../i18n/codes";
-import { invalidInput } from "../i18n/fail";
-import type { Params } from "../i18n/params";
-
-// What the refusal of a `@constraint` argument becomes: @nxgt/graphql-
-// validation names the argument that refused in `issues[].constraint`. Plan
-// §3.13 has one code for a bound (`out-of-range`) and one for the rest.
-const constraintCodes: Record<string, ErrorCode> = {
-  minLength: "validation.errors.too-short",
-  maxLength: "validation.errors.too-long",
-  min: "validation.errors.out-of-range",
-  max: "validation.errors.out-of-range",
-  exclusiveMin: "validation.errors.out-of-range",
-  exclusiveMax: "validation.errors.out-of-range",
-  multipleOf: "validation.errors.out-of-range",
-  minItems: "validation.errors.too-few",
-  maxItems: "validation.errors.too-many",
-  format: "validation.errors.invalid-format",
-  pattern: "validation.errors.invalid-format",
-};
-
-type ConstraintIssue = Pick<ValidationIssue, "path" | "constraint" | "value">;
-
-// The param a constraint's limit is passed on as (`maxLength: 100` is
-// `{ max: 100 }`), so a client can word the refusal itself. One refused
-// constraint carries one limit; a limit that is no number, or a constraint
-// with no plain bound (`format`, `pattern`, `multipleOf`), sets none.
-const limitNames: Record<string, "min" | "max"> = {
-  minLength: "min",
-  maxLength: "max",
-  min: "min",
-  max: "max",
-  exclusiveMin: "min",
-  exclusiveMax: "max",
-  minItems: "min",
-  maxItems: "max",
-};
-
-function paramsOf(issue: ConstraintIssue): { params?: Params } {
-  const name = issue.constraint && limitNames[issue.constraint];
-  return name && typeof issue.value === "number"
-    ? { params: { [name]: issue.value } }
-    : {};
-}
-
-// The issues of a @constraint refusal (BAD_USER_INPUT), as the resolver threw
-// it or as graphql-js wrapped it with the field's location.
-function constraintIssues(error: GraphQLError): ConstraintIssue[] | undefined {
-  const source =
-    error.extensions["code"] === "BAD_USER_INPUT" ? error : error.originalError;
-  if (!(source instanceof GraphQLError)) return undefined;
-  if (source.extensions["code"] !== "BAD_USER_INPUT") return undefined;
-  const issues = source.extensions["issues"];
-  return Array.isArray(issues) ? (issues as ConstraintIssue[]) : undefined;
-}
-
-// The app's shape of an invalid input (`invalidInput`) for a @constraint
-// refusal, at the field's location; any other error as it is.
-export function reshaped(error: GraphQLError): GraphQLError {
-  const issues = constraintIssues(error);
-  if (!issues) return error;
-  return invalidInput(
-    issues.map((issue) => ({
-      path: inputPath(issue.path),
-      code:
-        (issue.constraint && constraintCodes[issue.constraint]) ||
-        "validation.errors.invalid",
-      ...paramsOf(issue),
-    })),
-    {
-      originalError: error.originalError ?? null,
-      nodes: error.nodes ?? null,
-      source: error.source ?? null,
-      positions: error.positions ?? null,
-      path: error.path ?? null,
-    },
-  );
-}
+import { translate } from "../i18n/fail";
 
 // A Yoga plugin: @constraint refusals leave as every other invalid input does,
-// `validation.errors.invalid-input` with `extensions.fields`. It rewrites the
-// execution's result rather than masking, since Yoga logs as an error every
-// error a `maskError` replaces.
+// `validation.errors.invalid-input` with `extensions.fields` (the refusal
+// converted by @nxgt/graphql-validation's `invalidInputOf`, messages
+// translated). It rewrites the execution's result rather than masking, since
+// Yoga logs as an error every error a `maskError` replaces.
 export const apiErrors: Plugin = {
   onExecute: () => ({
     onExecuteDone: ({ result, setResult }) => {
       if (!("errors" in result) || !result.errors) return;
-      const changed = result.errors.map(reshaped);
+      const changed = result.errors.map((error) =>
+        invalidInputOf(error, { translate }),
+      );
       if (changed.every((error, i) => error === result.errors?.[i])) return;
       setResult({ ...result, errors: changed });
     },
