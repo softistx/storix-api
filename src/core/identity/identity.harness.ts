@@ -5,6 +5,7 @@ import { createMemoryMailer } from "@softistx/mail";
 import { createApp } from "@/app";
 import { connection } from "@/config/db";
 import { clientHeader } from "@/http/csrf";
+import type { Limits } from "@/http/rate-limits";
 import { createJanusIdentity, type IdentityOptions } from "./identity.janus";
 import { createAccounts } from "./janus.accounts";
 
@@ -14,7 +15,10 @@ export const PASSWORD = "correct horse battery staple";
 // fixed clock and a cheap hasher, and the app that serves it: what the specs
 // of the identity flows share. Every call gets a database of its own, so specs
 // never see each other's accounts.
-export async function harness(options: Partial<IdentityOptions> = {}) {
+export async function harness(
+  options: Partial<IdentityOptions> & { limits?: Limits } = {},
+) {
+  const { limits, ...identityOptions } = options;
   const mailer = createMemoryMailer();
   const clock = fixedClock(new Date("2026-11-14T12:00:00Z"));
   const db = connection.client.db(`identity_spec_${crypto.randomUUID()}`);
@@ -29,10 +33,10 @@ export async function harness(options: Partial<IdentityOptions> = {}) {
       { id: "spec", key: "c3RvcmF4LXNwZWMtdG90cC1rZXktMzItYnl0ZXMhISE" },
     ],
     mail: { throttle: false },
-    ...options,
+    ...identityOptions,
   });
   if (!options.db) await identity.syncStores();
-  const app = createApp({ identity });
+  const app = createApp({ identity, ...(limits && { limits }) });
   const client = graphqlClient(app, { headers: { [clientHeader]: "spec" } });
 
   let sequence = 0;
@@ -78,8 +82,8 @@ export async function harness(options: Partial<IdentityOptions> = {}) {
 
   // A personal API key of an account, made through a second janus over the same
   // stores (the port has no key operation yet): its token, shown once.
-  async function apiKey(user: { token: string }) {
-    const keys = createAccounts({
+  function keysOf() {
+    return createAccounts({
       store: createMongoAdapter(db),
       apiKeys: createMongoApiKeys(db),
       clock,
@@ -89,6 +93,10 @@ export async function harness(options: Partial<IdentityOptions> = {}) {
       ],
       events: async () => undefined,
     });
+  }
+
+  async function apiKey(user: { token: string }) {
+    const keys = keysOf();
     const current = await keys.authenticate(
       new Request("http://localhost/", {
         headers: { authorization: `Bearer ${user.token}` },
@@ -100,6 +108,16 @@ export async function harness(options: Partial<IdentityOptions> = {}) {
       lifetime: "30d",
     });
     return created.token;
+  }
+
+  // Deactivates an account (a second janus over the same stores, as `apiKey`).
+  async function deactivate(accountId: string) {
+    await keysOf().user.setActive({ id: accountId }, false);
+  }
+
+  // Revokes every key of an account.
+  async function revokeKeys(user: { principal: { accountId: string } }) {
+    await keysOf().apiKeys.revokeAll({ id: user.principal.accountId });
   }
 
   const request = (headers: Record<string, string> = {}) =>
@@ -117,6 +135,8 @@ export async function harness(options: Partial<IdentityOptions> = {}) {
     codeFor,
     account,
     apiKey,
+    deactivate,
+    revokeKeys,
     request,
   };
 }

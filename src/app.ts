@@ -2,11 +2,13 @@ import { health } from "@alxia/core";
 import { graphql } from "@alxia/graphql";
 import { identity as serverIdentity } from "./config/auth";
 import { closeDatabases, mongoAnswers } from "./config/db";
+import { redis, limits as serverLimits } from "./config/redis";
 import type { Identity } from "./core/identity";
 import { createBase } from "./http/context";
 import { clientHeader } from "./http/csrf";
 import { graphqlPlugins } from "./http/graphql-plugins";
 import { keyPathsOnly } from "./http/key-paths";
+import type { Limits } from "./http/rate-limits";
 import { schema } from "./http/schema";
 
 // The largest body /graphql reads.
@@ -23,10 +25,15 @@ export function createApp(
     mongo?: () => Promise<boolean>;
     // The identity the app runs; specs inject one over an in-memory mailer.
     identity?: Identity;
+    // The per-address limits; specs inject ones over their own Redis.
+    limits?: Limits;
   } = {},
 ) {
   return (
-    createBase(options.identity ?? serverIdentity)
+    createBase(
+      options.identity ?? serverIdentity,
+      options.limits ?? serverLimits,
+    )
       .use(keyPathsOnly)
       .plugin(probes(options.mongo ?? mongoAnswers))
       // A body past 100 KiB is refused (413) before it is read: a query is a few
@@ -43,6 +50,7 @@ export function createApp(
       )
       .onStop(async () => {
         await closeDatabases();
+        redis?.close();
       })
   );
 }

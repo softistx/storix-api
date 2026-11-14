@@ -70,3 +70,51 @@ The server stops at startup while it loads the translations.
 ```sh
 bun run db:migrate
 ```
+
+## `TOTP_KEYS: ...`
+
+The server stops at startup while it reads the environment.
+
+**When:** `TOTP_KEYS` is missing in production, an entry has no `id:` (`id:key`), two entries share an id, a key is not 32 random bytes in base64, or the development key is used in production.
+
+**Fix:** generate a key and list it as `id:key`; the first entry seals, every entry opens.
+
+```sh
+echo "TOTP_KEYS=k1:$(openssl rand -base64 32)"
+```
+
+## `MAIL_URL`, `UI_ORIGIN` or `MAIL_FROM` is invalid
+
+The server stops at startup while it reads the environment.
+
+**When:** `MAIL_URL` is not `smtp://` or `smtps://`, `UI_ORIGIN` is not an origin (`https://app.example.com`, no path), or `MAIL_FROM` is not a plain e-mail address.
+
+**Fix:** correct the variable. Unset `MAIL_URL` prints the mails to the console instead (tokens redacted outside `NODE_ENV=development`).
+
+## Sign-up or sign-in fails with a missing index or validator
+
+Identity operations fail on first use, or two accounts share an address.
+
+**When:** the identity collections (users, sessions, tokens, relations, API keys) were never synced. Outside production the server syncs them at boot; in production only with `MONGO_AUTO_SYNC`.
+
+**Fix:** run the schema step of the deploy.
+
+```sh
+bun run db:sync
+```
+
+## Second factors no longer open (a lost `TOTP_KEYS` key)
+
+A user who enrolled an authenticator cannot confirm a code, or the server cannot read the secret.
+
+**Why:** the secrets are sealed with a key of `TOTP_KEYS`; every key that ever sealed one must stay listed to open it. A key removed from the list makes its secrets unreadable.
+
+**Fix:** restore the key. When it is truly lost, the affected accounts must have their second factor reset by an operator (clear it in the `users` collection) and enrol again.
+
+## `auth.errors.rate-limited` (429) on sign-up, sign-in or reset
+
+**When:** a client address went past `RATE_LIMIT_SIGN_UP`, `RATE_LIMIT_SIGN_IN` or `RATE_LIMIT_PASSWORD_RESET` (`<attempts>/<seconds>`), or janus's per-account throttle (five mails per address and ten minutes, the tries of a challenge) tripped. `extensions.retryAfter` says how long to wait.
+
+**Why:** behind a proxy every visitor looks like one address unless the forwarded address is honoured (`API_PROXY_SECRET`, `src/http/client-ip.ts`).
+
+**Fix:** wait, or raise the variable. The limit is off when `REDIS_URL` is unset.

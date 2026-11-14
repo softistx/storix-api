@@ -7,7 +7,7 @@ export type Mail = JanusMail<"en" | "fr">;
 
 // The brand of the mails: the name in the footer and the button colour,
 // janus-mail nudging it to AA in light and dark.
-export const mailBrand = { name: "storix", color: "#2f5bd8" };
+export const mailBrand = { name: "storix", color: "#0e7490" };
 
 // The links the mails carry, to pages of storix-ui that spend nothing: each
 // posts its token back to the API from a button (a mail scanner follows a

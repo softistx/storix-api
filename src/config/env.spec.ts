@@ -65,6 +65,36 @@ describe("env in production", () => {
     expect(code).not.toBe(0);
   });
 
+  const KEY = "c3RvcmF4LXNwZWMtdG90cC1rZXktMzItYnl0ZXMhISE";
+  const OTHER = "b3RoZXIta2V5LW90aGVyLWtleS1vdGhlci1rZXktMzM";
+  const DEV = "c3RvcmF4LWRldmVsb3BtZW50LXRvdHAta2V5LTMhISE";
+
+  test("TOTP_KEYS refuses an entry with no id", async () => {
+    const { code, stderr } = await load({ TOTP_KEYS: KEY });
+    expect(code).not.toBe(0);
+    expect(stderr).toContain("TOTP_KEYS");
+    expect((await load({ TOTP_KEYS: `:${KEY}` })).code).not.toBe(0);
+  });
+
+  test("TOTP_KEYS refuses two keys with the same id", async () => {
+    const { code, stderr } = await load({ TOTP_KEYS: `k1:${KEY},k1:${OTHER}` });
+    expect(code).not.toBe(0);
+    expect(stderr).toContain("two keys have the same id");
+  });
+
+  test("TOTP_KEYS refuses a key that is not 32 bytes in base64", async () => {
+    const { code, stderr } = await load({ TOTP_KEYS: "k1:too-short" });
+    expect(code).not.toBe(0);
+    expect(stderr).toContain("not 32 bytes in base64");
+  });
+
+  test("TOTP_KEYS refuses the development key in production, and takes a rotation", async () => {
+    const dev = await load({ TOTP_KEYS: `k1:${DEV}` });
+    expect(dev.code).not.toBe(0);
+    expect(dev.stderr).toContain("the development key is refused");
+    expect((await load({ TOTP_KEYS: `k2:${OTHER},k1:${KEY}` })).code).toBe(0);
+  });
+
   test("an empty TRUSTED_PROXIES is unset, so refused", async () => {
     expect((await load({ TRUSTED_PROXIES: " , " })).code).not.toBe(0);
   });

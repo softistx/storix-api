@@ -21,6 +21,8 @@ import { createMail, securityNotices } from "./janus.mail";
 import { secondFactorFlows } from "./janus.second-factor";
 import { type AccountUser, localeOf, principalOf } from "./janus.shared";
 import { signInFlows } from "./janus.sign-in";
+import { signUpFlows } from "./janus.sign-up";
+import { stepUpFlows } from "./janus.step-up";
 
 export interface IdentityOptions {
   // The database janus keeps its users, sessions, tokens and keys in.
@@ -96,12 +98,9 @@ export function createJanusIdentity(options: IdentityOptions): Identity {
 
     accounts: {
       byIds: (ids) =>
-        authCall(async () => {
-          const found = await Promise.all(
-            ids.map((id) => accounts.user.find(id)),
-          );
-          return found.flatMap((user) => (user ? [accountOf(user)] : []));
-        }),
+        authCall(async () =>
+          (await accounts.user.findMany(ids)).map(accountOf),
+        ),
       byEmail: (email) =>
         authCall(async () => {
           const user = await accounts.user.findByEmail(email);
@@ -114,7 +113,9 @@ export function createJanusIdentity(options: IdentityOptions): Identity {
       verify: (plain, hash) => hasher.verify(plain, hash),
     },
 
+    ...signUpFlows(deps),
     ...signInFlows(deps),
+    ...stepUpFlows(deps),
     ...secondFactorFlows(deps),
 
     // The keys are an opt-in port: not part of syncMongoAdapter.

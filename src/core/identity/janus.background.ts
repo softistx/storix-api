@@ -1,3 +1,4 @@
+// Temporary, until nxgt-janus#757 (a background runner with settled()).
 // Work a request starts and does not wait for: a mail whose sending must not
 // show in the response's time, which would tell whether the account exists.
 // A failure is logged (its name and message), never thrown at anyone.

@@ -243,7 +243,115 @@ describe("regenerating and disabling", () => {
   });
 });
 
+describe("a lost authenticator", () => {
+  test("lost phone: recover, disable, enrol again", async () => {
+    const { h, user, recoveryCodes } = await withSecondFactor();
+    const email = user.email;
+    const started = await h.identity.signIn({ email, password: PASSWORD });
+    if (started.status !== "SECOND_FACTOR") throw new Error("no challenge");
+    const recovered = await h.identity.recoverSecondFactor(
+      started.challenge,
+      recoveryCodes[0] ?? "",
+    );
+    if (recovered.status !== "SIGNED_IN") throw new Error("not signed in");
+    const request = new Request("http://localhost/", {
+      headers: { authorization: `Bearer ${recovered.token}` },
+    });
+    // The session is fresh from its sign-in: a recovery code disables the
+    // factor. A wrong one, and a spent one, are refused.
+    expect(
+      codeOf(
+        await refusal(
+          h.identity.disableSecondFactor(
+            request,
+            recovered.principal,
+            "WRONG-CODE",
+          ),
+        ),
+      ),
+    ).toBe("identity.errors.second-factor-invalid");
+    expect(
+      codeOf(
+        await refusal(
+          h.identity.disableSecondFactor(
+            request,
+            recovered.principal,
+            recoveryCodes[0] ?? "",
+          ),
+        ),
+      ),
+    ).toBe("identity.errors.second-factor-invalid");
+    expect(
+      await h.identity.disableSecondFactor(
+        request,
+        recovered.principal,
+        recoveryCodes[1] ?? "",
+      ),
+    ).toBe(true);
+    expect(
+      (await h.identity.secondFactorStatus(recovered.principal)).enabled,
+    ).toBe(false);
+    // The session the recovery opened for the check ended with it: the
+    // account's own session still works.
+    expect(await h.identity.authenticate(request)).not.toBeNull();
+    // A new phone: enrol and activate again.
+    const again = await h.identity.enrolSecondFactor(recovered.principal);
+    h.clock.advance(STEP);
+    const fresh = await h.identity.activateSecondFactor(
+      recovered.principal,
+      totpCode(again.secret, h.clock.now()),
+    );
+    expect(fresh.recoveryCodes).toHaveLength(10);
+    expect(
+      (await h.identity.secondFactorStatus(recovered.principal)).enabled,
+    ).toBe(true);
+  });
+
+  test("a recovery code does not disable a factor on a stale session", async () => {
+    const { h, user, recoveryCodes } = await withSecondFactor();
+    const request = new Request("http://localhost/", {
+      headers: { authorization: `Bearer ${user.token}` },
+    });
+    h.clock.advance(FRESH);
+    expect(
+      codeOf(
+        await refusal(
+          h.identity.disableSecondFactor(
+            request,
+            { ...user.principal, secondFactor: true },
+            recoveryCodes[0] ?? "",
+          ),
+        ),
+      ),
+    ).toBe("auth.errors.step-up-required");
+  });
+});
+
 describe("step-up", () => {
+  test("past the mail throttle, requesting a step-up code answers 429", async () => {
+    const h = await harness({
+      mail: { throttle: { attempts: 3, window: "10m" } },
+    });
+    const user = await h.account();
+    const request = new Request("http://localhost/", {
+      headers: { authorization: `Bearer ${user.token}` },
+    });
+    let last: unknown;
+    for (let i = 0; i < 8; i++) {
+      try {
+        await h.identity.requestStepUp(request, user.principal);
+      } catch (error) {
+        last = error;
+        break;
+      }
+    }
+    await h.identity.settled();
+    expect(codeOf(last)).toBe("auth.errors.rate-limited");
+    expect(
+      (last as { extensions: Record<string, unknown> }).extensions["http"],
+    ).toEqual({ status: 429 });
+  });
+
   test("an account without a factor is mailed a code, which makes the session fresh", async () => {
     const h = await harness();
     const user = await h.account();

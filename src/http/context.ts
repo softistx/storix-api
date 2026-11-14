@@ -5,12 +5,13 @@ import { env } from "../config/env";
 import type { Identity, Principal } from "../core/identity";
 import { i18n } from "../i18n";
 import { clientIp } from "./client-ip";
+import type { Limits } from "./rate-limits";
 import { refusalError } from "./refusal";
 
 // The base: what every resolver reads, decorated or derived here: `env` and
-// `requestId`, and the request's language (`language`, `t`: src/i18n). the
-// `identity` port and the request's `viewer` (a Principal or null).
-export function createBase(identity: Identity) {
+// `requestId`, the request's language (`language`, `t`: src/i18n), the
+// `identity` port, the per-address `limits` and the request's `viewer` (a Principal or null).
+export function createBase(identity: Identity, limits: Limits) {
   // `requestId` names the request in logs and audit trails. alxia exposes none,
   // so the base makes one: always generated here, never read from
   // `X-Request-Id`, which any client could forge. It is echoed as the
@@ -50,7 +51,7 @@ export function createBase(identity: Identity) {
     return next({ viewer });
   });
   return base
-    .decorate({ env, identity })
+    .decorate({ env, identity, limits })
     .use(requestIdOf)
     .use(i18n)
     .use(viewerOf);

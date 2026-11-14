@@ -1,6 +1,6 @@
 import { JanusError, StoreFailure } from "@softistx/janus";
 import type { GraphQLError } from "graphql";
-import { fail, invalidInput } from "@/i18n/fail";
+import { fail, invalidInput, rateLimited } from "@/i18n/fail";
 
 // janus's errors as the API answers them. A code says what the client can act
 // on, never which of janus's reasons it was: an unknown address, a deactivated
@@ -18,17 +18,6 @@ export const tooShort = (min: number) =>
   invalidInput([
     { path: "password", code: "validation.errors.too-short", params: { min } },
   ]);
-
-// 429 `auth.errors.rate-limited`, with the minutes to wait (rounded up) and
-// the seconds in `extensions.retryAfter`.
-export function rateLimited(retryAfter: number): GraphQLError {
-  const error = fail("auth.errors.rate-limited", {
-    params: { minutes: Math.max(1, Math.ceil(retryAfter / 60)) },
-    status: 429,
-  });
-  error.extensions["retryAfter"] = retryAfter;
-  return error;
-}
 
 // janus's error as the API answers it, or undefined for one it does not
 // answer (a wiring mistake, which Yoga masks as a 500).

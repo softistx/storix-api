@@ -11,5 +11,6 @@ export type {
   SignInResult,
   StepUpChallenge,
 } from "./identity.port";
-export { requireViewer } from "./identity.resolver";
+export { requireSession, requireViewer } from "./identity.resolver";
+export { API_KEY_PREFIX } from "./janus.accounts";
 export { identityModule } from "./module";

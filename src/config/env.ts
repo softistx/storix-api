@@ -14,6 +14,18 @@ const trustedProxies = z
   )
   .transform((list) => (list.length > 0 ? list : undefined));
 
+// "<count>/<seconds>": at most <count> attempts per <seconds> from one client
+// address, as the count and the window in milliseconds.
+const attempts = (fallback: string) =>
+  z
+    .string()
+    .regex(/^[1-9]\d{0,5}\/[1-9]\d{0,6}$/, 'not "<count>/<seconds>"')
+    .default(fallback)
+    .transform((value) => {
+      const [limit = 0, seconds = 0] = value.split("/").map(Number);
+      return { limit, per: seconds * 1000 };
+    });
+
 // Required in production; elsewhere `fallback` stands in.
 const inProduction = <T extends z.ZodType>(schema: T, fallback: string) =>
   production ? schema : schema.prefault(fallback as never);
@@ -62,6 +74,8 @@ const totpKeys = z
       .filter(Boolean)
       .map((entry) => {
         const at = entry.indexOf(":");
+        // No `id:` prefix: an empty id, which the id check below refuses.
+        if (at <= 0) return { id: "", key: entry };
         return { id: entry.slice(0, at), key: entry.slice(at + 1) };
       }),
   )
@@ -139,6 +153,13 @@ export const env = defineEnv({
   // TOTP_KEYS: the sealing keys of the accounts' TOTP secrets. Required in
   // production; a development key stands in elsewhere.
   TOTP_KEYS: inProduction(totpKeys, `dev:${devTotpKey}`),
+  // RATE_LIMIT_SIGN_UP, RATE_LIMIT_SIGN_IN, RATE_LIMIT_PASSWORD_RESET:
+  // "<count>/<seconds>", the attempts one client address may make of signUp,
+  // signIn (and the second-factor codes of a sign-in) and requestPasswordReset.
+  // Counted in Redis, so they apply only when REDIS_URL is set.
+  RATE_LIMIT_SIGN_UP: attempts("10/3600"),
+  RATE_LIMIT_SIGN_IN: attempts("30/900"),
+  RATE_LIMIT_PASSWORD_RESET: attempts("10/3600"),
   // REDIS_URL: redis:// or rediss://. Rate limits, queues and tokens.
   // Required in production; unset elsewhere.
   REDIS_URL: orUnset(

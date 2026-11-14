@@ -236,7 +236,7 @@ type Mutation {
   """
   confirmStepUp(challenge: String! @constraint(maxLength: 200), code: String! @constraint(maxLength: 40)): DateTime!
   """
-  Turns the factor off on a current code of the app. Needs a fresh session.
+  Turns the factor off on a current code of the app, or on a recovery code when the phone is lost. Needs a fresh session.
   """
   disableSecondFactor(code: String! @constraint(maxLength: 40)): Boolean!
   """
@@ -259,10 +259,6 @@ type Mutation {
   Starts a step-up of the session: a code of the app, else a code mailed to the account. 401 `auth.errors.unauthenticated`.
   """
   requestStepUp: StepUpChallenge!
-  """
-  Mails the verification link again to the signed-in account; true also when it is verified. 401 `auth.errors.unauthenticated`; 429 `auth.errors.rate-limited`.
-  """
-  resendVerificationEmail: Boolean!
   """
   Sets a new password with the token of the reset mail and signs the account out everywhere. 400 `identity.errors.token-invalid`; 400 `validation.errors.invalid-input`.
   """

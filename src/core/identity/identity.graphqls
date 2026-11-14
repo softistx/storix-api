@@ -124,8 +124,6 @@ type Mutation {
     token: String! @constraint(maxLength: 200)
     password: String! @constraint(maxLength: 1024)
   ): SignInPayload!
-  "Mails the verification link again to the signed-in account; true also when it is verified. 401 `auth.errors.unauthenticated`; 429 `auth.errors.rate-limited`."
-  resendVerificationEmail: Boolean!
   """
   Signs in with a password. 401 `identity.errors.invalid-credentials` for a
   wrong password, an unknown address and a deactivated account alike; 429
@@ -166,6 +164,6 @@ type Mutation {
   regenerateRecoveryCodes(
     code: String! @constraint(maxLength: 40)
   ): RecoveryCodes!
-  "Turns the factor off on a current code of the app. Needs a fresh session."
+  "Turns the factor off on a current code of the app, or on a recovery code when the phone is lost. Needs a fresh session."
   disableSecondFactor(code: String! @constraint(maxLength: 40)): Boolean!
 }

@@ -33,7 +33,7 @@ when a code lacks a message in English or French.
 | `auth.errors.step-up-required` | The operation needs a recent re-authentication. |
 | `auth.errors.second-factor-required` | The sign-in needs the account's second factor. |
 | `auth.errors.rate-limited` | Too many attempts; `params.minutes` says when to retry. |
-| `auth.errors.api-key-not-accepted` | An API key reached a path it may not (401). |
+| `auth.errors.api-key-not-accepted` | An API key reached a path or an account operation it may not (401). |
 | `identity.errors.invalid-credentials` | A sign-in failed: a wrong password, an unknown address or a deactivated account, which are never told apart (401). |
 | `identity.errors.email-unverified` | The operation needs a verified e-mail address (403). |
 | `identity.errors.token-invalid` | A link or challenge token is unknown, spent, expired or stale (400). |

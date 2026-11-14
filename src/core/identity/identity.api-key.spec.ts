@@ -50,19 +50,68 @@ describe("API keys", () => {
     expect(result.data?.viewer["sessionConfirmedUntil"]).toBeNull();
   });
 
-  test("a key may not step up, enrol or sign out like a session", async () => {
-    const h = await harness();
-    const key = await h.apiKey(await h.account());
-    const result = await h.client.query(
-      "mutation { enrolSecondFactor { secret } }",
-      {
+  // Every operation of the account is refused to a key, with a real key
+  // authenticated by the viewer middleware (never a hand-built principal).
+  const operations: [string, string][] = [
+    ["secondFactorStatus", "{ secondFactorStatus { enabled } }"],
+    [
+      "signUp",
+      'mutation { signUp(input: { email: "a@b.test", name: "A", locale: EN }) { status } }',
+    ],
+    [
+      "completeSignUp",
+      'mutation { completeSignUp(token: "t", password: "long enough password") { status } }',
+    ],
+    [
+      "signIn",
+      'mutation { signIn(input: { email: "a@b.test", password: "x" }) { status } }',
+    ],
+    [
+      "confirmSecondFactor",
+      'mutation { confirmSecondFactor(challenge: "c", code: "123456") { status } }',
+    ],
+    [
+      "recoverSecondFactor",
+      'mutation { recoverSecondFactor(challenge: "c", recoveryCode: "abc") { status } }',
+    ],
+    ["signOut", "mutation { signOut }"],
+    [
+      "requestPasswordReset",
+      'mutation { requestPasswordReset(email: "a@b.test") }',
+    ],
+    [
+      "resetPassword",
+      'mutation { resetPassword(token: "t", password: "long enough password") }',
+    ],
+    ["requestStepUp", "mutation { requestStepUp { method } }"],
+    [
+      "confirmStepUp",
+      'mutation { confirmStepUp(challenge: "c", code: "123456") }',
+    ],
+    ["enrolSecondFactor", "mutation { enrolSecondFactor { secret } }"],
+    [
+      "activateSecondFactor",
+      'mutation { activateSecondFactor(code: "123456") { recoveryCodes } }',
+    ],
+    [
+      "regenerateRecoveryCodes",
+      'mutation { regenerateRecoveryCodes(code: "123456") { recoveryCodes } }',
+    ],
+    ["disableSecondFactor", 'mutation { disableSecondFactor(code: "123456") }'],
+  ];
+  for (const [name, query] of operations) {
+    test(`${name} refuses a key: 401 api-key-not-accepted`, async () => {
+      const h = await harness();
+      const key = await h.apiKey(await h.account());
+      const result = await h.client.query(query, {
         headers: { authorization: `Bearer ${key}` },
-      },
-    );
-    expect(result.errors?.[0]?.extensions?.code).toBe(
-      "auth.errors.step-up-required",
-    );
-  });
+      });
+      expect(result.errors?.[0]?.extensions?.code).toBe(
+        "auth.errors.api-key-not-accepted",
+      );
+      expect(result.response.status).toBe(401);
+    });
+  }
 
   test("a key-shaped bearer off the key paths is 401 api-key-not-accepted", async () => {
     const h = await harness();
@@ -76,6 +125,38 @@ describe("API keys", () => {
       expect(body.errors[0]?.extensions.code).toBe(
         "auth.errors.api-key-not-accepted",
       );
+    }
+  });
+
+  test("a revoked or unknown key off the key paths is refused the same way", async () => {
+    const h = await harness();
+    const user = await h.account();
+    const key = await h.apiKey(user);
+    // Revoke it: its owner signs every key out.
+    await h.revokeKeys(user);
+    for (const token of [key, "stx_unknown_unknown"]) {
+      for (const path of ["/admin", "/media-x", "/"]) {
+        const response = await h.app.fetch(withKey(token, path));
+        expect(response.status).toBe(401);
+        const body = (await response.json()) as {
+          errors: { extensions: { code: string } }[];
+        };
+        expect(body.errors[0]?.extensions.code).toBe(
+          "auth.errors.api-key-not-accepted",
+        );
+      }
+    }
+  });
+
+  test("/media accepts a key-shaped bearer, valid or not (the route decides)", async () => {
+    const h = await harness();
+    for (const token of [
+      await h.apiKey(await h.account()),
+      "stx_unknown_unknown",
+    ]) {
+      const response = await h.app.fetch(withKey(token, "/media"));
+      const body = await response.text();
+      expect(body).not.toContain("api-key-not-accepted");
     }
   });
 

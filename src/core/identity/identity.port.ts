@@ -6,6 +6,10 @@
 
 export type Locale = "en" | "fr";
 
+// How long a sign-in or a step-up keeps a session "fresh" for the sensitive
+// operations (enrolling, disabling a second factor…).
+export const FRESH_FOR_MS = 10 * 60 * 1000;
+
 // Who a request is from. `accountId` is the opaque string every other module
 // stores. A session principal has `sessionId`, `sessionExpiresAt` and
 // `authenticatedAt`; an API key principal has `apiKeyId` and none of those.
@@ -90,7 +94,6 @@ export interface Identity {
     locale: Locale;
   }): Promise<SignInResult>;
   completeSignUp(token: string, password: string): Promise<SignInResult>;
-  resendVerificationEmail(principal: Principal): Promise<boolean>;
   signIn(input: { email: string; password: string }): Promise<SignInResult>;
   confirmSecondFactor(challenge: string, code: string): Promise<SignInResult>;
   recoverSecondFactor(
@@ -124,6 +127,7 @@ export interface Identity {
     principal: Principal,
     code: string,
   ): Promise<{ recoveryCodes: string[] }>;
+  // `code` is a code of the app or, for a lost phone, a recovery code.
   disableSecondFactor(
     request: Request,
     principal: Principal,

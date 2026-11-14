@@ -78,7 +78,6 @@ describe("the identity operations over /graphql", () => {
     for (const query of [
       "mutation { enrolSecondFactor { secret } }",
       "mutation { requestStepUp { method } }",
-      "mutation { resendVerificationEmail }",
       "{ secondFactorStatus { enabled } }",
     ]) {
       const result = await h.client.query(query);
