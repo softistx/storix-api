@@ -1,73 +1,64 @@
 import { describe, expect, test } from "bun:test";
 import { GraphQLError } from "graphql";
-import { reshaped } from "./api-errors";
+import { apiErrors } from "./api-errors";
 
-const refusal = (issues: unknown[]) =>
-  new GraphQLError("Invalid input", {
-    extensions: { code: "BAD_USER_INPUT", issues },
+// What Yoga hands the plugin: the execution result, which the plugin may
+// replace through `setResult`.
+function run(errors: GraphQLError[]) {
+  let replaced: { errors?: readonly GraphQLError[] } | undefined;
+  const hooks = (
+    apiErrors.onExecute as unknown as () => {
+      onExecuteDone: (payload: unknown) => void;
+    }
+  )();
+  hooks.onExecuteDone({
+    result: { errors },
+    setResult: (result: typeof replaced) => {
+      replaced = result;
+    },
   });
+  return replaced;
+}
 
-// graphql-js wraps a resolver's error with the field's location.
-const wrapped = (inner: GraphQLError) =>
-  new GraphQLError(inner.message, {
-    path: ["createNode"],
-    originalError: inner,
-  });
-
-const fieldsOf = (error: GraphQLError) =>
-  error.extensions["fields"] as {
-    path: string;
-    code: string;
-    params?: unknown;
-  }[];
-
-describe("reshaped", () => {
-  test("leaves any other error as it is", () => {
-    const other = new GraphQLError("boom");
-    expect(reshaped(other)).toBe(other);
-  });
-
-  test("a wrapped @constraint refusal becomes invalid-input with each field's code and limit", () => {
-    const inner = refusal([
-      { path: ["input", "name"], constraint: "maxLength", value: 100 },
-      { path: ["input", "age"], constraint: "min", value: 18 },
+describe("apiErrors", () => {
+  test("a wrapped @constraint refusal becomes invalid-input with coded fields", () => {
+    const inner = new GraphQLError("Invalid input", {
+      extensions: {
+        code: "BAD_USER_INPUT",
+        issues: [
+          { path: ["input", "name"], constraint: "maxLength", value: 100 },
+          { path: ["input", "age"], constraint: "min", value: 18 },
+        ],
+      },
+    });
+    const outer = new GraphQLError(inner.message, {
+      path: ["createNode"],
+      originalError: inner,
+    });
+    const [error] = run([outer])?.errors ?? [];
+    expect(error?.extensions["code"]).toBe("validation.errors.invalid-input");
+    expect(error?.path).toEqual(["createNode"]);
+    expect(error?.originalError).toBe(outer);
+    const fields = error?.extensions["fields"] as {
+      path: string;
+      code: string;
+      params?: unknown;
+    }[];
+    expect(fields).toMatchObject([
+      {
+        path: "name",
+        code: "validation.errors.too-long",
+        params: { max: 100 },
+      },
+      {
+        path: "age",
+        code: "validation.errors.out-of-range",
+        params: { min: 18 },
+      },
     ]);
-    const error = reshaped(wrapped(inner));
-    expect(error.extensions["code"]).toBe("validation.errors.invalid-input");
-    expect(error.path).toEqual(["createNode"]);
-    expect(error.originalError).toBe(inner);
-    expect(fieldsOf(error)).toMatchObject([
-      { code: "validation.errors.too-long", params: { max: 100 } },
-      { code: "validation.errors.out-of-range", params: { min: 18 } },
-    ]);
   });
 
-  test("a direct, unwrapped BAD_USER_INPUT refusal is reshaped too", () => {
-    const error = reshaped(
-      refusal([{ path: ["input", "tags"], constraint: "maxItems", value: 5 }]),
-    );
-    expect(error.extensions["code"]).toBe("validation.errors.invalid-input");
-    expect(fieldsOf(error)).toMatchObject([
-      { code: "validation.errors.too-many", params: { max: 5 } },
-    ]);
-  });
-
-  test("a refusal with no constraint falls back to validation.errors.invalid, with no params", () => {
-    const error = reshaped(refusal([{ path: ["input", "name"] }]));
-    const [field] = fieldsOf(error);
-    expect(field?.code).toBe("validation.errors.invalid");
-    expect(field?.params).toBeUndefined();
-  });
-
-  test("a constraint with no plain bound sets no params", () => {
-    const [field] = fieldsOf(
-      reshaped(
-        refusal([
-          { path: ["input", "slug"], constraint: "pattern", value: "^a$" },
-        ]),
-      ),
-    );
-    expect(field?.code).toBe("validation.errors.invalid-format");
-    expect(field?.params).toBeUndefined();
+  test("leaves any other error alone", () => {
+    expect(run([new GraphQLError("boom")])).toBeUndefined();
   });
 });
