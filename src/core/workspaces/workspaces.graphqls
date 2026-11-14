@@ -1,0 +1,45 @@
+"A workspace: the tenant. Its files, members and settings are its own, in a database of its own."
+type Workspace {
+  id: ID!
+  "Lower case words joined by hyphens, unique across workspaces; the tenant header may carry it instead of the id."
+  slug: String!
+  name: String!
+  "The caller's role in it."
+  myRole: WorkspaceRole!
+  createdAt: DateTime!
+}
+
+input CreateWorkspaceInput {
+  "1 to 100 characters, spaces around are dropped."
+  name: String! @constraint(minLength: 1, maxLength: 100)
+  "1 to 40 characters: lower case letters, digits and hyphens, not starting or ending with a hyphen, and not 24 hexadecimal digits (an id)."
+  slug: String!
+    @constraint(
+      minLength: 1
+      maxLength: 40
+      pattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+    )
+}
+
+extend type Query {
+  """
+  The request's workspace, named by the `x-storix-workspace` header (its id or
+  its slug), with the caller's role. 400 `workspaces.errors.workspace-required`
+  without the header; 404 `workspaces.errors.not-found` for an unknown workspace
+  AND for one the caller does not belong to; 401
+  `auth.errors.api-key-not-accepted` for a personal API key.
+  """
+  workspace: Workspace!
+  "The workspaces the caller belongs to, by name. Needs a session, no header."
+  myWorkspaces: [Workspace!]!
+}
+
+extend type Mutation {
+  """
+  Creates a workspace, with its own database, and makes the caller its OWNER.
+  Needs a session. 409 `workspaces.errors.slug-taken`; 400
+  `validation.errors.invalid-input` (a slug of 24 hexadecimal digits or an
+  empty name); 429 `auth.errors.rate-limited`.
+  """
+  createWorkspace(input: CreateWorkspaceInput!): Workspace!
+}

@@ -41,11 +41,31 @@ export const identity = defineCodes("identity", [
   "unavailable",
 ]);
 
+// The workspaces (src/core/workspaces). `not-found` is also the answer for a
+// workspace the caller is not a member of, so none is told from an unknown one.
+export const workspaces = defineCodes("workspaces", [
+  "not-found",
+  // 400: a workspace operation without the `x-storix-workspace` header.
+  "workspace-required",
+  "slug-taken",
+  // 409: the change would leave the workspace without an owner.
+  "last-owner",
+]);
+
+// The memberships of a workspace (src/core/members).
+export const members = defineCodes("members", ["not-found"]);
+
 // Every code the API answers with, in module order: the inventory. tsc refuses
 // a code that is not in it (`fail`, `FieldIssue`), the coverage spec requires
 // a message for each in every shipped language and a row in CONTEXT.md, and
 // that every registered module's `codes` are in it. A slice that adds a module
 // with codes adds its `codes` here, beside the manifest's.
-export const errorCodes = [...auth, ...validation, ...identity] as const;
+export const errorCodes = [
+  ...auth,
+  ...validation,
+  ...identity,
+  ...workspaces,
+  ...members,
+] as const;
 
 export type ErrorCode = (typeof errorCodes)[number];

@@ -160,6 +160,9 @@ export const env = defineEnv({
   RATE_LIMIT_SIGN_UP: attempts("10/3600"),
   RATE_LIMIT_SIGN_IN: attempts("30/900"),
   RATE_LIMIT_PASSWORD_RESET: attempts("10/3600"),
+  // RATE_LIMIT_WORKSPACE_CREATE: the same, for createWorkspace (each one
+  // provisions a database).
+  RATE_LIMIT_WORKSPACE_CREATE: attempts("10/3600"),
   // REDIS_URL: redis:// or rediss://. Rate limits, queues and tokens.
   // Required in production; unset elsewhere.
   REDIS_URL: orUnset(

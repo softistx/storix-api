@@ -89,6 +89,15 @@ scalar CIDRv6 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc4291")
 """An ISO 3166-1 alpha-2 country code, such as FR."""
 scalar CountryCode @specifiedBy(url: "https://www.iso.org/iso-3166-country-codes.html")
 
+input CreateWorkspaceInput {
+  """1 to 100 characters, spaces around are dropped."""
+  name: String! @constraint(minLength: 1, maxLength: 100)
+  """
+  1 to 40 characters: lower case letters, digits and hyphens, not starting or ending with a hyphen, and not 24 hexadecimal digits (an id).
+  """
+  slug: String! @constraint(minLength: 1, maxLength: 40, pattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
+}
+
 """
 A cuid2: a lowercase letter, then lowercase letters and digits, 2 to 32 in all.
 """
@@ -214,11 +223,41 @@ A MAC address: six hex pairs separated by colons (not the IEEE hyphen form).
 """
 scalar MAC
 
+"""A person in a workspace."""
+type Member {
+  """The account's opaque id."""
+  accountId: ID!
+  """The account's address; null when the account no longer exists."""
+  email: EmailAddress
+  id: ID!
+  joinedAt: DateTime!
+  """The account's name; null when the account no longer exists."""
+  name: String
+  role: WorkspaceRole!
+}
+
+"""A page of members."""
+type MemberPage {
+  nodes: [Member!]!
+  pageInfo: PageInfo!
+  """Every current member of the workspace."""
+  totalCount: Int!
+}
+
 type Mutation {
   """
   The first code of the app: the factor is active, its ten recovery codes are answered once, the account's other sessions end. Needs a fresh session.
   """
   activateSecondFactor(code: String! @constraint(maxLength: 40)): RecoveryCodes!
+  """
+  Changes a member's role. Needs `members:manage` (OWNER, ADMIN) AND a fresh
+  session (403 `auth.errors.step-up-required`: `requestStepUp` then
+  `confirmStepUp`); only an OWNER may make or change an owner (403
+  `auth.errors.forbidden`). 404 `members.errors.not-found` for a member of
+  another workspace; 409 `workspaces.errors.last-owner` when it would leave
+  no owner.
+  """
+  changeMemberRole(memberId: ID!, role: WorkspaceRole!): Member!
   """
   Ends a sign-up: the token of the verification mail and the password the
   visitor chose, posted together. Proves the address, sets the password and
@@ -236,6 +275,13 @@ type Mutation {
   """
   confirmStepUp(challenge: String! @constraint(maxLength: 200), code: String! @constraint(maxLength: 40)): DateTime!
   """
+  Creates a workspace, with its own database, and makes the caller its OWNER.
+  Needs a session. 409 `workspaces.errors.slug-taken`; 400
+  `validation.errors.invalid-input` (a slug of 24 hexadecimal digits or an
+  empty name); 429 `auth.errors.rate-limited`.
+  """
+  createWorkspace(input: CreateWorkspaceInput!): Workspace!
+  """
   Turns the factor off on a current code of the app, or on a recovery code when the phone is lost. Needs a fresh session.
   """
   disableSecondFactor(code: String! @constraint(maxLength: 40)): Boolean!
@@ -244,6 +290,12 @@ type Mutation {
   """
   enrolSecondFactor: SecondFactorEnrolment!
   """
+  Leaves the request's workspace. Any member; 409
+  `workspaces.errors.last-owner` for the last owner, who promotes another
+  owner first.
+  """
+  leaveWorkspace: Boolean!
+  """
   A recovery code instead of the app's; each works once. Refused as confirmSecondFactor.
   """
   recoverSecondFactor(challenge: String! @constraint(maxLength: 200), recoveryCode: String! @constraint(maxLength: 40)): SignInPayload!
@@ -251,6 +303,12 @@ type Mutation {
   Ten new recovery codes on a current code of the app; the old ones end. Needs a fresh session.
   """
   regenerateRecoveryCodes(code: String! @constraint(maxLength: 40)): RecoveryCodes!
+  """
+  Removes a member from the workspace. Needs `members:manage`; removing an
+  owner needs `owners:manage` (OWNER). Removing yourself is leaving. 404
+  `members.errors.not-found`; 409 `workspaces.errors.last-owner`.
+  """
+  removeMember(memberId: ID!): Boolean!
   """
   Sends a password-reset link. True once accepted, whether or not the e-mail holds an account; 429 `auth.errors.rate-limited` past five per ten minutes for an address.
   """
@@ -342,12 +400,31 @@ type Query {
   """
   errorCatalogue(language: Language): ErrorCatalogue!
   """
+  The current members of the request's workspace (the `x-storix-workspace`
+  header), oldest first. Needs `members:read`, which every role holds. 400
+  `workspaces.errors.workspace-required`; 404 `workspaces.errors.not-found`;
+  401 `auth.errors.api-key-not-accepted` for a personal API key.
+  """
+  members(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): MemberPage!
+  """
+  The workspaces the caller belongs to, by name. Needs a session, no header.
+  """
+  myWorkspaces: [Workspace!]!
+  """
   Whether the caller's second factor is on and how many recovery codes are left. 401 `auth.errors.unauthenticated`.
   """
   secondFactorStatus: SecondFactorStatus!
   version: String!
   """The caller, or null when anonymous."""
   viewer: Viewer
+  """
+  The request's workspace, named by the `x-storix-workspace` header (its id or
+  its slug), with the caller's role. 400 `workspaces.errors.workspace-required`
+  without the header; 404 `workspaces.errors.not-found` for an unknown workspace
+  AND for one the caller does not belong to; 401
+  `auth.errors.api-key-not-accepted` for a personal API key.
+  """
+  workspace: Workspace!
 }
 
 """A CSS rgb() color, such as rgb(255, 0, 0)."""
@@ -526,6 +603,33 @@ type Viewer {
 
 """No value: always null."""
 scalar Void
+
+"""
+A workspace: the tenant. Its files, members and settings are its own, in a database of its own.
+"""
+type Workspace {
+  createdAt: DateTime!
+  id: ID!
+  """The caller's role in it."""
+  myRole: WorkspaceRole!
+  name: String!
+  """
+  Lower case words joined by hyphens, unique across workspaces; the tenant header may carry it instead of the id.
+  """
+  slug: String!
+}
+
+"""What a member may do in a workspace, highest first."""
+enum WorkspaceRole {
+  """Members, teams, settings, API keys, audit and storage."""
+  ADMIN
+  """Their own files and what is shared with them."""
+  MEMBER
+  """
+  Everything, deletes the workspace, and the only role that makes or changes an owner.
+  """
+  OWNER
+}
 
 """An xid: 20 characters of lowercase base32hex."""
 scalar XID @specifiedBy(url: "https://github.com/rs/xid")
