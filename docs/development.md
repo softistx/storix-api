@@ -44,7 +44,7 @@ replica set.
 - `bun run db:migrate` applies the pending core migrations (the `translations` rows for now). Flags: `--dry-run` lists them, `--status` lists every id with its state (applied, pending, missing), `--rollback-to <id>` undoes everything after `<id>` (the migration `<id>` itself stays applied).
 - `bun run db:sync` creates the indexes and validators of the core collections (`--dry-run` previews).
 - A new error code needs its `defineCodes` entry, a migration with both languages, and a CONTEXT.md row: `coverage.spec.ts` and `bun run context:check` fail otherwise.
-- A migration that creates codes undoes them with `removeTexts`; one that rewords codes an earlier migration created undoes the rewording with `restoreTexts(previous)` (`translations.seeds.ts`).
+- A migration that creates codes undoes them with `removeTexts`; one that rewords codes an earlier migration created undoes the rewording with `restoreTexts(previous)` (`@alxia/i18n`, over `translations.store.ts`).
 
 ## Boot and deploy
 

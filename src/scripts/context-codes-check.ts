@@ -40,7 +40,7 @@ if (import.meta.main) {
   }
   const codes: string[] = [];
   for await (const file of new Glob("src/**/*.ts").scan({ cwd: root })) {
-    if (file.endsWith(".spec.ts") || file.endsWith("define-codes.ts")) continue;
+    if (file.endsWith(".spec.ts")) continue;
     codes.push(...declaredCodes(await Bun.file(`${root}${file}`).text()));
   }
   const missing = missingCodes(
