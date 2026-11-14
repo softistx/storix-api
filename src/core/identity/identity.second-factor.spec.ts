@@ -418,3 +418,26 @@ describe("step-up", () => {
     expect(() => h.identity.assertFresh(key)).toThrow();
   });
 });
+
+describe("guessing recovery codes through disableSecondFactor", () => {
+  // Temporary, until nxgt-janus#770: janus counts a recovery code's tries per
+  // challenge, and each disableSecondFactor signs the account in afresh, so
+  // janus alone never throttles them. The per-address limit in the resolver
+  // does (rate-limits.spec.ts).
+  test("ten wrong recovery codes in a row are each refused as invalid, janus does not throttle them", async () => {
+    const { h, user } = await withSecondFactor();
+    const principal = { ...user.principal, secondFactor: true };
+    const request = new Request("http://localhost/", {
+      headers: { authorization: `Bearer ${user.token}` },
+    });
+    for (let i = 0; i < 10; i++) {
+      expect(
+        codeOf(
+          await refusal(
+            h.identity.disableSecondFactor(request, principal, `WRONG-${i}`),
+          ),
+        ),
+      ).toBe("identity.errors.second-factor-invalid");
+    }
+  });
+});

@@ -1,4 +1,4 @@
-// Temporary, until @softistx/mail#158 (a console Mailer with token redaction).
+// Temporary, until nxgt-mail#158 (a console Mailer with token redaction).
 import type { Mailer, MailMessage } from "@softistx/mail";
 
 // A link's token, up to the end of its value: what the console must not
