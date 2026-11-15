@@ -105,10 +105,15 @@ export function filesWorld() {
     type = "text/plain",
     kind = "files",
   ) {
+    // The declared length, as a client sends it: the quota reads it.
+    const length =
+      typeof body === "string"
+        ? new TextEncoder().encode(body).length
+        : body.length;
     const res = await call(user, workspace, `/media/${kind}`, {
       method: "PUT",
       body: body as BodyInit,
-      headers: { "content-type": type },
+      headers: { "content-type": type, "content-length": String(length) },
     });
     if (res.status !== 200) throw new Error(`upload ${res.status}`);
     return (await res.json()) as {

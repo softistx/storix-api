@@ -122,6 +122,14 @@ export const files = defineCodes("files", [
   "copy-too-large",
 ]);
 
+// The workspace's storage quota (src/core/workspaces, src/modules/quotas).
+export const quotas = defineCodes("quotas", [
+  // 413: the file does not fit in what the workspace has left. Raised by the
+  // `/media` PUT from the declared length, before the body is read, and by
+  // `addFile`, which decides.
+  "exceeded",
+]);
+
 // The object store behind /media (src/core/storage). The refusals of the media
 // routes, in the GraphQL error shape.
 export const storage = defineCodes("storage", [
@@ -163,6 +171,7 @@ export const errorCodes = [
   ...teams,
   ...nodes,
   ...files,
+  ...quotas,
   ...storage,
 ] as const;
 

@@ -45,6 +45,8 @@ function codeOf(refusal: MediaRefusal): Mapped {
         code: "storage.errors.rate-limited",
         params: { seconds: refusal.details.retryAfter ?? 1 },
       };
+    case "quota_exceeded":
+      return { code: "quotas.errors.exceeded" };
     case "unprocessable":
       return { code: "storage.errors.unprocessable" };
     case "invalid_crop":

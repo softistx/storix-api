@@ -43,3 +43,13 @@ export const recordFileUpdate = (
     target: { type: node.type, id: node.id, name: node.name },
     meta: { changed: changed.join(",") },
   });
+
+// An upload `addFile` refused because the workspace is full. The target is the
+// workspace and the name is the one asked for; the sizes stay out (the
+// quota's figures are not for the audit log).
+export const recordQuotaRefusal = (done: Done, name: string) =>
+  audit.record({
+    ...done,
+    action: "quota.exceeded",
+    target: { type: "WORKSPACE", id: done.workspaceId, name },
+  });

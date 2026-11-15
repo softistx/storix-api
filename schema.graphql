@@ -132,7 +132,7 @@ One thing that happened in the workspace. Never holds an address, a code, a pass
 """
 type AuditEvent {
   """
-  `<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete, node.folder-create, node.rename, node.move, node.copy, file.add, file.update.
+  `<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete, node.folder-create, node.rename, node.move, node.copy, file.add, file.update, quota.exceeded.
   """
   action: String!
   actor: AuditActor!
@@ -1016,6 +1016,12 @@ type Query {
   """
   secondFactorStatus: SecondFactorStatus!
   """
+  The workspace's storage: its quota, what is used and the split. Any member
+  may read it. 400 `workspaces.errors.workspace-required`, 404
+  `workspaces.errors.not-found`; 401 `auth.errors.api-key-not-accepted`.
+  """
+  storage: Storage!
+  """
   One team of the request's workspace. 404 `teams.errors.not-found` for an
   unknown id AND for a team of another workspace.
   """
@@ -1157,6 +1163,27 @@ enum StepUpMethod {
   AUTHENTICATOR
   """A six-digit code mailed to the account's current address."""
   EMAIL
+}
+
+"""
+What a workspace stores against its quota. Sizes are bytes. A blob that several
+files share (a copy) counts once, and versions and the trash count too.
+"""
+type Storage {
+  """Of `usedBytes`, what live files hold."""
+  currentBytes: Float!
+  """The files of the workspace, copies and trashed ones included."""
+  files: Int!
+  """
+  The bytes the workspace may store; 10 GiB unless a platform administrator changed it.
+  """
+  quotaBytes: Float!
+  """Of `usedBytes`, what only the trash holds."""
+  trashBytes: Float!
+  """The bytes stored: `currentBytes` + `versionBytes` + `trashBytes`."""
+  usedBytes: Float!
+  """Of `usedBytes`, what only older versions hold."""
+  versionBytes: Float!
 }
 
 """

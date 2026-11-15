@@ -199,6 +199,20 @@ query { nodes(parentId: "<folder id>", filter: { families: [IMAGE], name: "png" 
 last page's `endCursor` with the same folder, filter and sort. `node(id)` answers one folder or file. Once recorded, a
 `files` object is readable at `/media/files/<key>` by its owner only; an unrecorded one is 404.
 
+### Storage quota
+
+Each workspace has a quota (`quotaBytes`, 10 GiB by default) and counts what it stores in `usage`: `bytes` (each stored
+object once, so a copy that shares a blob adds nothing), `files`, `versionBytes` and `trashBytes` (kept at 0 until E3).
+`PUT /media/files` is refused with 413 `quotas.errors.exceeded` before its body is read when the declared length does
+not fit (a chunked body is checked at its worst case, 95 MiB), and `addFile` refuses atomically, leaving no object, node
+or blob. The `storage` query (`workspace:read`) answers `quotaBytes`, `usedBytes`, `currentBytes`, `versionBytes`,
+`trashBytes` and `files`.
+
+```sh
+bun run workspace:quota acme 20GiB     # set a quota (bytes, 20GiB, or "default")
+bun run quota:reconcile                # recount every workspace and fix any drift
+```
+
 ### Rename, move, copy, tags and metadata
 
 `renameNode` and `moveNodes` work on files and folders alike (a name clash is `nodes.errors.name-taken`, in any case).
