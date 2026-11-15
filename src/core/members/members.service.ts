@@ -125,28 +125,30 @@ interface Change {
   canManageOwners: boolean;
 }
 
-// Changes a member's role. 404 `members.errors.not-found` for a member of
+// Changes a member's role; answers the member and the role they had. 404 `members.errors.not-found` for a member of
 // another workspace or one who left; 403 when only an owner may touch the
 // member or the role; 409 `workspaces.errors.last-owner` when it would leave
 // the workspace without an owner.
 export async function changeRole(
   mongo: MembersMongo,
   input: Change & { memberId: string; role: WorkspaceRole },
-): Promise<MemberDoc> {
+): Promise<{ member: MemberDoc; from: WorkspaceRole }> {
   const workspaceId = toObjectId(input.workspaceId);
   return mongo.transaction(async (tx) => {
     await lockOwners(tx, workspaceId);
     const target = await activeMember(tx, workspaceId, {
       _id: input.memberId,
     });
-    if (target.role === input.role) return target;
+    if (target.role === input.role)
+      return { member: target, from: target.role };
     const touchesOwner = target.role === "OWNER" || input.role === "OWNER";
     if (touchesOwner && !input.canManageOwners) throw forbidden();
     if (target.role === "OWNER")
       await assertAnotherOwner(tx, workspaceId, target);
-    return tx.db.members
+    const member = await tx.db.members
       .as(input.actorId)
       .update(target._id, { role: input.role, version: target.version });
+    return { member, from: target.role };
   });
 }
 

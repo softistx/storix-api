@@ -12,7 +12,7 @@ import { removeMemberFromTeams, type TeamsMongo } from "./teams.service";
 // leaves its teams (`onMemberRemoved`).
 export const teamsModule = defineModule({
   name: "teams",
-  dependsOn: ["members", "workspaces"],
+  dependsOn: ["members", "workspaces", "audit"],
   collections: { teams },
   codes,
   permissions: ["teams:read", "teams:manage"],

@@ -11,6 +11,7 @@ const base = {
   REDIS_URL: "redis://localhost:6379",
   TRUSTED_PROXIES: "10.0.0.0/8",
   API_PROXY_SECRET: SECRET,
+  AUDIT_IP_KEY: SECRET,
   TOTP_KEYS: "k1:c3RvcmF4LXNwZWMtdG90cC1rZXktMzItYnl0ZXMhISE",
 };
 
@@ -45,6 +46,7 @@ describe("env in production", () => {
     "REDIS_URL",
     "TRUSTED_PROXIES",
     "API_PROXY_SECRET",
+    "AUDIT_IP_KEY",
   ]) {
     test(`${name} is required`, async () => {
       const { code, stderr } = await load({ [name]: undefined });
@@ -52,6 +54,12 @@ describe("env in production", () => {
       expect(stderr).toContain(name);
     });
   }
+
+  test("AUDIT_IP_KEY needs at least 32 characters", async () => {
+    const short = await load({ AUDIT_IP_KEY: "k".repeat(31) });
+    expect(short.code).not.toBe(0);
+    expect(short.stderr).toContain("at least 32 characters");
+  });
 
   test("API_PROXY_SECRET needs at least 32 characters", async () => {
     const short = await load({ API_PROXY_SECRET: "s".repeat(31) });

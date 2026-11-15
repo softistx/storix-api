@@ -68,6 +68,7 @@ Accounts live behind the `Identity` port (`src/core/identity`); janus is its ada
 nowhere else (`bun run deps:check`). `src/config/auth.ts` builds the port the server runs.
 
 - `TOTP_KEYS` seals the accounts' authenticator secrets: `id:key`, each key 32 random bytes in base64 (`openssl rand -base64 32`), comma-separated, the first key seals and every key opens (a new key is put first when rotating). Required in production; a development key stands in elsewhere. A lost key makes every enrolled second factor unreadable.
+- `AUDIT_IP_KEY` keys the hash of the client address kept in the audit log (see "Audit log"): 32 characters or more, required in production, a development default elsewhere.
 - `MAIL_URL` (`smtp://` or `smtps://`) sends the mails; unset, they are printed to the console (tokens print as `<hidden>` outside `NODE_ENV=development`). `UI_ORIGIN` starts every link of a mail and `MAIL_FROM` is the sender. The UI pages the links open are `/auth/verify-email`, `/auth/reset-password` and `/account/security`, each reading `?token=`, and `/invitations/accept`, which reads the code from the fragment (`#<code>`).
 - A sign-up is passwordless: the account is created with no credential and its owner chooses a password from the verification link (`completeSignUp`). A taken address answers the same way and creates nothing.
 - A personal API key (`stx_...`) is read from `Authorization: Bearer` only, and only on `/graphql`, `/media`, `/health` and `/ready`; anywhere else it is refused 401 `auth.errors.api-key-not-accepted`, and so is a key-shaped bearer (`stx_...`) that did not authenticate. Every account operation but `viewer` refuses a key too (`requireSession`, `src/core/identity/identity.resolver.ts`). Creating, listing and revoking keys come with the slice that needs them; the key store is wired and synced.
@@ -108,6 +109,16 @@ An admin invites an address into the request's workspace; the invitee accepts wi
 - `memberIds` are `Member.id`s. `setTeamMembers` replaces the list, drops repeats, and refuses every id that is not a current member of the request's workspace (400 `teams.errors.member-unknown`, nothing changes).
 - A team of another workspace is 404 `teams.errors.not-found`: the request's workspace database is the only one a resolver reaches.
 - A member who is removed or leaves is taken out of every team: the kernel cannot import a business module, so `src/core/members` exposes `onMemberRemoved` and `teams` registers itself when its manifest loads; `removeMember` and `leaveWorkspace` call the listeners once the membership has ended. A listener that fails is logged and never undoes the removal; the `Team` view only ever lists current members, so a missed clean-up stays invisible.
+
+## Audit log
+
+`src/core/audit` keeps an append-only log of the workspace's writes in the workspace's own database (`auditEvents`). The kernel's `audit.record(event)` port is called by a resolver after the write committed; a failure to record is logged (`console.error`) and never undoes the write. Modules reach it through `@/core/audit` and declare `dependsOn: ["audit"]`.
+
+- **Events**: `workspace.create`; `member.role-change` (`from`, `to`), `member.remove`, `member.leave` (`accountId`, `role`); `invitation.issue`, `invitation.resend`, `invitation.revoke`, `invitation.accept` (`role`; the target's name is the invitee's email); `team.create`, `team.rename` (`from`, `to`), `team.set-members` (`count`, `added`, `removed`), `team.delete`. A role change to the same role and a refused write record nothing. There is no workspace-update mutation in this effort, so no event for one.
+- **Shape**: `at`, `actor` (`type` MEMBER, API_KEY, TOKEN or LINK; `id`; `label`), `action`, `target` (`type`, `id`, `name`), `ipHash`, `meta` (strings, numbers and booleans). `meta` never holds a secret: an invitation code, a password or a token is not recorded, and a key whose name looks like one is dropped.
+- **`ipHash`** is the HMAC-SHA256 (hex) of the client address under `AUDIT_IP_KEY`, never the address. The same address gives the same hash, so events can be correlated; rotating the key breaks the correlation with older events. `AUDIT_IP_KEY` is required in production (32 characters or more) and has a development default.
+- **Retention**: a TTL index removes an event after 365 days. Indexes: `at`, `target.id` + `at`, `actor.id` + `at`.
+- **Reading**: `auditEvents(filter, first, after)`, newest first, 1 to 100 per page (50 by default), with a `filter` on `actorId`, `action`, `targetId` and a `from` (included) / `to` (excluded) period. It needs `audit:read` (OWNER through "holds all", ADMIN through `defaultGrants`); a MEMBER gets 403 `auth.errors.forbidden` and a personal API key 401 `auth.errors.api-key-not-accepted`. A cursor belongs to the filter it came from: with another filter it is 400 `validation.errors.invalid-cursor` (field `after`). The page has no total count.
 
 ## The proxy secret
 

@@ -1,5 +1,6 @@
 import { type Module, resolveModules } from "@alxia/modules";
 import type { Migration } from "@softistx/mongo/migrations";
+import { auditModule } from "../core/audit";
 import { identityModule } from "../core/identity/module";
 import { invitationsModule } from "../core/invitations";
 import { membersModule } from "../core/members";
@@ -14,6 +15,7 @@ import { teamsModule } from "./teams/public";
 const registered = [
   system,
   translationsModule,
+  auditModule,
   identityModule,
   membersModule,
   workspacesModule,

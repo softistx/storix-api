@@ -2,6 +2,7 @@ import { collectionsOf } from "@alxia/modules";
 import { perOrganization } from "@alxia/tenancy";
 import { defineMongo } from "@softistx/mongo";
 import type { TenancyPort } from "../core/access";
+import { bindAudit } from "../core/audit";
 import { membershipOf } from "../core/members";
 import { workspaceRegistry } from "../core/workspaces";
 import { modules } from "../modules/registry";
@@ -34,6 +35,13 @@ export const store = perOrganization({
         env.MONGO_AUTO_SYNC,
       ),
     }),
+});
+
+// The audit log's wiring: events go to the workspace's own database, and
+// addresses are hashed under AUDIT_IP_KEY.
+bindAudit({
+  databaseOf: (workspaceId) => store.databaseOf(workspaceId),
+  ipKey: env.AUDIT_IP_KEY,
 });
 
 // The same store, as the plain port the request context carries

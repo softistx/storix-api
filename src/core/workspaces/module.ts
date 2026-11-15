@@ -9,7 +9,7 @@ import { workspacesResolvers } from "./workspaces.resolver";
 // database, reached through the request's scope (src/config/tenancy.ts).
 export const workspacesModule = defineModule({
   name: "workspaces",
-  dependsOn: ["members"],
+  dependsOn: ["members", "audit"],
   coreCollections: { workspaces },
   codes,
   permissions: ["workspace:read"],

@@ -1,7 +1,9 @@
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import type { Context } from "@/http/context";
 import { requireWorkspaceMember, requireWorkspacePermission } from "../access";
+import { memberActor } from "../audit";
 import type { Account } from "../identity";
+import { recordLeave, recordRemoval, recordRoleChange } from "./members.audit";
 import { memberRemoved } from "./members.removal";
 import {
   changeRole,
@@ -31,6 +33,19 @@ async function accountsOf(ctx: Context, members: readonly MemberDoc[]) {
     members.map((member) => member.accountId),
   );
   return new Map(accounts.map((account) => [account.accountId, account]));
+}
+
+// The name of a member's account for the audit log, null when the account
+// cannot be read: the removal has committed, so a failed lookup must not fail
+// the request.
+async function nameOf(ctx: Context, member: MemberDoc): Promise<string | null> {
+  try {
+    return (
+      (await accountsOf(ctx, [member])).get(member.accountId)?.name ?? null
+    );
+  } catch {
+    return null;
+  }
 }
 
 export const membersResolvers: Resolvers = {
@@ -66,7 +81,7 @@ export const membersResolvers: Resolvers = {
       // A role change is sensitive: a fresh session, after the permission so
       // that a caller who may not change roles learns nothing from it.
       ctx.identity.assertFresh(principal);
-      const member = await changeRole(handleOf(scope), {
+      const { member, from } = await changeRole(handleOf(scope), {
         workspaceId: scope.tenant.id,
         memberId,
         role,
@@ -74,7 +89,19 @@ export const membersResolvers: Resolvers = {
         canManageOwners: ctx.access.roleCan(scope.member, "owners:manage"),
       });
       const accounts = await accountsOf(ctx, [member]);
-      return memberView(member, accounts.get(member.accountId));
+      const view = memberView(member, accounts.get(member.accountId));
+      if (from !== member.role) {
+        await recordRoleChange({
+          workspaceId: scope.tenant.id,
+          actor: memberActor(principal),
+          ip: ctx.ip,
+          member,
+          name: view.name,
+          from,
+          to: member.role,
+        });
+      }
+      return view;
     },
     removeMember: async (_, { memberId }, ctx) => {
       const { principal, scope } = await requireWorkspacePermission(
@@ -90,6 +117,13 @@ export const membersResolvers: Resolvers = {
         canManageOwners: ctx.access.roleCan(scope.member, "owners:manage"),
       });
       await memberRemoved(scope, removed);
+      await recordRemoval({
+        workspaceId: scope.tenant.id,
+        actor: memberActor(principal),
+        ip: ctx.ip,
+        member: removed,
+        name: await nameOf(ctx, removed),
+      });
       return true;
     },
     leaveWorkspace: async (_, __, ctx) => {
@@ -101,6 +135,13 @@ export const membersResolvers: Resolvers = {
         canManageOwners: true,
       });
       await memberRemoved(scope, left);
+      await recordLeave({
+        workspaceId: scope.tenant.id,
+        actor: memberActor(principal),
+        ip: ctx.ip,
+        member: left,
+        name: principal.name,
+      });
       return true;
     },
   },

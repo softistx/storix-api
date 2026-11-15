@@ -2,6 +2,10 @@ import type { Resolvers } from "@/generated/graphql/resolvers";
 import type { Context } from "@/http/context";
 import { fail } from "@/i18n/fail";
 import type { Identity, InvitationResolverMap } from "../identity";
+import {
+  recordInvitationAccept,
+  recordInvitationWrite,
+} from "./invitations.audit";
 import { invitationHooks } from "./invitations.hooks";
 
 // The resolvers are janus-graphql's, built by the identity port over this
@@ -44,16 +48,34 @@ const field =
 // it is active, so a null name is that state.
 const closed = () => fail("invitations.errors.invalid", { status: 400 });
 
+// The invitation a code names, as the preview answers it.
+interface Previewed {
+  id: string;
+  scope: string;
+  email: string;
+  name: string;
+  role: string;
+  organization: string | null;
+}
+
 const preview: Field = async (parent, args, ctx, info) => {
   const resolve = resolversOf(ctx)["Query"]?.["invitationPreview"];
   if (!resolve)
     throw new Error("no invitation resolver Query.invitationPreview");
-  const answer = (await resolve(parent, args, ctx, info)) as {
-    organization: string | null;
-  };
+  const answer = (await resolve(parent, args, ctx, info)) as Previewed;
   if (answer.organization === null) throw closed();
   return answer;
 };
+
+// A write of janus's, then its audit event: recorded after the write has
+// committed, and an event that cannot be recorded never fails the write.
+const audited =
+  (name: string, action: "issue" | "resend" | "revoke"): Field =>
+  async (parent, args, ctx, info) => {
+    const answer = await field("Mutation", name)(parent, args, ctx, info);
+    await recordInvitationWrite(action, ctx, answer);
+    return answer;
+  };
 
 // The code is the only secret of the two open fields: counted per address.
 const codeLimit = (ctx: Context) => ctx.limits.invitationCode(ctx.ip);
@@ -67,13 +89,20 @@ export const invitationsResolvers = {
     }) as Field,
   },
   Mutation: {
-    issueInvitation: field("Mutation", "issueInvitation"),
-    resendInvitation: field("Mutation", "resendInvitation"),
-    revokeInvitation: field("Mutation", "revokeInvitation"),
+    issueInvitation: audited("issueInvitation", "issue"),
+    resendInvitation: audited("resendInvitation", "resend"),
+    revokeInvitation: audited("revokeInvitation", "revoke"),
     acceptInvitation: (async (parent, args, ctx, info) => {
       await codeLimit(ctx);
-      await preview(parent, args, ctx, info);
-      return field("Mutation", "acceptInvitation")(parent, args, ctx, info);
+      const previewed = (await preview(parent, args, ctx, info)) as Previewed;
+      const answer = await field("Mutation", "acceptInvitation")(
+        parent,
+        args,
+        ctx,
+        info,
+      );
+      await recordInvitationAccept(ctx, previewed, answer);
+      return answer;
     }) as Field,
   },
   JanusInvitationPage: {

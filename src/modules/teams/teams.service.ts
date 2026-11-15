@@ -51,36 +51,42 @@ async function named<T>(write: () => Promise<T>): Promise<T> {
 export const createTeam = (mongo: TeamsMongo, name: string, actorId: string) =>
   named(() => mongo.db.teams.as(actorId).create({ name, memberIds: [] }));
 
+// Answers the team as renamed and as it was.
 export async function renameTeam(
   mongo: TeamsMongo,
   input: { id: string; name: string; actorId: string },
 ) {
-  const team = await teamOf(mongo, input.id);
-  return named(() =>
-    mongo.db.teams.as(input.actorId).update(team._id, { name: input.name }),
+  const before = await teamOf(mongo, input.id);
+  const team = await named(() =>
+    mongo.db.teams.as(input.actorId).update(before._id, { name: input.name }),
   );
+  return { team, before };
 }
 
 // Replaces a team's members. `memberIds` are checked by the caller against the
-// workspace's members (`member-unknown`); repeats are dropped here.
+// workspace's members (`member-unknown`); repeats are dropped here. Answers
+// the team as changed and as it was.
 export async function setTeamMembers(
   mongo: TeamsMongo,
   input: { id: string; memberIds: readonly string[]; actorId: string },
 ) {
-  const team = await teamOf(mongo, input.id);
+  const before = await teamOf(mongo, input.id);
   const unique = [...new Set(input.memberIds)];
-  return mongo.db.teams
+  const team = await mongo.db.teams
     .as(input.actorId)
-    .update(team._id, { memberIds: unique.map((id) => toObjectId(id)) });
+    .update(before._id, { memberIds: unique.map((id) => toObjectId(id)) });
+  return { team, before };
 }
 
+// Answers the team that was deleted.
 export async function deleteTeam(
   mongo: TeamsMongo,
   id: string,
   actorId: string,
-) {
+): Promise<TeamDoc> {
   const team = await teamOf(mongo, id);
   await mongo.db.teams.as(actorId).delete(team._id);
+  return team;
 }
 
 // A member who left no longer belongs to any team of the workspace.

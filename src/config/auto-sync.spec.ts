@@ -29,6 +29,7 @@ const run = async (nodeEnv: string, flag?: string) => {
         TOTP_KEYS: "k:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
         REDIS_URL: "redis://localhost:6379",
         API_PROXY_SECRET: "s".repeat(32),
+        AUDIT_IP_KEY: "a".repeat(32),
         TRUSTED_PROXIES: "172.16.0.0/12",
         ...(flag === undefined ? {} : { MONGO_AUTO_SYNC: flag }),
       },

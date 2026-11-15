@@ -169,6 +169,13 @@ export const env = defineEnv({
   // one client address may make (they are open to whoever holds a code).
   RATE_LIMIT_INVITATION_SEND: attempts("50/3600"),
   RATE_LIMIT_INVITATION_CODE: attempts("30/900"),
+  // AUDIT_IP_KEY: the key the audit log hashes client addresses with (HMAC-
+  // SHA256): at least 32 characters. Required in production; a development
+  // key stands in elsewhere. Changing it starts a new series of hashes.
+  AUDIT_IP_KEY: inProduction(
+    z.string().min(32, "at least 32 characters"),
+    "storix-development-audit-ip-key-do-not-use",
+  ),
   // REDIS_URL: redis:// or rediss://. Rate limits, queues and tokens.
   // Required in production; unset elsewhere.
   REDIS_URL: orUnset(
