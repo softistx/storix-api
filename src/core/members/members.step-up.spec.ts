@@ -95,16 +95,75 @@ describe("a role change needs a fresh session", () => {
     );
   });
 
-  test("removing a member and leaving ask for no step-up", async () => {
+  test("removing a member with a stale session is told to step up, and nothing changes", async () => {
     const { w, workspace, member } = await setup();
-    const other = await w.join(workspace, "MEMBER");
     w.h.clock.advance(FRESH + 1000);
+    const result = await w.send(
+      workspace.owner,
+      `mutation { removeMember(memberId: "${member.memberId}") }`,
+      { workspace: workspace.id },
+    );
+    expect(w.codeOf(result)).toBe("auth.errors.step-up-required");
+    expect(result.response.status).toBe(403);
+    const page = await w.send(workspace.owner, "{ members { nodes { id } } }", {
+      workspace: workspace.id,
+    });
+    const nodes = page.data?.["members"].nodes as { id: string }[];
+    expect(nodes.some((n) => n.id === member.memberId)).toBe(true);
+  });
+
+  test("removing a member goes through with a fresh session", async () => {
+    const { w, workspace, member } = await setup();
     const removed = await w.send(
       workspace.owner,
       `mutation { removeMember(memberId: "${member.memberId}") }`,
       { workspace: workspace.id },
     );
     expect(removed.errors).toBeUndefined();
+  });
+
+  test("removing a member goes through after requestStepUp and confirmStepUp", async () => {
+    const { w, workspace, member } = await setup();
+    w.h.clock.advance(FRESH + 1000);
+    const asked = await w.send(
+      workspace.owner,
+      "mutation { requestStepUp { method challenge } }",
+    );
+    await w.h.identity.settled();
+    await w.send(
+      workspace.owner,
+      `mutation($c: String!, $code: String!) { confirmStepUp(challenge: $c, code: $code) }`,
+      {
+        variables: {
+          c: asked.data?.["requestStepUp"].challenge,
+          code: w.h.codeFor(workspace.owner.email),
+        },
+      },
+    );
+    const removed = await w.send(
+      workspace.owner,
+      `mutation { removeMember(memberId: "${member.memberId}") }`,
+      { workspace: workspace.id },
+    );
+    expect(removed.errors).toBeUndefined();
+  });
+
+  test("a caller who may not remove members is told so, not asked to step up", async () => {
+    const { w, workspace, member } = await setup();
+    const other = await w.join(workspace, "MEMBER");
+    w.h.clock.advance(FRESH + 1000);
+    const result = await w.send(
+      other.user,
+      `mutation { removeMember(memberId: "${member.memberId}") }`,
+      { workspace: workspace.id },
+    );
+    expect(w.codeOf(result)).toBe("auth.errors.forbidden");
+  });
+
+  test("leaving a workspace asks for no step-up", async () => {
+    const { w, workspace } = await setup();
+    const other = await w.join(workspace, "MEMBER");
+    w.h.clock.advance(FRESH + 1000);
     const left = await w.send(other.user, "mutation { leaveWorkspace }", {
       workspace: workspace.id,
     });
