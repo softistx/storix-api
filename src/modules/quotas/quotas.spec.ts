@@ -124,7 +124,7 @@ describe("the quota of a workspace", () => {
     // The refusal is in the audit log.
     const log = await send(`{ auditEvents(first: 10) { nodes { action } } }`);
     expect(
-      (log.data?.["auditEvents"].nodes as { action: string }[]).map(
+      ((log.data?.["auditEvents"]?.nodes ?? []) as { action: string }[]).map(
         (e) => e.action,
       ),
     ).toContain("quota.exceeded");
