@@ -16,6 +16,7 @@ export interface LimitsConfig {
   signUp: Window;
   signIn: Window;
   passwordReset: Window;
+  workspaceCreate: Window;
 }
 
 // The per-address limits of the operations anyone may call. Each takes the
@@ -25,12 +26,14 @@ export interface Limits {
   signUp(ip: string | undefined): Promise<void>;
   signIn(ip: string | undefined): Promise<void>;
   passwordReset(ip: string | undefined): Promise<void>;
+  workspaceCreate(ip: string | undefined): Promise<void>;
 }
 
 const unlimited: Limits = {
   signUp: async () => undefined,
   signIn: async () => undefined,
   passwordReset: async () => undefined,
+  workspaceCreate: async () => undefined,
 };
 
 // The limits over Redis (`@softistx/redis`, one bucket per address and
@@ -92,5 +95,6 @@ export function createLimits(
     signUp: guard("sign-up", config.signUp),
     signIn: guard("sign-in", config.signIn),
     passwordReset: guard("password-reset", config.passwordReset),
+    workspaceCreate: guard("workspace-create", config.workspaceCreate),
   };
 }

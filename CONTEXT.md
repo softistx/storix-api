@@ -11,7 +11,9 @@ product (French is offered). Terms join this table slice by slice; the full mode
 | `Module`    | A unit of the API declared by one `defineModule` manifest and listed in `src/modules/registry.ts`: its schema, resolvers, collections, permissions, codes.           |
 | `Registry`  | The ONE list of modules (`src/modules/registry.ts`). Adding a module is one line there.                                                                              |
 | `Kernel`    | `src/core/`: what every module may use. It depends on no business module. Business modules live in `src/modules/`.                                                   |
-| `Workspace` | The tenant. Registered in the core database, with its own database `storix_ws_<id>` (`MONGO_WORKSPACE_PREFIX`). Built by E1.                                         |
+| `Workspace` | The tenant (`src/core/workspaces`). Registered in the core database, with its own database `storix_ws_<id>` (`MONGO_WORKSPACE_PREFIX`), named by the `x-storix-workspace` header (id or slug). Created `provisioning` with its first OWNER, then opened (`active`). |
+| `Member` | An account's place in a workspace (`src/core/members`, core database): a role, and `removedAt` once it left. Never a personal API key: keys are refused on workspace operations until they are bound to a workspace. |
+| `Role` | `OWNER`, `ADMIN` or `MEMBER`. Permissions come from the modules' `defaultGrants`; OWNER holds all. Only an OWNER makes, demotes or removes an owner (`owners:manage`), and a workspace always keeps one. |
 | `Principal` | Who a request is from, as the `Identity` port (`src/core/identity`) gives it. The rest of the API stores an `accountId` as an opaque string and never imports janus. |
 | `Identity` | The port (`src/core/identity`) behind which accounts live: sign-up, sign-in, reset, the second factor, step-up. janus is its adapter and is imported nowhere else (`bun run deps:check`). |
 | `Viewer` | The `Principal` of the request as the GraphQL type `Viewer` (null when anonymous). A personal API key is a viewer with `apiKeyId` and no session; keys are accepted on `/graphql`, `/media`, `/health` and `/ready` only. |
@@ -40,6 +42,11 @@ when a code lacks a message in English or French.
 | `identity.errors.second-factor-invalid` | A second-factor or step-up code is wrong or already used; `extensions.attemptsLeft` says how many tries remain (400). |
 | `identity.errors.second-factor-state` | The second factor is not in the state the operation needs: not enrolled, or already active (409). |
 | `identity.errors.unavailable` | The identity store cannot answer; try again (503). |
+| `workspaces.errors.not-found` | The workspace does not exist, is not open yet, or the caller is not a member: the three are never told apart (404). |
+| `workspaces.errors.workspace-required` | A workspace operation came without the `x-storix-workspace` header (400). |
+| `workspaces.errors.slug-taken` | A workspace with this slug exists (409, field `slug`). |
+| `workspaces.errors.last-owner` | The change (a demotion, a removal, leaving) would leave the workspace without an owner (409). |
+| `members.errors.not-found` | No active member with this id in the workspace (404). |
 | `validation.errors.invalid-input` | An input was refused as a whole; `extensions.fields` lists each field (400). |
 | `validation.errors.invalid` | A field's value is not valid. |
 | `validation.errors.out-of-range` | A number is outside its bounds. |
