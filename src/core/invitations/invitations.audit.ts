@@ -12,10 +12,17 @@ interface Invitation {
 }
 
 // `issueInvitation` and `resendInvitation` answer `{ invitation, code }`,
-// `revokeInvitation` the invitation itself.
-export const invitationOf = (answer: unknown): Invitation => {
-  const found = answer as { invitation?: Invitation } & Invitation;
-  return found.invitation ?? found;
+// `revokeInvitation` the invitation itself. Null when the answer is neither:
+// the write has committed, so an unreadable answer only means no event.
+export const invitationOf = (answer: unknown): Invitation | null => {
+  if (typeof answer !== "object" || answer === null) return null;
+  const nested = (answer as { invitation?: unknown }).invitation;
+  const found = nested ?? answer;
+  if (typeof found !== "object" || found === null) return null;
+  const { id, scope } = found as Partial<Invitation>;
+  return typeof id === "string" && typeof scope === "string"
+    ? (found as Invitation)
+    : null;
 };
 
 // The inviter's events: the target is the invitation (named by its address),
@@ -25,8 +32,9 @@ export async function recordInvitationWrite(
   ctx: Context,
   answer: unknown,
 ): Promise<void> {
-  const invitation = invitationOf(answer);
   if (!ctx.viewer) return;
+  const invitation = invitationOf(answer);
+  if (!invitation) return;
   await audit.record({
     workspaceId: invitation.scope,
     actor: memberActor(ctx.viewer),
