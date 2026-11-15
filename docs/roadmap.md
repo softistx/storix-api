@@ -4,9 +4,10 @@ What a user gets, in order. An entry moves Next, Now, Shipped as its effort star
 
 ## Now
 
+- **E2 Files and folders** (started): each member has a private "My files", with nested folders that can be created, renamed and moved (up to 16 levels deep). ([issue](https://github.com/softistx/storix-api/issues/14))
+
 ## Next
 
-- **E2 Files and folders**: upload, organise, tag, copy and move files, with thumbnails, previews, image crops around a focal point and a storage quota. ([issue](https://github.com/softistx/storix-api/issues/14))
 - **E3 Versions and trash**: keep earlier versions of a file and get deleted files back for 30 days. ([issue](https://github.com/softistx/storix-api/issues/15))
 - **E4 Sharing**: share a file or a folder with people and teams as viewer or editor, and be notified. ([issue](https://github.com/softistx/storix-api/issues/16))
 - **E5 Share links**: a link with an expiry and a password, to download or to receive files. ([issue](https://github.com/softistx/storix-api/issues/17))

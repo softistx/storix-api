@@ -32,7 +32,8 @@ curl localhost:3000/health
 | Path                            | Holds                                                               |
 | ------------------------------- | ------------------------------------------------------------------- |
 | `src/core/`                     | the kernel: `workspaces`, `members`, `invitations`, `audit`, `access`, `identity`, `translations`, `system` |
-| `src/modules/teams/`            | the first business module: a workspace's teams                      |
+| `src/modules/teams/`            | a workspace's teams                                                  |
+| `src/modules/nodes/`            | the folder tree: each member's root, create, rename, move           |
 | `src/modules/registry.ts`       | the one list of modules                                             |
 | `src/i18n/`                     | the error inventory (`defineCodes`, `ErrorCode`), `fail`, the i18n instance, the coverage check |
 | `src/config/`                   | `env.ts` (read once at import), the MongoDB handle                  |
@@ -138,6 +139,7 @@ A personal API key is refused on workspace operations (401 `auth.errors.api-key-
 - members, roles and permissions: [Workspaces, members and roles](docs/development.md#workspaces-members-and-roles)
 - inviting people: [Invitations](docs/development.md#invitations)
 - groups of members: [Teams](docs/development.md#teams)
+- folders: [Folders](docs/development.md#folders)
 - the record of writes: [Audit log](docs/development.md#audit-log)
 
 Settings that belong here: `MONGO_WORKSPACE_PREFIX` (default `storix_ws_`) prefixes each workspace's database;

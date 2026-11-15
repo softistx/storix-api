@@ -16,6 +16,8 @@ product (French is offered). Terms join this table slice by slice; the full mode
 | `Member` | An account's place in a workspace (`src/core/members`, core database): a role, and `removedAt` once it left. Never a personal API key: keys are refused on workspace operations until they are bound to a workspace. |
 | `Role` | `OWNER`, `ADMIN` or `MEMBER`. Permissions come from the modules' `defaultGrants`; OWNER holds all. Only an OWNER makes, demotes or removes an owner (`owners:manage`), and a workspace always keeps one. |
 | `Team` | A named group of a workspace's members (`src/modules/teams`, the workspace's own database): `name`, unique in the workspace ignoring case, and `memberIds`, the ids of `Member` rows. Anyone reads teams (`teams:read`); OWNER and ADMIN change them (`teams:manage`). A member who leaves is taken out of every team. |
+| `Node` | A folder (files join later) of the workspace's tree (`src/modules/nodes`, the workspace's own database, one `nodes` collection): `name`, `parentId` (null for a root), `ancestors` (ids from the root down to the parent), `ownerId`, `treeRev`, `version`. Names are unique among siblings ignoring case; depth is at most 16. |
+| `Root` | A member's private top folder, "My files": made when they join (`onMemberJoined`), or on first use. Nobody else sees it until sharing exists; a root is never renamed or moved. |
 | `AuditEvent` | One append-only record of a write in a workspace (`src/core/audit`, the workspace's own database): `at`, `actor`, `action` (`team.create`, `member.remove`, …), `target`, `ipHash` (a keyed HMAC of the client address, never the address) and `meta` (never a secret). Recorded by `audit.record` after the write committed; a failure to record is logged and never undoes the write. OWNER and ADMIN read it (`audit:read`). |
 | `Principal` | Who a request is from, as the `Identity` port (`src/core/identity`) gives it. The rest of the API stores an `accountId` as an opaque string and never imports janus. |
 | `Identity` | The port (`src/core/identity`) behind which accounts live: sign-up, sign-in, reset, the second factor, step-up. janus is its adapter and is imported nowhere else (`bun run deps:check`). |
@@ -59,6 +61,14 @@ when a code lacks a message in English or French.
 | `teams.errors.not-found` | No team with this id in the request's workspace; a team of another workspace is the same answer (404). |
 | `teams.errors.name-taken` | Another team of the workspace has this name, in any case (409, field `name`). |
 | `teams.errors.member-unknown` | An id given to `setTeamMembers` is not a current member of the workspace: malformed, unknown, of another workspace or of a member who left (400, field `memberIds`). |
+| `nodes.errors.not-found` | No node with this id in the caller's tree: unknown, malformed, of another workspace or another member's are never told apart (404). |
+| `nodes.errors.name-taken` | A sibling of the folder already has this name, in any case (409, field `name`). |
+| `nodes.errors.too-deep` | The folder would sit deeper than 16 levels, root included (409). |
+| `nodes.errors.cycle` | A folder was moved into itself or into its own subtree (409). |
+| `nodes.errors.conflict` | The node changed since the `version` the caller sent: a rename or a move came first (409). |
+| `nodes.errors.not-a-folder` | The parent or destination is not a folder (400, field `parentId`). |
+| `nodes.errors.move-too-large` | The moved folder holds more than 5,000 nodes (409). |
+| `nodes.errors.root-locked` | A root was renamed or moved (409). |
 | `validation.errors.invalid-input` | An input was refused as a whole; `extensions.fields` lists each field (400). |
 | `validation.errors.invalid` | A field's value is not valid. |
 | `validation.errors.out-of-range` | A number is outside its bounds. |

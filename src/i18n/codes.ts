@@ -88,6 +88,27 @@ export const teams = defineCodes("teams", [
   "member-unknown",
 ]);
 
+// The tree of folders (src/modules/nodes).
+export const nodes = defineCodes("nodes", [
+  // 404: no node with this id in the caller's tree (an unknown id, another
+  // workspace's and another member's node are one answer).
+  "not-found",
+  // 409: a sibling already has this name, in any case (field `name`).
+  "name-taken",
+  // 409: the folder would sit deeper than 16 levels.
+  "too-deep",
+  // 409: a folder moved into itself or its own subtree.
+  "cycle",
+  // 409: the node changed since the version the caller read.
+  "conflict",
+  // 400: the parent is not a folder (field `parentId`).
+  "not-a-folder",
+  // 409: the subtree has more than 5,000 nodes.
+  "move-too-large",
+  // 409: a root is never renamed nor moved.
+  "root-locked",
+]);
+
 // Every code the API answers with, in module order: the inventory. tsc refuses
 // a code that is not in it (`fail`, `FieldIssue`), the coverage spec requires
 // a message for each in every shipped language and a row in CONTEXT.md, and
@@ -101,6 +122,7 @@ export const errorCodes = [
   ...members,
   ...invitations,
   ...teams,
+  ...nodes,
 ] as const;
 
 export type ErrorCode = (typeof errorCodes)[number];
