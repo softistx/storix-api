@@ -32,36 +32,6 @@ export function secondFactorFlows(deps: Deps): Flows {
     }
   };
 
-  // Temporary, until nxgt-janus#770 (a recovery code spent outside a sign-in,
-  // with per-user attempts): janus counts the tries per challenge, so this
-  // detour is throttled only by the per-address limit of the resolver.
-  //
-  // Spends a recovery code of the account: janus redeems one only to sign in,
-  // so the account is signed in as proven (the session's own freshness is what
-  // let the caller here), the code redeems that sign-in's challenge, and the
-  // session this opens is ended at once.
-  async function spendRecoveryCode(
-    user: Awaited<ReturnType<typeof users.get>>,
-    code: string,
-  ) {
-    const started = await users.signInProven(user);
-    if (started.status !== "secondFactor") {
-      throw fail("identity.errors.second-factor-state", { status: 409 });
-    }
-    const opened = await users.secondFactor.recover(started.challenge, code);
-    try {
-      await accounts.signOut(
-        new Request("http://localhost/", {
-          headers: { authorization: `Bearer ${opened.token}` },
-        }),
-      );
-    } catch (error) {
-      console.error(
-        `storix-api: the sign-out after spending a recovery code failed: ${error instanceof Error ? error.message : error}`,
-      );
-    }
-  }
-
   return {
     // Starts the factor: `secret` and `uri` for the authenticator app.
     enrolSecondFactor: async (principal) => {
@@ -113,7 +83,8 @@ export function secondFactorFlows(deps: Deps): Flows {
 
     // Turns the factor off on a current code of the app (a step-up of the
     // request's session checks it, five attempts per challenge), or, for a lost
-    // phone, on a recovery code (spent). Either way the session must be fresh.
+    // phone, on a recovery code (spent: no session, no event,
+    // five tries per window). Either way the session must be fresh.
     disableSecondFactor: async (request, principal, code) => {
       fresh(principal);
       return authCall(async () => {
@@ -128,7 +99,7 @@ export function secondFactorFlows(deps: Deps): Flows {
           }
           await users.stepUp.confirm(request, issued.challenge, code);
         } else {
-          await spendRecoveryCode(user, code);
+          await users.secondFactor.spendRecoveryCode(user, code);
         }
         await users.secondFactor.disable(user);
         return true as const;

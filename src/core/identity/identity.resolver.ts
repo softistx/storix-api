@@ -136,7 +136,7 @@ export const identityResolvers: Resolvers = {
       ctx.identity.regenerateRecoveryCodes(requireSession(ctx), code),
     disableSecondFactor: async (_, { code }, ctx) => {
       const principal = requireSession(ctx);
-      // Temporary, until nxgt-janus#770: a recovery code has no per-user limit.
+      // janus throttles the account's code tries; the per-address limit stays too.
       await ctx.limits.signIn(ctx.ip);
       return ctx.identity.disableSecondFactor(ctx.request, principal, code);
     },

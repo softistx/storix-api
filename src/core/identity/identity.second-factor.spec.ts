@@ -419,18 +419,58 @@ describe("step-up", () => {
   });
 });
 
-describe("guessing recovery codes through disableSecondFactor", () => {
-  // Temporary, until nxgt-janus#770: janus counts a recovery code's tries per
-  // challenge, and each disableSecondFactor signs the account in afresh, so
-  // janus alone never throttles them. The per-address limit in the resolver
-  // does (rate-limits.spec.ts).
-  test("ten wrong recovery codes in a row are each refused as invalid, janus does not throttle them", async () => {
+describe("recovery codes through disableSecondFactor", () => {
+  const asRequest = (token: string) =>
+    new Request("http://localhost/", {
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+  test("a wrong code is refused as invalid with attemptsLeft", async () => {
     const { h, user } = await withSecondFactor();
     const principal = { ...user.principal, secondFactor: true };
-    const request = new Request("http://localhost/", {
-      headers: { authorization: `Bearer ${user.token}` },
-    });
-    for (let i = 0; i < 10; i++) {
+    const error = (await refusal(
+      h.identity.disableSecondFactor(
+        asRequest(user.token),
+        principal,
+        "WRONG-0",
+      ),
+    )) as { extensions: Record<string, unknown> };
+    expect(codeOf(error)).toBe("identity.errors.second-factor-invalid");
+    expect(error.extensions["attemptsLeft"]).toBe(4);
+  });
+
+  test("the right code turns the factor off, opens no session and sends no notice", async () => {
+    const { h, user, recoveryCodes } = await withSecondFactor();
+    const principal = { ...user.principal, secondFactor: true };
+    await h.identity.settled();
+    const mailsBefore = h.mailsTo(user.email).length;
+    expect(
+      await h.identity.disableSecondFactor(
+        asRequest(user.token),
+        principal,
+        recoveryCodes[0] ?? "",
+      ),
+    ).toBe(true);
+    await h.identity.settled();
+    expect((await h.identity.secondFactorStatus(principal)).enabled).toBe(
+      false,
+    );
+    // The only mail is the notice that the factor is off: no sign-in notice.
+    expect(
+      h
+        .mailsTo(user.email)
+        .slice(mailsBefore)
+        .map((mail) => mail.subject),
+    ).toEqual(["Two-factor authentication was turned off"]);
+    // Only the account's own session exists: nothing was opened or ended.
+    expect(await h.identity.authenticate(asRequest(user.token))).not.toBeNull();
+  });
+
+  test("after five wrong tries every further one is rate limited", async () => {
+    const { h, user, recoveryCodes } = await withSecondFactor();
+    const principal = { ...user.principal, secondFactor: true };
+    const request = asRequest(user.token);
+    for (let i = 0; i < 5; i++) {
       expect(
         codeOf(
           await refusal(
@@ -439,5 +479,16 @@ describe("guessing recovery codes through disableSecondFactor", () => {
         ),
       ).toBe("identity.errors.second-factor-invalid");
     }
+    expect(
+      codeOf(
+        await refusal(
+          h.identity.disableSecondFactor(
+            request,
+            principal,
+            recoveryCodes[0] ?? "",
+          ),
+        ),
+      ),
+    ).toBe("auth.errors.rate-limited");
   });
 });
