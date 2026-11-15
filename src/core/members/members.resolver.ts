@@ -38,14 +38,19 @@ async function accountsOf(ctx: Context, members: readonly MemberDoc[]) {
 // The name of a member's account for the audit log, null when the account
 // cannot be read: the removal has committed, so a failed lookup must not fail
 // the request.
-async function nameOf(ctx: Context, member: MemberDoc): Promise<string | null> {
+async function accountOf(
+  ctx: Context,
+  member: MemberDoc,
+): Promise<Account | undefined> {
   try {
-    return (
-      (await accountsOf(ctx, [member])).get(member.accountId)?.name ?? null
-    );
+    return (await accountsOf(ctx, [member])).get(member.accountId);
   } catch {
-    return null;
+    return undefined;
   }
+}
+
+async function nameOf(ctx: Context, member: MemberDoc): Promise<string | null> {
+  return (await accountOf(ctx, member))?.name ?? null;
 }
 
 export const membersResolvers: Resolvers = {
@@ -88,8 +93,9 @@ export const membersResolvers: Resolvers = {
         actorId: principal.accountId,
         canManageOwners: ctx.access.roleCan(scope.member, "owners:manage"),
       });
-      const accounts = await accountsOf(ctx, [member]);
-      const view = memberView(member, accounts.get(member.accountId));
+      // The change has committed: an unreadable account only blanks the name.
+      const account = await accountOf(ctx, member);
+      const view = memberView(member, account);
       if (from !== member.role) {
         await recordRoleChange({
           workspaceId: scope.tenant.id,
