@@ -4,6 +4,7 @@ import { auditModule } from "../core/audit";
 import { identityModule } from "../core/identity/module";
 import { invitationsModule } from "../core/invitations";
 import { membersModule } from "../core/members";
+import { storageModule } from "../core/storage";
 import { system } from "../core/system/module";
 import { translationsModule } from "../core/translations/module";
 import { workspacesModule } from "../core/workspaces";
@@ -21,6 +22,7 @@ const registered = [
   workspacesModule,
   invitationsModule,
   teamsModule,
+  storageModule,
 ] as const;
 
 export const modules: readonly Module[] = resolveModules(registered);

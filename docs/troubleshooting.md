@@ -213,6 +213,22 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 
 **Fix:** send the `x-storix-workspace` header of the workspace that owns the team, and an id from its `teams`.
 
+## `storage.errors.*` on `/media`
+
+**When:** `PUT /media/<kind>` or `GET /media/<kind>/<key>` is refused. The body is `/graphql`'s shape, `{ "errors": [{ "message", "extensions": { "code", "params" } }] }`, with the refusal's status.
+
+**Why and fix, by code:**
+- `not-found` (404): the key is not in the workspace named by `x-storix-workspace`. A key of another workspace, an unknown one and a caller who may not read are the same answer. Send the header of the workspace that stored the file.
+- `too-large` (413, `params.limitMib`): the `Content-Length` is over the kind's limit (`files` 95 MiB, `avatars` 10 MiB); nothing was read or stored.
+- `unsupported-type` (415): `avatars` takes JPEG, PNG and WebP only, and the first bytes must match the declared `Content-Type`. `files` takes any type.
+- `empty` (400): a zero-length body. `interrupted` (400): the body ended short of, or ran past, its `Content-Length`; send it again.
+- `rate-limited` (429): 30 uploads a minute per account and workspace (burst 60). Wait `params.seconds` (also the `Retry-After` header). Uploads fail closed: with Redis down the answer is the same 429 with `params.seconds` 5.
+- `unavailable` (503): `S3_BUCKET`, `S3_ACCESS_KEY` and `S3_SECRET_KEY` are not all set, or the store did not answer. Locally run `bun run services:up` and copy the `S3_*` lines of `.env.example`.
+- `unprocessable` (422): an avatar could not be decoded or is smaller than 64 px on its short side; nothing stays stored. Send a valid JPEG, PNG or WebP.
+- `stalled` (408): the client sent nothing for 60 seconds during the upload; send it again and keep the connection moving.
+- `range-not-satisfiable` (416): the `Range` starts past the end; `Content-Range: bytes */<size>` carries the size.
+- A request with no session is 401 `auth.errors.unauthenticated`, with no workspace header 400 `workspaces.errors.workspace-required`, and a personal API key 401 `auth.errors.api-key-not-accepted` (keys are bound to workspaces in a later slice).
+
 ## `AUDIT_IP_KEY` must be at least 32 characters (boot error in production)
 
 **When:** the API refuses to start in production with an environment error naming `AUDIT_IP_KEY`.
