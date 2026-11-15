@@ -304,9 +304,11 @@ type Mutation {
   """
   regenerateRecoveryCodes(code: String! @constraint(maxLength: 40)): RecoveryCodes!
   """
-  Removes a member from the workspace. Needs `members:manage`; removing an
-  owner needs `owners:manage` (OWNER). Removing yourself is leaving. 404
-  `members.errors.not-found`; 409 `workspaces.errors.last-owner`.
+  Removes a member from the workspace. Needs `members:manage` AND a fresh
+  session (403 `auth.errors.step-up-required`: `requestStepUp` then
+  `confirmStepUp`); removing an owner needs `owners:manage` (OWNER). To leave
+  yourself, use `leaveWorkspace` (no step-up). 404 `members.errors.not-found`;
+  409 `workspaces.errors.last-owner`.
   """
   removeMember(memberId: ID!): Boolean!
   """

@@ -80,6 +80,8 @@ export const membersResolvers: Resolvers = {
         ctx,
         "members:manage",
       );
+      // Removing someone is sensitive too (leaving is not): a fresh session.
+      ctx.identity.assertFresh(principal);
       await endMembership(handleOf(scope), {
         workspaceId: scope.tenant.id,
         memberId,

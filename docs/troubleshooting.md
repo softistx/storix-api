@@ -142,3 +142,18 @@ A user who enrolled an authenticator cannot confirm a code, or the server cannot
 **When:** the operation would leave the workspace with no OWNER.
 
 **Fix:** promote another member to OWNER first, then demote, remove or leave.
+
+## `auth.errors.step-up-required` (403) on a role change or a member removal
+
+`changeMemberRole` and `removeMember` answer 403 with this code.
+
+**When:** the acting account's session is older than 10 minutes. `leaveWorkspace` never asks for it.
+
+**Why:** both mutations are sensitive, so they need a recent password or second-factor check, after the permission check (a caller who may not manage members gets `auth.errors.forbidden` instead).
+
+**Fix:** step up, then retry the same mutation.
+
+```graphql
+mutation { requestStepUp { method challenge } }
+mutation { confirmStepUp(challenge: "...", code: "123456") }
+```
