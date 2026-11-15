@@ -7,5 +7,6 @@ import { storage as codes } from "@/i18n/codes";
 // which keys a caller may read (storage.keys.ts).
 export const storageModule = defineModule({
   name: "storage",
+  dependsOn: ["workspaces"],
   codes,
 });

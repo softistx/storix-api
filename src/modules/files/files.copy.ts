@@ -1,3 +1,4 @@
+import { addUsage, type WorkspacesMongo } from "@/core/workspaces";
 import {
   cycle,
   depthOf,
@@ -27,7 +28,13 @@ const MAX_DEPTH = 16;
 // `root-locked` for a root.
 export async function copyNodes(
   mongo: FilesMongo,
-  input: { ids: readonly string[]; parentId: string; accountId: string },
+  core: WorkspacesMongo,
+  input: {
+    ids: readonly string[];
+    parentId: string;
+    accountId: string;
+    workspaceId: string;
+  },
 ): Promise<{ node: NodeDoc; from: string }[]> {
   return named(() =>
     mongo.transaction(async (tx) => {
@@ -84,9 +91,19 @@ export async function copyNodes(
         }
         copies.push({ node: copy, from: top.id });
       }
-      // The copies share the blobs: each key is held once more per copy.
+      // The copies share the blobs: each key is held once more per copy. The
+      // workspace holds no more bytes (a shared blob counts once) and as many
+      // more files as there are copies of files.
+      let copiedFiles = 0;
       for (const [key, count] of refs) {
         await tx.db.blobs.updateMany({ key }, { $inc: { refs: count } });
+        copiedFiles += count;
+      }
+      if (copiedFiles > 0) {
+        await addUsage(core.withSession(tx.session), input.workspaceId, {
+          bytes: 0,
+          files: copiedFiles,
+        });
       }
       return copies;
     }),

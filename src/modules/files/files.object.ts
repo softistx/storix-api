@@ -42,3 +42,21 @@ function mediaType(contentType: string | undefined): string {
   const type = contentType?.split(";")[0]?.trim().toLowerCase();
   return type || "application/octet-stream";
 }
+
+// Deletes an object `addFile` refused (over the quota), best effort: one that
+// stays is unrecorded and the orphan sweep removes it. Never throws.
+export async function discardObject(
+  bucket: MediaBucket | undefined,
+  workspaceId: string,
+  key: string,
+): Promise<void> {
+  if (!bucket) return;
+  try {
+    const place = mediaPlace("files", `workspaces/${workspaceId}`);
+    await bucket.delete({ key: place(key) });
+  } catch (error) {
+    console.error(
+      `storix-api: could not delete the refused object ${key} of workspace ${workspaceId}: ${error instanceof Error ? error.message : error}`,
+    );
+  }
+}

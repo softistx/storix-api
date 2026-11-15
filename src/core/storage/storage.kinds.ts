@@ -1,5 +1,6 @@
-import { defineMediaKind } from "@alxia/media";
+import { defineMediaKind, type MediaUploadIntent } from "@alxia/media";
 import { withImageRendition } from "@alxia/media/image";
+import { hasRoom, type WorkspacesMongo } from "@/core/workspaces";
 import {
   accessOf,
   authorizeFileRead,
@@ -17,6 +18,8 @@ export const AVATARS_MAX_BYTES = 10 * MIB;
 // The kinds (plan §3.4). `files` takes any type: known signatures are sniffed
 // and a type outside the inline-safe list is served as an attachment.
 // Every use revalidates (`private, no-cache`): a reader can lose access.
+// Only `files` is counted against the quota: an avatar is not recorded as a
+// file and weighs at most 10 MiB.
 // `files` has no `sizes` yet: @alxia/media takes none with `accept: '*'`
 // (storix-api#28, "Assumed").
 export function mediaKinds(options: {
@@ -30,6 +33,20 @@ export function mediaKinds(options: {
     options.available ? authorizeRead(ctx) : { code: "unavailable" };
   const readFile = async (ctx: MediaRequires, key: string) =>
     options.available ? authorizeFileRead(ctx, key) : { code: "unavailable" };
+  // The workspace quota, from the declared length and before the body is read
+  // (so nothing is stored). A body that declares no length is counted at the
+  // kind's largest. `addFile` decides for good; this only spares the upload.
+  const quota = async (ctx: MediaRequires, upload: MediaUploadIntent) => {
+    const access = await accessOf(ctx);
+    if (!access.ok) return true;
+    const needed = upload.declared ?? FILES_MAX_BYTES;
+    const fits = await hasRoom(
+      ctx.tenancy.core as WorkspacesMongo,
+      access.workspaceId,
+      needed,
+    );
+    return fits ? true : { code: "quota_exceeded", status: 413 };
+  };
   const throttle = async (ctx: MediaRequires) => {
     const access = await accessOf(ctx);
     if (!access.ok) return true;
@@ -46,6 +63,7 @@ export function mediaKinds(options: {
       authorizeWrite: write,
       authorizeRead: readFile,
       throttle,
+      quota,
       cacheControl: "private, no-cache",
     }),
     defineMediaKind<MediaRequires>({

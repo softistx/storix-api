@@ -289,6 +289,14 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 
 **Fix:** copy the folder's sub-folders in turn. Nothing was copied.
 
+## `quotas.errors.exceeded` (413)
+
+**When:** `PUT /media/files` or `addFile` would take the workspace past its `quotaBytes`.
+
+**Why:** the `PUT` compares the declared `Content-Length` (95 MiB when the body is chunked) with what is left, before reading the body, so no object is stored. `addFile` checks again atomically when it records the file, discards the object and writes a `quota.exceeded` audit event. Bytes shared by copies count once.
+
+**Fix:** free space or raise the quota with `bun run workspace:quota <slug> <bytes|20GiB|default>`. After a crash, `bun run quota:reconcile` recounts every workspace.
+
 ## `nodes.errors.not-a-folder` (400)
 
 **When:** the `parentId` of `createFolder` or `moveNodes` names a node that is not a folder (field `parentId`).

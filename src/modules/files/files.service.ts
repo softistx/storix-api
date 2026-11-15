@@ -1,6 +1,7 @@
 import type { MediaBucket } from "@alxia/media";
 import type { CollectionsOf, ModuleHandle } from "@alxia/modules";
 import { ConflictError, type Mongo } from "@softistx/mongo";
+import { addUsage, type WorkspacesMongo } from "@/core/workspaces";
 import {
   insertFile,
   lockTree,
@@ -10,7 +11,7 @@ import {
   type OnConflict,
 } from "@/modules/nodes/public";
 import { keyUnknown } from "./files.errors";
-import { storedObject } from "./files.object";
+import { discardObject, storedObject } from "./files.object";
 
 // The module's handle on a workspace's database: its own collection, and the
 // nodes it records files in.
@@ -32,8 +33,12 @@ const ATTEMPTS = 3;
 // and the node are one transaction, so a key is never half recorded.
 // `key-unknown` for a key that is not recordable, `name-taken` (REFUSE) for a
 // name a sibling holds, `not-found` / `not-a-folder` for the folder.
+// The workspace counters rise in the same transaction (`core` is the core
+// database, joined to it): a file that does not fit in the quota is
+// `quotas.errors.exceeded`, nothing is recorded, and the object is deleted.
 export async function addFile(
   mongo: FilesMongo,
+  core: WorkspacesMongo,
   bucket: MediaBucket | undefined,
   input: {
     workspaceId: string;
@@ -51,6 +56,10 @@ export async function addFile(
         mongo.transaction(async (tx) => {
           await lockTree(tx as unknown as NodesMongo, input.accountId);
           await recordBlob(tx, input.key, object);
+          await addUsage(core.withSession(tx.session), input.workspaceId, {
+            bytes: object.size,
+            files: 1,
+          });
           return insertFile(tx as unknown as NodesMongo, {
             parentId: input.parentId,
             accountId: input.accountId,
@@ -64,6 +73,10 @@ export async function addFile(
       );
     } catch (error) {
       if (error instanceof KeyRecorded) throw keyUnknown();
+      if (isQuotaExceeded(error)) {
+        await discardObject(bucket, input.workspaceId, input.key);
+        throw error;
+      }
       // A concurrent writer took the name `KEEP_BOTH` had picked: pick again.
       if (
         input.onConflict === "KEEP_BOTH" &&
@@ -76,6 +89,10 @@ export async function addFile(
     }
   }
 }
+
+export const isQuotaExceeded = (error: unknown) =>
+  (error as { extensions?: { code?: string } }).extensions?.code ===
+  "quotas.errors.exceeded";
 
 const isNameTaken = (error: unknown) =>
   (error as { extensions?: { code?: string } }).extensions?.code ===
