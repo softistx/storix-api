@@ -245,7 +245,7 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 
 ## `nodes.errors.not-found` (404) for a folder that exists
 
-**When:** `createFolder`, `moveNodes`, `folders` or `nodePath` named an id that is not in the caller's own tree: malformed, unknown, of another workspace, or in another member's tree (an owner's or an admin's included).
+**When:** `createFolder`, `renameNode`, `moveNodes`, `folders` or `nodePath` named an id that is not in the caller's own tree: malformed, unknown, of another workspace, or in another member's tree (an owner's or an admin's included).
 
 **Why:** the four answer alike so that an id tells nothing, and a member's files are private until they are shared.
 
@@ -264,3 +264,9 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 **When:** a sibling holds the name in any case (`name-taken`, field `name`); the folder would pass 16 levels (`too-deep`); a folder is moved into itself or its own subtree (`cycle`); the moved folder holds more than 5,000 nodes (`move-too-large`); a root is renamed or moved (`root-locked`).
 
 **Fix:** pick another name or destination. `too-deep`: flatten the destination. `move-too-large`: move the folder's sub-folders in turn (a batched move is planned).
+
+## `nodes.errors.not-a-folder` (400)
+
+**When:** the `parentId` of `createFolder` or `moveNodes` names a node that is not a folder (field `parentId`).
+
+**Fix:** send the id of a folder of the caller's own tree.

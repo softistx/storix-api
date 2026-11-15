@@ -8,9 +8,6 @@ export const MAX_DEPTH = 16;
 // to this many nodes; above it the move is refused (`nodes.errors.move-too-large`).
 export const MAX_MOVE_NODES = 5_000;
 
-// What `moveNodes` takes at once.
-export const MAX_MOVE_IDS = 100;
-
 export const ROOT_NAME = "My files";
 
 // A name is trimmed. It may not be blank, hold a `/` or `\` (they would be

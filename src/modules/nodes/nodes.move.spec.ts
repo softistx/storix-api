@@ -163,6 +163,8 @@ describe("moveNodes", () => {
       version: 0,
       createdAt: now,
       updatedAt: now,
+      createdBy: "seed",
+      updatedBy: "seed",
     }));
     await db.db.nodes.raw.insertMany(crowd as never);
     expect(w.codeOf(await move([a.id], t.id))).toBe(
