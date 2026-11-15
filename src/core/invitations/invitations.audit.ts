@@ -53,7 +53,11 @@ export async function recordInvitationAccept(
   invitation: Invitation,
   answer: unknown,
 ): Promise<void> {
-  let accountId = (answer as { userId?: string }).userId;
+  const signedIn =
+    typeof answer === "object" && answer !== null
+      ? (answer as { userId?: unknown }).userId
+      : undefined;
+  let accountId = typeof signedIn === "string" ? signedIn : undefined;
   if (!accountId) {
     try {
       accountId = (await ctx.identity.accounts.byEmail(invitation.email))
