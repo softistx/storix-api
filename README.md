@@ -31,7 +31,8 @@ curl localhost:3000/health
 
 | Path                            | Holds                                                               |
 | ------------------------------- | ------------------------------------------------------------------- |
-| `src/core/`                     | the kernel: `workspaces`, `members`, `invitations`, `audit`, `access`, `identity`, `translations`, `system` |
+| `src/core/`                     | the kernel: `workspaces`, `members`, `invitations`, `audit`, `access`, `identity`, `translations`, `storage`, `system` |
+| `src/core/storage/`             | `/media`: `@alxia/media` over one private S3 bucket (`files`, `avatars` kinds) |
 | `src/modules/teams/`            | a workspace's teams                                                  |
 | `src/modules/nodes/`            | the folder tree: each member's root, create, rename, move           |
 | `src/modules/registry.ts`       | the one list of modules                                             |
@@ -46,7 +47,7 @@ Some runtime dependencies are declared ahead of the slices that import them; `mo
 ## Accounts
 
 Every operation below is a field of `POST /graphql`. Every request carries an `x-storix-client` header (any non-empty value, the client's name); without it the refusal is 403 `auth.errors.client-header-required`. A session token goes in `Authorization: Bearer <token>`; every
-operation except `viewer` refuses a personal API key (`stx_...`) with 401 `auth.errors.api-key-not-accepted`. The
+operation except `viewer`, and `/media`, refuse a personal API key (`stx_...`) with 401 `auth.errors.api-key-not-accepted`. The
 sign-up, sign-in and password-reset operations are also limited per client address (see [Rate limits](#rate-limits)).
 
 ```sh
@@ -110,7 +111,7 @@ says when to retry. The limits are `<attempts>/<seconds>` in the environment:
 | `RATE_LIMIT_INVITATION_CODE` | `30/900`  |
 
 They need `REDIS_URL` (required in production); without it nothing is limited. A Redis that does not answer lets the
-request through (logged), janus's own per-account throttles still hold.
+request through (logged), janus's own per-account throttles still hold. The `/media` upload limit ([Files](#files)) is the exception: it fails closed.
 
 ## Workspaces
 
@@ -133,7 +134,7 @@ curl -s localhost:3000/graphql -H 'content-type: application/json' -H 'x-storix-
   -d '{"query":"{ members { totalCount nodes { id email role } } }"}'
 ```
 
-A personal API key is refused on workspace operations (401 `auth.errors.api-key-not-accepted`). The detail is in
+A personal API key is refused on workspace operations and on `/media` (401 `auth.errors.api-key-not-accepted`). The detail is in
 [docs/development.md](docs/development.md):
 
 - members, roles and permissions: [Workspaces, members and roles](docs/development.md#workspaces-members-and-roles)
@@ -146,6 +147,42 @@ Settings that belong here: `MONGO_WORKSPACE_PREFIX` (default `storix_ws_`) prefi
 `AUDIT_IP_KEY` (32 characters or more, required in production) keys the hash of client addresses in the audit log;
 `TOTP_KEYS` (`id:key`, 32 random bytes in base64) seals the accounts' second-factor secrets, and the server refuses to start in
 production when it is unset (a development key stands in elsewhere). See `.env.example`.
+
+## Files
+
+Files go through `/media`, plain HTTP beside `/graphql`, over one private S3 bucket. Send a session token and
+`x-storix-workspace` (`/media` does not ask for `x-storix-client`). `PUT /media/<kind>` stores the raw body (send
+`Content-Length`; `curl --data-binary` does) and answers its `key`; `GET /media/<kind>/<key>` streams it back.
+
+```sh
+TOKEN=<session token>
+# Upload: the key is yours to keep
+curl -s -X PUT localhost:3000/media/files \
+  -H "Authorization: Bearer $TOKEN" -H 'x-storix-workspace: acme' \
+  -H 'Content-Type: text/plain' --data-binary @notes.txt
+# {"key":"<key>","contentType":"text/plain","size":20}
+
+# Download it (Range, ETag and If-None-Match are honoured: 206, 304, 416)
+curl -s localhost:3000/media/files/<key> \
+  -H "Authorization: Bearer $TOKEN" -H 'x-storix-workspace: acme'
+```
+
+| Kind      | Accepts                  | Limit   | Stored as                                  |
+| --------- | ------------------------ | ------- | ------------------------------------------ |
+| `files`   | any type                 | 95 MiB  | as sent; a type outside the inline-safe list is served as a download |
+| `avatars` | JPEG, PNG and WebP       | 10 MiB  | only its 64 and 256 px squares (EXIF dropped) |
+
+- **Storage settings**: `S3_BUCKET`, `S3_ACCESS_KEY` and `S3_SECRET_KEY` (and `S3_ENDPOINT`, `S3_REGION`), set together;
+  `bun run services:up` starts SeaweedFS locally. Without the three, every `/media` route answers 503
+  `storage.errors.unavailable`. See `.env.example`.
+- **Upload limit**: 30 a minute, burst 60, per account and workspace, with `@softistx/redis`. Past it the refusal is 429
+  `storage.errors.rate-limited` with a `Retry-After` header. It fails closed: when Redis does not answer, uploads are
+  refused too, with the same 429 (retry after 5 seconds). Without `REDIS_URL` nothing is limited.
+- **Keys**: an object belongs to the workspace named by `x-storix-workspace`; a key of another workspace is 404
+  `storage.errors.not-found`. A personal API key is refused with 401 `auth.errors.api-key-not-accepted`.
+
+The detail is in [Files storage](docs/development.md#files-storage-media); every `storage.errors.*` refusal is in
+[docs/troubleshooting.md](docs/troubleshooting.md).
 
 ## Errors
 
