@@ -150,23 +150,15 @@ describe("moveNodes", () => {
     const { w, workspace, a, t, move } = await tree();
     const db = await databaseOf(workspace.id);
     const parent = await db.db.nodes.getById(a.id);
-    const now = new Date();
+    const owner = workspace.owner.principal.accountId;
     const crowd = Array.from({ length: 5001 }, (_, i) => ({
-      type: "FOLDER",
+      type: "FOLDER" as const,
       name: `n${i}`,
       parentId: parent._id,
       ancestors: [...parent.ancestors, parent._id],
-      ownerId: workspace.owner.principal.accountId,
-      spaceId: null,
-      treeRev: 0,
-      trashedAt: null,
-      version: 0,
-      createdAt: now,
-      updatedAt: now,
-      createdBy: "seed",
-      updatedBy: "seed",
+      ownerId: owner,
     }));
-    await db.db.nodes.raw.insertMany(crowd as never);
+    await db.db.nodes.as(owner).createMany(crowd);
     expect(w.codeOf(await move([a.id], t.id))).toBe(
       "nodes.errors.move-too-large",
     );
