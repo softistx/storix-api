@@ -148,20 +148,20 @@ production when it is unset (a development key stands in elsewhere). See `.env.e
 
 ## Files
 
-Files go through `/media`, plain HTTP beside `/graphql`, over one private S3 bucket. Send the same headers as a workspace
-call: a session token, `x-storix-client` and `x-storix-workspace`. `PUT /media/<kind>` stores the raw body (send
+Files go through `/media`, plain HTTP beside `/graphql`, over one private S3 bucket. Send a session token and
+`x-storix-workspace` (`/media` does not ask for `x-storix-client`). `PUT /media/<kind>` stores the raw body (send
 `Content-Length`; `curl --data-binary` does) and answers its `key`; `GET /media/<kind>/<key>` streams it back.
 
 ```sh
 TOKEN=<session token>
 # Upload: the key is yours to keep
-curl -s -X PUT localhost:3000/media/files -H 'x-storix-client: my-app' \
+curl -s -X PUT localhost:3000/media/files \
   -H "Authorization: Bearer $TOKEN" -H 'x-storix-workspace: acme' \
   -H 'Content-Type: text/plain' --data-binary @notes.txt
 # {"key":"<key>","contentType":"text/plain","size":20}
 
 # Download it (Range, ETag and If-None-Match are honoured: 206, 304, 416)
-curl -s localhost:3000/media/files/<key> -H 'x-storix-client: my-app' \
+curl -s localhost:3000/media/files/<key> \
   -H "Authorization: Bearer $TOKEN" -H 'x-storix-workspace: acme'
 ```
 
@@ -175,7 +175,7 @@ curl -s localhost:3000/media/files/<key> -H 'x-storix-client: my-app' \
   `storage.errors.unavailable`. See `.env.example`.
 - **Upload limit**: 30 a minute, burst 60, per account and workspace, with `@softistx/redis`. Past it the refusal is 429
   `storage.errors.rate-limited` with a `Retry-After` header. It fails closed: when Redis does not answer, uploads are
-  refused too. Without `REDIS_URL` nothing is limited.
+  refused too, with the same 429 (retry after 5 seconds). Without `REDIS_URL` nothing is limited.
 - **Keys**: an object belongs to the workspace named by `x-storix-workspace`; a key of another workspace is 404
   `storage.errors.not-found`. A personal API key is refused with 401 `auth.errors.api-key-not-accepted`.
 
