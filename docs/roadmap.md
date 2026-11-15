@@ -4,7 +4,7 @@ What a user gets, in order. An entry moves Next, Now, Shipped as its effort star
 
 ## Now
 
-- **E2 Files and folders**: upload, organise, tag, copy and move files, with thumbnails, previews, image crops around a focal point and a storage quota. ([issue](https://github.com/softistx/storix-api/issues/14))
+- **E2 Files and folders** (started): each member has a private "My files", with nested folders that can be created, renamed and moved (up to 16 levels deep). ([issue](https://github.com/softistx/storix-api/issues/14))
 
 ## Next
 

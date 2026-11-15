@@ -1,0 +1,84 @@
+enum NodeType {
+  FOLDER
+  FILE
+}
+
+"""
+A folder or a file of the workspace's tree. Only the caller's own tree is
+readable until sharing lands: another member's node is a 404, like an unknown
+one.
+"""
+type Node {
+  id: ID!
+  type: NodeType!
+  name: String!
+  "Null for a root (a member's \"My files\")."
+  parentId: ID
+  "The ids from the root down to the parent; empty for a root."
+  ancestors: [ID!]!
+  "1 for a root, at most 16."
+  depth: Int!
+  "The version a rename must carry (`renameNode`)."
+  version: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+extend type Query {
+  """
+  The caller's roots: their private "My files", made when they joined (or here,
+  for a member who joined before). Needs `nodes:read`.
+  """
+  roots: [Node!]!
+  """
+  The folders directly under a folder, by name (case ignored); with no
+  `parentId`, the roots. Needs `nodes:read`. 404 `nodes.errors.not-found`; 400
+  `nodes.errors.not-a-folder`.
+  """
+  folders(parentId: ID): [Node!]!
+  """
+  The way to a node, root first and the node last. Needs `nodes:read`. 404
+  `nodes.errors.not-found`.
+  """
+  nodePath(id: ID!): [Node!]!
+}
+
+extend type Mutation {
+  """
+  Creates a folder under a folder of the caller's tree. Needs `nodes:manage`.
+  The name is trimmed; it may not be blank, hold `/`, `\` or a control
+  character, or be `.` or `..` (400 `validation.errors.invalid-input`).
+  404 `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`; 409
+  `nodes.errors.name-taken` (field `name`) when a sibling has the name, in any
+  case; 409 `nodes.errors.too-deep` past 16 levels.
+  """
+  createFolder(
+    parentId: ID!
+    name: String! @constraint(minLength: 1, maxLength: 255)
+  ): Node!
+  """
+  Renames a node that is still at `version` (read it with the node). Needs
+  `nodes:manage`. 404 `nodes.errors.not-found`; 409 `nodes.errors.conflict` when
+  the node changed since; 409 `nodes.errors.name-taken`; 409
+  `nodes.errors.root-locked` for a root.
+  """
+  renameNode(
+    id: ID!
+    name: String! @constraint(minLength: 1, maxLength: 255)
+    version: Int!
+  ): Node!
+  """
+  Moves nodes under a folder, all or nothing; answers the nodes moved (one
+  that sits under another selected node moves with it and is not listed). A
+  node already in that folder is left as it is. Needs `nodes:manage`. 404
+  `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`; 409
+  `nodes.errors.cycle` (a folder into itself or its own subtree); 409
+  `nodes.errors.too-deep`; 409 `nodes.errors.move-too-large` (a subtree of
+  more than 5,000 nodes); 409 `nodes.errors.name-taken`; 409
+  `nodes.errors.root-locked`.
+  """
+  moveNodes(
+    ids: [ID!]! @constraint(minItems: 1, maxItems: 100)
+    parentId: ID!
+  ): [Node!]!
+}

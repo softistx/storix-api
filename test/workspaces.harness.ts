@@ -4,6 +4,7 @@ import { joinWorkspace } from "@/core/invitations";
 import {
   addMember,
   type MembersMongo,
+  memberJoined,
   type WorkspaceRole,
 } from "@/core/members";
 import type { WorkspacesMongo } from "@/core/workspaces";
@@ -82,6 +83,7 @@ export async function world(
       role,
       actorId: workspace.owner.principal.accountId,
     });
+    await memberJoined(row);
     return { user, memberId: row.id };
   }
 
