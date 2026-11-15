@@ -1,6 +1,10 @@
-# Bun bundles the app and its dependencies into dist/server.js (the SDL files are
+# Bun bundles the app and its dependencies into dist/server.js, and the
+# background jobs into dist/worker.js (run it as a second container with
+# `bun --no-install dist/worker.js`; the SDL files are
 # imported as text by the module manifests): the image holds dist/ only, no
-# TypeScript and no node_modules. Pinned to Bun 1.4.4 exactly, moved together
+# TypeScript and no node_modules (`bun build` copies the native renderer of
+# @napi-rs/canvas next to dist/worker.js as an asset, built for the image's own
+# platform). Pinned to Bun 1.4.4 exactly, moved together
 # with ci.yml's setup-bun and @types/bun.
 
 FROM oven/bun:1.4.4 AS build

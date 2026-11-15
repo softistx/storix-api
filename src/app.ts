@@ -3,7 +3,7 @@ import { graphql } from "@alxia/graphql";
 import type { MediaBucket } from "@alxia/media";
 import { identity as serverIdentity } from "./config/auth";
 import { closeDatabases, mongoAnswers } from "./config/db";
-import { redis, limits as serverLimits } from "./config/redis";
+import { appRedis, closeQueues, limits as serverLimits } from "./config/redis";
 import {
   bucket as serverBucket,
   uploadLimit as serverUploadLimit,
@@ -16,6 +16,7 @@ import { graphqlPlugins } from "./http/graphql-plugins";
 import { keyPathsOnly } from "./http/key-paths";
 import type { Limits } from "./http/rate-limits";
 import { schema } from "./http/schema";
+import type { RenditionsQueue } from "./modules/files/public";
 
 // The largest body /graphql reads.
 export const BODY_LIMIT = 100 * 1024;
@@ -36,9 +37,14 @@ export function createApp(
     // The files' bucket (`undefined`: /media answers 503) and the upload
     // limit; specs inject ones over their own SeaweedFS and Redis.
     media?: { bucket: MediaBucket | undefined; limit?: UploadLimit };
+    // The `renditions` queue `addFile` adds to (`undefined`: a file has no
+    // previews and is `READY` at once); specs inject one over their own Redis.
+    renditions?: RenditionsQueue | undefined;
   } = {},
 ) {
   const bucket = options.media ? options.media.bucket : serverBucket;
+  const renditions =
+    "renditions" in options ? options.renditions : appRedis?.queues.renditions;
   return (
     createBase(
       options.identity ?? serverIdentity,
@@ -52,7 +58,7 @@ export function createApp(
       .plugin((app) =>
         graphql(app, {
           schema: options.schema ?? schema,
-          context: () => ({ media: bucket }),
+          context: () => ({ media: bucket, renditions }),
           plugins: graphqlPlugins,
           ide: "apollo-sandbox",
           sandbox: { initialHeaders: { [clientHeader]: "apollo-sandbox" } },
@@ -68,7 +74,7 @@ export function createApp(
       )
       .onStop(async () => {
         await closeDatabases();
-        redis?.close();
+        await closeQueues();
       })
   );
 }

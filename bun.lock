@@ -11,10 +11,11 @@
         "@alxia/graphql": "^0.16.3",
         "@alxia/i18n": "^0.6.0",
         "@alxia/language": "^0.3.20",
-        "@alxia/media": "^0.9.0",
+        "@alxia/media": "^0.10.0",
         "@alxia/modules": "^0.4.0",
         "@alxia/tenancy": "^0.6.0",
         "@graphql-tools/merge": "^10.0.6",
+        "@napi-rs/canvas": "^1.1.0",
         "@nxgt/graphql-client": "^0.7.0",
         "@nxgt/graphql-scalars": "^0.7.1",
         "@nxgt/graphql-validation": "^0.9.0",
@@ -37,6 +38,7 @@
         "graphql-yoga": "^5.24.2",
         "mongodb": "^7.8.0",
         "nodemailer": "^8",
+        "pdfjs-dist": "^6.5.0",
         "zod": "^4.6.7",
       },
       "devDependencies": {
@@ -68,7 +70,7 @@
 
     "@alxia/language": ["@alxia/language@0.3.20", "", { "peerDependencies": { "@alxia/core": "^0.24.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-7ywMtPXt5Inv3mQXLgZTBVTc3coJ/gW1pzBoDxN8fFoDiytyrOmJtg752fB1ZiCw4cckgsXHolXNCJIQEE1lCA=="],
 
-    "@alxia/media": ["@alxia/media@0.9.0", "", { "peerDependencies": { "@alxia/core": "^0.24.0", "@softistx/image": "^0.5.0", "@softistx/s3": "^0.13.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/image"] }, "sha512-4bUBcjJzqFeQsAMbyeGRSipWMmF5z8x+UDytNRWfrVDDFbrw1majtV283o6DAButXokMcQpuejlKoxcAeGPxqQ=="],
+    "@alxia/media": ["@alxia/media@0.10.0", "", { "peerDependencies": { "@alxia/core": "^0.24.0", "@softistx/image": "^0.5.0", "@softistx/s3": "^0.13.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/image"] }, "sha512-uMRtsnj2R0Fl5kUoFtO2OX2D2SJd6bFeK/P5P8qPcpLl01G5tk/1bndb9tJa7gKIzCPNWzIKDf0t0NSNYGSg7w=="],
 
     "@alxia/modules": ["@alxia/modules@0.4.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-kzmHJpf9ZzhFhNvH/LoQJSaQ+xOMzbSffnV+F6zkvmOkLUZJzPa3t7/47cQ5mzGfC1InimCMystRP9VFqK26gg=="],
 
