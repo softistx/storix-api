@@ -149,8 +149,6 @@ export const errorCodes = [
   ...invitations,
   ...teams,
   ...nodes,
-]);
-
   ...storage,
 ] as const;
 
