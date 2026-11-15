@@ -31,6 +31,7 @@ export async function world() {
       ...(options.variables && { variables: options.variables }),
       headers,
     });
+    // biome-ignore lint/suspicious/noExplicitAny: a spec reads whatever the query asked for
     return result as unknown as Gql & { data: Record<string, any> | null };
   }
 

@@ -1,11 +1,10 @@
 import { defineCollection, id, objectId } from "@softistx/mongo";
 import { z } from "zod";
 
-// What a workspace's own database says of itself: which workspace it belongs
-// to. One row, written when the database is built. It is also what lets
-// `@softistx/mongo` open a tenant database at all, which needs one collection:
-// the files, folders and the rest come with their modules (A5 on), and this one
-// stays as the database's identity.
+// A placeholder: `@softistx/mongo` opens a tenant database only when it is
+// wired with at least one collection, and no module owns a workspace
+// collection before the files module (A5). Nothing reads or writes it; remove
+// it when A5 brings the first real one.
 export const workspaceInfo = defineCollection({
   name: "workspaceInfo",
   schema: z.object({

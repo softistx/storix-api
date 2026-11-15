@@ -47,7 +47,7 @@ describe("workspace isolation", () => {
     const inB = await w.join(b, "ADMIN");
     const seenFromA = await w.send(inA.user, MEMBERS, { workspace: a.id });
     const accounts = (
-      seenFromA.data?.["members"].nodes as { accountId: string }[]
+      (seenFromA.data?.["members"]?.nodes ?? []) as { accountId: string }[]
     ).map((n) => n.accountId);
     expect(accounts.sort()).toEqual(
       [a.owner.principal.accountId, inA.user.principal.accountId].sort(),
@@ -71,7 +71,10 @@ describe("workspace isolation", () => {
     }
     const stillThere = await w.send(b.owner, MEMBERS, { workspace: b.id });
     const row = (
-      stillThere.data?.["members"].nodes as { id: string; role: string }[]
+      (stillThere.data?.["members"]?.nodes ?? []) as {
+        id: string;
+        role: string;
+      }[]
     ).find((n) => n.id === target.memberId);
     expect(row?.role).toBe("MEMBER");
   });

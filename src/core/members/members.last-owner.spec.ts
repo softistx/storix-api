@@ -85,9 +85,9 @@ describe("a workspace always keeps an owner", () => {
     // Whoever remains an owner reads the page.
     const reader = a.errors ? second.user : workspace.owner;
     const page = await w.send(reader, ROLES, { workspace: workspace.id });
-    const roles = (page.data?.["members"].nodes as { role: string }[]).map(
-      (n) => n.role,
-    );
+    const roles = (
+      (page.data?.["members"]?.nodes ?? []) as { role: string }[]
+    ).map((n) => n.role);
     expect(roles.filter((r) => r === "OWNER")).toHaveLength(1);
   });
 

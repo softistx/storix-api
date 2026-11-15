@@ -45,9 +45,9 @@ describe("createWorkspace", () => {
     });
     expect(w.codeOf(result)).toBe("workspaces.errors.slug-taken");
     expect(result.response.status).toBe(409);
-    expect((result.errors?.[0]?.extensions as { field?: string }).field).toBe(
-      "slug",
-    );
+    expect(
+      (result.errors?.[0]?.extensions as { field?: string } | undefined)?.field,
+    ).toBe("slug");
     expect(
       (await w.send(other, "{ myWorkspaces { id } }")).data?.["myWorkspaces"],
     ).toEqual([]);
