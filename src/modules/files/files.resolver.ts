@@ -12,12 +12,77 @@ import {
 } from "./files.audit";
 import { copyNodes } from "./files.copy";
 import { notAFile } from "./files.errors";
+import { listStarred, setStarred } from "./files.favourites";
+import type { PersonalPage } from "./files.personal";
+import { listRecent, openFile, recordRecent } from "./files.recents";
 import { checkTags, MAX_META_BYTES, metaFits } from "./files.rules";
 import { addFile, type FilesMongo, isQuotaExceeded } from "./files.service";
 import { updateFile } from "./files.update";
 
+// A personal page as the API says it: the nodes and the cursor to go on.
+const pageOf = (page: PersonalPage, after: string | null | undefined) => ({
+  nodes: page.items.map(nodeView),
+  pageInfo: {
+    startCursor: null,
+    endCursor: page.endCursor,
+    hasNextPage: page.endCursor !== null,
+    hasPreviousPage: after != null,
+  },
+});
+
 export const filesResolvers: Resolvers = {
+  Query: {
+    starred: async (_, { first, after }, ctx) => {
+      const { principal, scope } = await requireWorkspacePermission(
+        ctx,
+        "nodes:read",
+      );
+      const page = await listStarred(scope.mongo as unknown as FilesMongo, {
+        accountId: principal.accountId,
+        first,
+        after,
+      });
+      return pageOf(page, after);
+    },
+    recentFiles: async (_, { first, after }, ctx) => {
+      const { principal, scope } = await requireWorkspacePermission(
+        ctx,
+        "nodes:read",
+      );
+      const page = await listRecent(scope.mongo as unknown as FilesMongo, {
+        accountId: principal.accountId,
+        first,
+        after,
+      });
+      return pageOf(page, after);
+    },
+  },
   Mutation: {
+    setStarred: async (_, { id, starred }, ctx) => {
+      const { principal, scope } = await requireWorkspacePermission(
+        ctx,
+        "nodes:read",
+      );
+      const node = await setStarred(scope.mongo as unknown as FilesMongo, {
+        id,
+        starred,
+        accountId: principal.accountId,
+      });
+      return nodeView(node);
+    },
+    openFile: async (_, { id }, ctx) => {
+      const { principal, scope } = await requireWorkspacePermission(
+        ctx,
+        "nodes:read",
+      );
+      const node = await openFile(scope.mongo as unknown as FilesMongo, {
+        id,
+        accountId: principal.accountId,
+      });
+      const view = nodeView(node);
+      if (view.__typename !== "File") throw notAFile();
+      return view;
+    },
     addFile: async (_, { input }, ctx) => {
       const { principal, scope } = await requireWorkspacePermission(
         ctx,
@@ -60,6 +125,15 @@ export const filesResolvers: Resolvers = {
         throw error;
       }
       await recordFileAdd(done, node);
+      // An upload is a recent file; the upload stands if the note fails.
+      await recordRecent(scope.mongo as unknown as FilesMongo, {
+        accountId: principal.accountId,
+        nodeId: node._id,
+      }).catch((error) =>
+        console.error(
+          `storix-api: could not note the upload ${node.id} as recent: ${error instanceof Error ? error.message : error}`,
+        ),
+      );
       return nodeView(node) as never;
     },
     copyNodes: async (_, { ids, parentId }, ctx) => {

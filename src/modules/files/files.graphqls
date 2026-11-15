@@ -24,6 +24,29 @@ input UpdateFileInput {
   version: Int
 }
 
+extend type Query {
+  """
+  The caller's favourites, the most recently starred first, one page: nodes of
+  their tree that are still live (a trashed node leaves the list and returns
+  with its restore). Needs `nodes:read`. 400 `validation.errors.invalid-cursor`
+  (field `after`) for a cursor of another list.
+  """
+  starred(
+    first: Int! = 50 @constraint(min: 1, max: 100)
+    after: String @constraint(maxLength: 500)
+  ): NodePage!
+  """
+  The files the caller opened or uploaded lately, the latest first, one page:
+  at most 200 are kept per member, one entry per file, and a trashed file
+  leaves the list. Needs `nodes:read`. 400 `validation.errors.invalid-cursor`
+  (field `after`) for a cursor of another list.
+  """
+  recentFiles(
+    first: Int! = 50 @constraint(min: 1, max: 100)
+    after: String @constraint(maxLength: 500)
+  ): NodePage!
+}
+
 extend type Mutation {
   """
   Records an uploaded object as a file. Its type and size are the storage's,
@@ -63,4 +86,17 @@ extend type Mutation {
   `input.meta`).
   """
   updateFile(id: ID!, input: UpdateFileInput!): File!
+  """
+  Stars (`starred: true`) or unstars a node of the caller's tree; repeating it
+  changes nothing. Answers the node. Needs `nodes:read`: a favourite is the
+  member's own and touches nothing shared. 404 `nodes.errors.not-found` for an
+  unknown, another member's or (when starring) a trashed node.
+  """
+  setStarred(id: ID!, starred: Boolean!): Node!
+  """
+  Opens a file: notes it among the caller's recent files and answers it. Needs
+  `nodes:read`. 404 `nodes.errors.not-found`; 400 `files.errors.not-a-file`
+  (field `id`) for a folder.
+  """
+  openFile(id: ID!): File!
 }

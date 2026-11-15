@@ -726,6 +726,12 @@ type Mutation {
   """
   moveNodes(ids: [ID!]! @constraint(minItems: 1, maxItems: 100), parentId: ID!): [Node!]!
   """
+  Opens a file: notes it among the caller's recent files and answers it. Needs
+  `nodes:read`. 404 `nodes.errors.not-found`; 400 `files.errors.not-a-file`
+  (field `id`) for a folder.
+  """
+  openFile(id: ID!): File!
+  """
   A recovery code instead of the app's; each works once. Refused as confirmSecondFactor.
   """
   recoverSecondFactor(challenge: String! @constraint(maxLength: 200), recoveryCode: String! @constraint(maxLength: 40)): SignInPayload!
@@ -777,6 +783,13 @@ type Mutation {
   INVITATION_NOT_PENDING (409) when it is accepted or already revoked.
   """
   revokeInvitation(id: ID!, scope: String!): JanusInvitation! @authenticated
+  """
+  Stars (`starred: true`) or unstars a node of the caller's tree; repeating it
+  changes nothing. Answers the node. Needs `nodes:read`: a favourite is the
+  member's own and touches nothing shared. 404 `nodes.errors.not-found` for an
+  unknown, another member's or (when starring) a trashed node.
+  """
+  setStarred(id: ID!, starred: Boolean!): Node!
   """
   Replaces the team's members with these members (`Member.id`, repeats
   ignored; an empty list empties it). Needs `teams:manage`. 404
@@ -1007,6 +1020,13 @@ type Query {
   """
   nodes(after: String @constraint(maxLength: 500), filter: NodeFilter, first: Int! = 50 @constraint(min: 1, max: 100), parentId: ID!, sort: NodeSort): NodePage!
   """
+  The files the caller opened or uploaded lately, the latest first, one page:
+  at most 200 are kept per member, one entry per file, and a trashed file
+  leaves the list. Needs `nodes:read`. 400 `validation.errors.invalid-cursor`
+  (field `after`) for a cursor of another list.
+  """
+  recentFiles(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): NodePage!
+  """
   The caller's roots: their private "My files", made when they joined (or here,
   for a member who joined before). Needs `nodes:read`.
   """
@@ -1015,6 +1035,13 @@ type Query {
   Whether the caller's second factor is on and how many recovery codes are left. 401 `auth.errors.unauthenticated`.
   """
   secondFactorStatus: SecondFactorStatus!
+  """
+  The caller's favourites, the most recently starred first, one page: nodes of
+  their tree that are still live (a trashed node leaves the list and returns
+  with its restore). Needs `nodes:read`. 400 `validation.errors.invalid-cursor`
+  (field `after`) for a cursor of another list.
+  """
+  starred(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): NodePage!
   """
   The workspace's storage: its quota, what is used and the split. Any member
   may read it. 400 `workspaces.errors.workspace-required`, 404
