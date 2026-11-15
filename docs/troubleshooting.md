@@ -313,6 +313,14 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 
 **Fix:** page with the `pageInfo.endCursor` of the same list, or start again without `after`.
 
+## A picture is `PROCESSING` or `FAILED` after `setFocalPoint`
+
+**When:** the file was `READY`, and a move of its focal point leaves it `PROCESSING`, or `FAILED`.
+
+**Why:** a `crops` job redoes the four crops; without a running worker it stays `PROCESSING`, and if only it failed the file is `FAILED` (the original and the previews stay readable). Two quick moves queue two jobs: the file can read `READY` for a moment while the second still runs, and the crops follow the last point.
+
+**Fix:** start the worker (`bun run worker`), or call `setFocalPoint` again with the same point to redo the crops.
+
 ## `files.errors.not-renderable` (400) on `setFocalPoint`
 
 **When:** `setFocalPoint` named a file that is not a JPEG, PNG or WebP picture (field `id`).

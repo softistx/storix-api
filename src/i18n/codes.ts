@@ -116,7 +116,7 @@ export const files = defineCodes("files", [
   // (another workspace's key and another kind's are the same), or a file
   // already holds it.
   "key-unknown",
-  // 400 (field `id`): `updateFile` named a folder.
+  // 400 (field `id`): `updateFile` or `setFocalPoint` named a folder.
   "not-a-file",
   // 409: the copied folder, with what it holds, has more than 5,000 nodes.
   "copy-too-large",

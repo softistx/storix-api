@@ -20,7 +20,7 @@ curl localhost:3000/health
 | Script                 | Does                                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------------------ |
 | `bun run dev`          | the Docker services (MongoDB replica set, Redis, Mailpit, SeaweedFS), then the API in watch mode       |
-| `bun run worker`       | the queue worker in watch mode (renditions: thumbnails and previews); needs `REDIS_URL`, `S3_*` and `MONGO_URI`; `bun run dev` does not start it |
+| `bun run worker`       | the queue worker in watch mode (renditions: thumbnails, previews and crops); needs `REDIS_URL`, `S3_*` and `MONGO_URI`; `bun run dev` does not start it |
 | `bun run verify`       | the green bar: generate, schema check, Biome, context and dependency checks, `bun check`, tests, build |
 | `bun run verify:pr`    | the same with only the specs a diff against `origin/develop` affects                                   |
 | `bun run generate`     | scalars and validation SDL, then resolver types and Zod schemas into `src/generated/`                  |
@@ -330,7 +330,7 @@ An input refused as a whole is one error, `validation.errors.invalid-input` (HTT
 
 The refusals of a schema `@constraint` arrive in this same shape: the plugin in `src/http/api-errors.ts` converts them with `invalidInputOf` of `@nxgt/graphql-validation`, which maps each argument to its code and params (`minLength` is `too-short` with `params.min`, `maxLength` `too-long` with `params.max`, `min`/`max` `out-of-range`, and so on); the `@nxgt/graphql-validation` guide `docs/guide/invalid-input.md` has the full table.
 
-### Thumbnails and previews (the worker)
+### Thumbnails and previews (the worker; crops follow)
 
 `addFile` of a JPEG, PNG, WebP or PDF records the file as `PROCESSING` and enqueues a `renditions` job (`@softistx/redis`
 queue, one job per file). The worker (`bun run worker`, `dist/worker.js` in production, a second process beside the API)

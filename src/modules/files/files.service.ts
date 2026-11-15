@@ -117,25 +117,22 @@ export async function enqueue(
   node: NodeDoc,
   redo?: string,
 ): Promise<NodeDoc> {
-  const input = job;
   try {
     await queue.add(job, { id: renditionJobId(job, redo) });
     return node;
   } catch (error) {
     console.error(
-      `storix-api: could not queue the renditions of ${input.key} in workspace ${input.workspaceId}: ${error instanceof Error ? error.message : error}`,
+      `storix-api: could not queue the renditions of ${job.key} in workspace ${job.workspaceId}: ${error instanceof Error ? error.message : error}`,
     );
     // The file is recorded either way: a second failure is logged, not thrown.
     await mongo.db.nodes
       .updateMany(
-        { blobKey: input.key, status: "PROCESSING" },
+        { blobKey: job.key, status: "PROCESSING" },
         { status: "FAILED" },
         { audit: false },
       )
       .catch((cause) =>
-        console.error(
-          `storix-api: could not mark ${input.key} FAILED: ${cause}`,
-        ),
+        console.error(`storix-api: could not mark ${job.key} FAILED: ${cause}`),
       );
     return { ...node, status: "FAILED" };
   }

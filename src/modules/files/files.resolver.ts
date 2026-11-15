@@ -7,17 +7,15 @@ import { checkName, nodeView } from "@/modules/nodes/public";
 import {
   recordCopy,
   recordFileAdd,
-  recordFileFocal,
   recordFileUpdate,
   recordQuotaRefusal,
 } from "./files.audit";
 import { copyNodes } from "./files.copy";
 import { notAFile } from "./files.errors";
 import { listStarred, setStarred } from "./files.favourites";
-import { setFocalPoint } from "./files.focal";
+import { fileRenditionResolvers, setFocalPoint } from "./files.focal.resolver";
 import type { PersonalPage } from "./files.personal";
 import { listRecent, openFile, recordRecent } from "./files.recents";
-import { renditionsOf } from "./files.renditions.list";
 import { checkTags, MAX_META_BYTES, metaFits } from "./files.rules";
 import { addFile, type FilesMongo, isQuotaExceeded } from "./files.service";
 import { updateFile } from "./files.update";
@@ -65,35 +63,9 @@ export const filesResolvers: Resolvers = {
       return pageOf(page, after);
     },
   },
-  File: {
-    renditions: (file) => renditionsOf(file),
-    rendition: (file, { preset }) =>
-      renditionsOf(file).find((one) => one.preset === preset) ?? null,
-  },
+  File: fileRenditionResolvers,
   Mutation: {
-    setFocalPoint: async (_, { id, focalPoint }, ctx) => {
-      const { principal, scope } = await requireWorkspacePermission(
-        ctx,
-        "nodes:manage",
-      );
-      const { node } = await setFocalPoint(filesDb(scope), ctx.renditions, {
-        id,
-        accountId: principal.accountId,
-        workspaceId: scope.tenant.id,
-        focalPoint: focalPoint ?? null,
-      });
-      await recordFileFocal(
-        {
-          workspaceId: scope.tenant.id,
-          actor: memberActor(principal),
-          ip: ctx.ip,
-        },
-        node,
-      );
-      const view = nodeView(node);
-      if (view.__typename !== "File") throw notAFile();
-      return view;
-    },
+    setFocalPoint,
     setStarred: async (_, { id, starred }, ctx) => {
       const { principal, scope } = await requireWorkspacePermission(
         ctx,

@@ -77,7 +77,7 @@ when a code lacks a message in English or French.
 | `nodes.errors.move-too-large` | The moved folder holds more than 5,000 nodes (409). |
 | `nodes.errors.root-locked` | A root was renamed or moved (409). |
 | `files.errors.key-unknown` | `addFile` named a key that is not a recordable upload: another workspace's or kind's, malformed, never uploaded, empty, or already recorded (400, field `key`). |
-| `files.errors.not-a-file` | `updateFile` named a folder: only a file has tags and metadata (400, field `id`). |
+| `files.errors.not-a-file` | `updateFile` or `setFocalPoint` named a folder: only a file has tags, metadata and a focal point (400, field `id`). |
 | `files.errors.copy-too-large` | The copied folder, with what it holds, has more than 5,000 nodes (409). |
 | `files.errors.not-renderable` | `setFocalPoint` named a file that is not a JPEG, PNG or WebP picture: only these have crops (400, field `id`). |
 | `files.errors.invalid-focal` | `setFocalPoint` got a coordinate that is not a number from 0 to 1 (400, field `focalPoint`). |
