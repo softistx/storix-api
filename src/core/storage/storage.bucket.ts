@@ -1,4 +1,3 @@
-import type { MediaBucket } from "@alxia/media";
 import { bindBucket, defineBucket } from "@softistx/s3";
 
 export interface BucketSettings {
@@ -15,11 +14,12 @@ export const filesBucket = (name: string) =>
   defineBucket({ bucket: name, key: (params: { key: string }) => params.key });
 
 // The bucket bound to its credentials.
-export function openBucket(settings: BucketSettings): MediaBucket {
+// `/media` uses its open, put and delete; the orphan sweep also lists.
+export function openBucket(settings: BucketSettings) {
   return bindBucket(filesBucket(settings.bucket), {
     accessKeyId: settings.accessKeyId,
     secretAccessKey: settings.secretAccessKey,
     ...(settings.endpoint && { endpoint: settings.endpoint }),
     ...(settings.region && { region: settings.region }),
-  }) as unknown as MediaBucket;
+  });
 }
