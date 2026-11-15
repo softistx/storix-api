@@ -211,8 +211,8 @@ describe("over /graphql", () => {
       );
       codes.push(result.errors?.[0]?.extensions?.code);
     }
-    // janus itself never throttles a recovery code (each attempt signs in
-    // afresh, so no challenge counts them): the per-address limit does.
+    // The per-address limit (limits.signIn) trips here; janus's own five-try
+    // window is covered in identity.second-factor.spec.ts.
     expect(codes.slice(0, 2)).toEqual([
       "identity.errors.second-factor-invalid",
       "identity.errors.second-factor-invalid",
