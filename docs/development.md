@@ -116,14 +116,14 @@ An admin invites an address into the request's workspace; the invitee accepts wi
 
 - `PUT /media/<kind>` stores the raw body (send `Content-Length`) and answers `{ key, contentType, size }`; `GET /media/<kind>/<key>` streams it with `Range`, `ETag` and `If-None-Match` (206, 304, 416).
 - Kinds (`storage.kinds.ts`): `files` takes any type up to 95 MiB (known signatures sniffed; a type outside the inline-safe list is served as a download) and `avatars` takes JPEG, PNG and WebP up to 10 MiB, stores only its `64` and `256` px squares (EXIF dropped, `keepOriginal: false`). Both use `Cache-Control: private, no-cache`, so a reader who lost access is refused on the next use.
-- Every object is stored at `workspaces/<workspaceId>/<kind>/<key>` (`keyPrefix`): the `x-storix-workspace` header picks the prefix, so a key of another workspace is a 404. Any member of the workspace may upload and read; the node-level check comes with the `files` slice. A personal API key is refused until keys are bound to workspaces.
+- Every object is stored at `workspaces/<workspaceId>/<kind>/<key>` (`keyPrefix`): the `x-storix-workspace` header picks the prefix, so a key of another workspace is a 404. Any member may upload; a `files` object is read only while a live node of the caller's own tree holds its key (the `files` module registers `onFileRead`, so the kernel stays free of business modules; `avatars` stay readable by members). A personal API key is refused until keys are bound to workspaces.
 - Uploads are limited per account and workspace, 30 a minute with a burst of 60 (`@softistx/redis`, `storage.limit.ts`); unlike the sign-in limits it fails closed when Redis does not answer. Unset `REDIS_URL` limits nothing.
 - Every refusal is `/graphql`'s error shape with a `storage.errors.*` code (CONTEXT.md, docs/troubleshooting.md).
 - The specs go through `app.fetch` on a real SeaweedFS (`@softistx/s3/testing`, downloaded once, no Docker) and a real Redis.
 
 ## Folders
 
-`src/modules/nodes` keeps the workspace's tree in its own database: one `nodes` collection for folders (files join it with the files module). The fields: `roots`, `folders(parentId)`, `nodePath(id)`, `createFolder`, `renameNode`, `moveNodes`.
+`src/modules/nodes` keeps the workspace's tree in its own database: one `nodes` collection for folders and files. The fields: `roots`, `folders(parentId)`, `nodePath(id)`, `node(id)`, `nodes(parentId, …)`, `createFolder`, `renameNode`, `moveNodes` (and `addFile`, below).
 
 - **A private root per member.** Each member owns one root folder, "My files" (`parentId` null, `ancestors` empty). Nothing in another member's tree is readable: an owner and an admin included, it is 404 `nodes.errors.not-found`, like an unknown or malformed id (sharing, a later slice, widens that one rule). `nodes:read` and `nodes:manage` are held by `ADMIN` and `MEMBER` (and `OWNER`, who holds all). A personal API key is refused.
 - **Made at joining.** `src/core/members` exposes `onMemberJoined`; `nodes` registers itself when its manifest loads, and `memberJoined` runs the listeners once the membership is written (the workspace's creator, an accepted invitation). It is also made on the first `roots`, `createFolder` or `moveNodes`, for a member who joined before the module existed or whose set-up failed; two makers at once leave one (a unique index per owner).
@@ -131,6 +131,14 @@ An admin invites an address into the request's workspace; the invitee accepts wi
 - **Depth** is at most 16, a root being 1: 409 `nodes.errors.too-deep` for a create or a move that would pass it (a move counts the deepest node of the subtree).
 - **`ancestors`** lists the ids from the root to the parent, so a subtree is one index read. A move rewrites the `ancestors` of the whole subtree in one transaction, up to 5,000 nodes (409 `nodes.errors.move-too-large`). A folder moved into itself or its own subtree is 409 `nodes.errors.cycle`. A root is never renamed nor moved (409 `nodes.errors.root-locked`). A parent that is not a folder is 400 `nodes.errors.not-a-folder`.
 - **Concurrency.** `renameNode` carries the `version` read with the node and refuses a stale one (409 `nodes.errors.conflict`: a rename or a move came first). Every write that changes the shape of a tree (create, move) first raises the root's `treeRev` in its transaction, so two of them at once conflict and the later one runs again on the result of the earlier one: no cycle, no stale `ancestors`. `moveNodes` is all or nothing (1 to 100 ids; a node selected with its own parent moves with it, once; a node already in the folder is left as it is).
+
+## Files (`addFile`, `node`, `nodes`)
+
+`src/modules/files` records an upload; `src/modules/nodes` lists. `addFile(input: { key, name, parentId, onConflict })` needs `nodes:manage`. It opens the object under `workspaces/<workspaceId>/files/<key>` (`storedObject`: type and size come from there; a missing, empty or foreign object is 400 `files.errors.key-unknown`, an unreachable bucket 503), then in one transaction raises the tree's `treeRev`, writes the `blobs` row (unique `key`: a second recorder loses with `key-unknown`) and the `FILE` node. `REFUSE` is `nodes.errors.name-taken`; `KEEP_BOTH` picks `stem (n).ext` and tries again up to 3 times if a writer took the name first. The audit event is `file.add` (parent, type, size; never the key).
+
+- **`nodes(parentId, filter, sort, first, after)`**: folders first, then the sort keys (`NAME`; `DATE` is `updatedAt`; `SIZE` then name; `KIND` is the family then name), then `_id`, in the direction asked, so the order is total. `families` is any of, `tags` all of, `name` a case-insensitive contains. The cursor is a keyset of the last row's sort values, bound to the folder, filter and sort by a hash: another listing's cursor is 400 `validation.errors.invalid-cursor`. A row added meanwhile never repeats or skips a row of the walk.
+- **`family`** comes from the MIME type (`nodes.family.ts`); unknown types are `OTHER`. `tags` and `meta` are stored, set by a later slice. `status` is `READY` until a worker exists.
+- **The bucket** reaches the resolvers through the GraphQL context (`ctx.media`), the same one `/media` uses.
 
 ## Audit log
 

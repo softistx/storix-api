@@ -4,7 +4,7 @@ What a user gets, in order. An entry moves Next, Now, Shipped as its effort star
 
 ## Now
 
-- **E2 Files and folders** (started): each member has a private "My files", with nested folders that can be created, renamed and moved (up to 16 levels deep). ([issue](https://github.com/softistx/storix-api/issues/14))
+- **E2 Files and folders** (started): each member has a private "My files", with nested folders that can be created, renamed and moved (up to 16 levels deep), uploaded files recorded in them (two on a name keep both, or refuse), and a folder listed by type, tag and name, sorted by name, date, size or kind. ([issue](https://github.com/softistx/storix-api/issues/14))
 
 ## Next
 

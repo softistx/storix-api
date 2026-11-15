@@ -22,8 +22,8 @@ type World = Awaited<ReturnType<typeof world>>;
 type Caller = Parameters<World["send"]>[0];
 
 // A workspace with its owner, and calls that speak as a member of it.
-export async function setup() {
-  const w = await world();
+export async function setup(existing?: World) {
+  const w = existing ?? (await world());
   const workspace = await w.workspaceOf();
   const at = { workspace: workspace.id };
   const as = (user: Caller) => ({

@@ -1,6 +1,11 @@
 import { defineMediaKind } from "@alxia/media";
 import { withImageRendition } from "@alxia/media/image";
-import { accessOf, authorizeRead, authorizeWrite } from "./storage.access";
+import {
+  accessOf,
+  authorizeFileRead,
+  authorizeRead,
+  authorizeWrite,
+} from "./storage.access";
 import type { MediaRequires } from "./storage.context";
 import type { UploadLimit } from "./storage.limit";
 
@@ -23,6 +28,8 @@ export function mediaKinds(options: {
     options.available ? authorizeWrite(ctx) : { code: "unavailable" };
   const read = async (ctx: MediaRequires) =>
     options.available ? authorizeRead(ctx) : { code: "unavailable" };
+  const readFile = async (ctx: MediaRequires, key: string) =>
+    options.available ? authorizeFileRead(ctx, key) : { code: "unavailable" };
   const throttle = async (ctx: MediaRequires) => {
     const access = await accessOf(ctx);
     if (!access.ok) return true;
@@ -37,7 +44,7 @@ export function mediaKinds(options: {
       accept: "*",
       maxBytes: FILES_MAX_BYTES,
       authorizeWrite: write,
-      authorizeRead: read,
+      authorizeRead: readFile,
       throttle,
       cacheControl: "private, no-cache",
     }),

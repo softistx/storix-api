@@ -38,6 +38,7 @@ export function createApp(
     media?: { bucket: MediaBucket | undefined; limit?: UploadLimit };
   } = {},
 ) {
+  const bucket = options.media ? options.media.bucket : serverBucket;
   return (
     createBase(
       options.identity ?? serverIdentity,
@@ -51,7 +52,7 @@ export function createApp(
       .plugin((app) =>
         graphql(app, {
           schema: options.schema ?? schema,
-          context: () => ({}),
+          context: () => ({ media: bucket }),
           plugins: graphqlPlugins,
           ide: "apollo-sandbox",
           sandbox: { initialHeaders: { [clientHeader]: "apollo-sandbox" } },
@@ -61,7 +62,7 @@ export function createApp(
       // guard it adds, and every object lives under the workspace's prefix.
       .plugin(
         storageRoutes({
-          bucket: options.media ? options.media.bucket : serverBucket,
+          bucket,
           limit: options.media?.limit ?? serverUploadLimit,
         }),
       )

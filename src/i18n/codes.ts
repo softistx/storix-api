@@ -109,6 +109,15 @@ export const nodes = defineCodes("nodes", [
   "root-locked",
 ]);
 
+// Recording uploaded files (src/modules/files).
+export const files = defineCodes("files", [
+  // 400 (field `key`): the key names no object that can be recorded: it is not
+  // a media key, no object of the `files` kind lies under it in this workspace
+  // (another workspace's key and another kind's are the same), or a file
+  // already holds it.
+  "key-unknown",
+]);
+
 // The object store behind /media (src/core/storage). The refusals of the media
 // routes, in the GraphQL error shape.
 export const storage = defineCodes("storage", [
@@ -149,6 +158,7 @@ export const errorCodes = [
   ...invitations,
   ...teams,
   ...nodes,
+  ...files,
   ...storage,
 ] as const;
 

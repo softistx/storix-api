@@ -1,0 +1,31 @@
+enum OnConflict {
+  "Refuse a name a sibling already holds (409 `nodes.errors.name-taken`)."
+  REFUSE
+  "Keep the existing node and name the new file `name (1).ext`, `name (2).ext`…"
+  KEEP_BOTH
+}
+
+input AddFileInput {
+  "The key `PUT /media/files` answered: the object must be in this workspace, of the `files` kind, and not recorded yet."
+  key: String! @constraint(minLength: 1, maxLength: 100)
+  "The file's name: trimmed, at most 255 characters, no `/`, `\\` or control character."
+  name: String! @constraint(minLength: 1, maxLength: 255)
+  "The folder of the caller's tree to put the file in."
+  parentId: ID!
+  onConflict: OnConflict! = REFUSE
+}
+
+extend type Mutation {
+  """
+  Records an uploaded object as a file. Its type and size are the storage's,
+  never the input's; the answer is the new file (its `name` may differ from
+  the input's under `KEEP_BOTH`). Needs `nodes:manage`. 400
+  `files.errors.key-unknown` (field `key`) for a key of another workspace or
+  kind, a malformed or never uploaded key, and one a file already holds; 404
+  `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`; 409
+  `nodes.errors.name-taken` (field `name`, REFUSE only); 409
+  `nodes.errors.too-deep`; 400 `validation.errors.invalid-input` for a bad
+  name; 503 `storage.errors.unavailable` when no bucket is configured.
+  """
+  addFile(input: AddFileInput!): File!
+}

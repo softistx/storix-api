@@ -34,7 +34,8 @@ curl localhost:3000/health
 | `src/core/`                     | the kernel: `workspaces`, `members`, `invitations`, `audit`, `access`, `identity`, `translations`, `storage`, `system` |
 | `src/core/storage/`             | `/media`: `@alxia/media` over one private S3 bucket (`files`, `avatars` kinds) |
 | `src/modules/teams/`            | a workspace's teams                                                  |
-| `src/modules/nodes/`            | the folder tree: each member's root, create, rename, move           |
+| `src/modules/nodes/`            | the folder tree: each member's root, create, rename, move, `node` and `nodes` (filter, sort, cursor) |
+| `src/modules/files/`            | files: `addFile` records an upload as a file (`blobs`)              |
 | `src/modules/registry.ts`       | the one list of modules                                             |
 | `src/i18n/`                     | the error inventory (`defineCodes`, `ErrorCode`), `fail`, the i18n instance, the coverage check |
 | `src/config/`                   | `env.ts` (read once at import), the MongoDB handle                  |
@@ -180,6 +181,23 @@ curl -s localhost:3000/media/files/<key> \
   refused too, with the same 429 (retry after 5 seconds). Without `REDIS_URL` nothing is limited.
 - **Keys**: an object belongs to the workspace named by `x-storix-workspace`; a key of another workspace is 404
   `storage.errors.not-found`. A personal API key is refused with 401 `auth.errors.api-key-not-accepted`.
+
+### Record an upload and list a folder
+
+An upload is not a file until it is recorded: `addFile` takes the `key` that `PUT /media/files` answered, a name and a
+folder of your tree. The type and the size come from the storage, never from the input. `onConflict` is `REFUSE` (the
+default, `nodes.errors.name-taken`) or `KEEP_BOTH` (`report (1).pdf`). A key of another workspace or kind, a key
+already recorded, a malformed one or one never uploaded is `files.errors.key-unknown`.
+
+```graphql
+mutation { addFile(input: { key: "<key>", name: "notes.txt", parentId: "<folder id>", onConflict: KEEP_BOTH }) { id name size family } }
+query { nodes(parentId: "<folder id>", filter: { families: [IMAGE], name: "png" }, sort: { by: SIZE, direction: DESC }, first: 50) {
+  nodes { id type name ... on File { size mimeType } } pageInfo { endCursor hasNextPage } } }
+```
+
+`nodes` lists folders first, then the files sorted by `NAME`, `DATE`, `SIZE` or `KIND` (either direction); `after` takes the
+last page's `endCursor` with the same folder, filter and sort. `node(id)` answers one folder or file. Once recorded, a
+`files` object is readable at `/media/files/<key>` by its owner only; an unrecorded one is 404.
 
 The detail is in [Files storage](docs/development.md#files-storage-media); every `storage.errors.*` refusal is in
 [docs/troubleshooting.md](docs/troubleshooting.md).

@@ -79,14 +79,35 @@ const codeOf = async (res: Response) =>
 
 const text = "0123456789abcdefghij";
 
-async function stored(user: User, workspace: string, body: string = text) {
-  const res = await put(user, workspace, body, "text/plain");
+// Uploads, then records the object as a file in the caller's root: `files`
+// reads only serve a key a live node of the caller's own tree holds.
+async function stored(
+  user: User,
+  workspace: string,
+  body: string = text,
+  type = "text/plain",
+) {
+  const res = await put(user, workspace, body, type);
   expect(res.status).toBe(200);
-  return (await res.json()) as {
+  const up = (await res.json()) as {
     key: string;
     contentType: string;
     size: number;
   };
+  const roots = await w.send(user, "{ roots { id } }", { workspace });
+  const parentId = ((roots.data?.["roots"] ?? []) as { id: string }[])[0]?.id;
+  const added = await w.send(
+    user,
+    "mutation($input: AddFileInput!) { addFile(input: $input) { id } }",
+    {
+      workspace,
+      variables: {
+        input: { key: up.key, name: `f-${up.key}.txt`, parentId },
+      },
+    },
+  );
+  expect(added.errors).toBeUndefined();
+  return up;
 }
 
 describe("/media on SeaweedFS", () => {
@@ -105,9 +126,7 @@ describe("/media on SeaweedFS", () => {
 
   test("a type with no known signature is stored as declared and served as a download", async () => {
     const ws = await w.workspaceOf();
-    const res = await put(ws.owner, ws.id, text, "application/x-custom");
-    expect(res.status).toBe(200);
-    const { key } = (await res.json()) as { key: string };
+    const { key } = await stored(ws.owner, ws.id, text, "application/x-custom");
     const got = await call(ws.owner, ws.id, `/media/files/${key}`);
     expect(got.headers.get("content-type")).toBe("application/octet-stream");
     expect(got.headers.get("content-disposition")).toContain("attachment");

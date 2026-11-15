@@ -93,6 +93,20 @@ every one. Repeated, every one must hold, in the order written.
 """
 directive @permission(id: String, name: String!, onDeny: JanusPermissionDenial! = NOT_FOUND, type: String!) repeatable on FIELD_DEFINITION | INTERFACE | OBJECT
 
+input AddFileInput {
+  """
+  The key `PUT /media/files` answered: the object must be in this workspace, of the `files` kind, and not recorded yet.
+  """
+  key: String! @constraint(minLength: 1, maxLength: 100)
+  """
+  The file's name: trimmed, at most 255 characters, no `/`, `\` or control character.
+  """
+  name: String! @constraint(minLength: 1, maxLength: 255)
+  onConflict: OnConflict! = REFUSE
+  """The folder of the caller's tree to put the file in."""
+  parentId: ID!
+}
+
 type AuditActor {
   """The account id (or key, token or link id)."""
   id: ID!
@@ -118,7 +132,7 @@ One thing that happened in the workspace. Never holds an address, a code, a pass
 """
 type AuditEvent {
   """
-  `<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete.
+  `<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete, node.folder-create, node.rename, node.move, file.add.
   """
   action: String!
   actor: AuditActor!
@@ -236,6 +250,64 @@ type ErrorMessage {
   code: String!
   """The ICU message, uninterpolated, that `extensions.params` fill."""
   message: String!
+}
+
+"""A file: a node that holds a stored object (`addFile` records it)."""
+type File implements Node {
+  ancestors: [ID!]!
+  createdAt: DateTime!
+  depth: Int!
+  family: FileFamily!
+  id: ID!
+  """
+  The media key of the object: `GET /media/files/<key>` reads it. Never a URL.
+  """
+  key: String!
+  meta: JSONObject!
+  """The content type the storage reported when the file was uploaded."""
+  mimeType: String!
+  name: String!
+  parentId: ID
+  """The size in bytes, as the storage reported it."""
+  size: Float!
+  status: FileStatus!
+  tags: [String!]!
+  type: NodeType!
+  updatedAt: DateTime!
+  version: Int!
+}
+
+enum FileFamily {
+  ARCHIVE
+  AUDIO
+  """Source and data text: JSON, XML, scripts, other text types."""
+  CODE
+  """Word-processing documents and plain text."""
+  DOCUMENT
+  IMAGE
+  OTHER
+  PDF
+  PRESENTATION
+  SPREADSHEET
+  VIDEO
+}
+
+enum FileStatus {
+  FAILED
+  PROCESSING
+  READY
+}
+
+type Folder implements Node {
+  ancestors: [ID!]!
+  createdAt: DateTime!
+  depth: Int!
+  id: ID!
+  name: String!
+  parentId: ID
+  type: NodeType!
+  updatedAt: DateTime!
+  version: Int!
 }
 
 """A GUID: 8-4-4-4-12 hexadecimal digits, with no version check."""
@@ -541,6 +613,18 @@ type Mutation {
   """
   activateSecondFactor(code: String! @constraint(maxLength: 40)): RecoveryCodes!
   """
+  Records an uploaded object as a file. Its type and size are the storage's,
+  never the input's; the answer is the new file (its `name` may differ from
+  the input's under `KEEP_BOTH`). Needs `nodes:manage`. 400
+  `files.errors.key-unknown` (field `key`) for a key of another workspace or
+  kind, a malformed or never uploaded key, and one a file already holds; 404
+  `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`; 409
+  `nodes.errors.name-taken` (field `name`, REFUSE only); 409
+  `nodes.errors.too-deep`; 400 `validation.errors.invalid-input` for a bad
+  name; 503 `storage.errors.unavailable` when no bucket is configured.
+  """
+  addFile(input: AddFileInput!): File!
+  """
   Changes a member's role. Needs `members:manage` (OWNER, ADMIN) AND a fresh
   session (403 `auth.errors.step-up-required`: `requestStepUp` then
   `confirmStepUp`); only an OWNER may make or change an owner (403
@@ -720,7 +804,7 @@ A folder or a file of the workspace's tree. Only the caller's own tree is
 readable until sharing lands: another member's node is a 404, like an unknown
 one.
 """
-type Node {
+interface Node {
   """The ids from the root down to the parent; empty for a root."""
   ancestors: [ID!]!
   createdAt: DateTime!
@@ -734,6 +818,37 @@ type Node {
   updatedAt: DateTime!
   """The version a rename must carry (`renameNode`)."""
   version: Int!
+}
+
+input NodeFilter {
+  """Files of any of these families. Leaves the folders out."""
+  families: [FileFamily!] @constraint(maxItems: 20)
+  """Nodes whose name contains this text, case ignored."""
+  name: String @constraint(maxLength: 255)
+  """Files that carry all of these tags. Leaves the folders out."""
+  tags: [String!] @constraint(maxItems: 20)
+}
+
+"""A page of a folder's nodes."""
+type NodePage {
+  nodes: [Node!]!
+  pageInfo: PageInfo!
+}
+
+input NodeSort {
+  by: NodeSortField! = NAME
+  direction: SortDirection! = ASC
+}
+
+enum NodeSortField {
+  """By the date of the last change."""
+  DATE
+  """By family, then name; folders, which have none, by name."""
+  KIND
+  """By name, case ignored."""
+  NAME
+  """By size; folders, which have none, by name."""
+  SIZE
 }
 
 enum NodeType {
@@ -758,6 +873,15 @@ scalar NonPositiveInt
 
 """A MongoDB ObjectId: 24 hexadecimal digits."""
 scalar ObjectID @specifiedBy(url: "https://www.mongodb.com/docs/manual/reference/method/ObjectId/")
+
+enum OnConflict {
+  """
+  Keep the existing node and name the new file `name (1).ext`, `name (2).ext`…
+  """
+  KEEP_BOTH
+  """Refuse a name a sibling already holds (409 `nodes.errors.name-taken`)."""
+  REFUSE
+}
 
 """
 Where a page of a list ends. Paging is forward only: `endCursor` is the
@@ -840,10 +964,25 @@ type Query {
   """
   myWorkspaces: [Workspace!]!
   """
+  One node of the caller's tree. Needs `nodes:read`. 404 `nodes.errors.not-found`.
+  """
+  node(id: ID!): Node!
+  """
   The way to a node, root first and the node last. Needs `nodes:read`. 404
   `nodes.errors.not-found`.
   """
   nodePath(id: ID!): [Node!]!
+  """
+  The nodes directly under a folder, one page, folders first. `filter` keeps
+  the files of a family or with tags, and the nodes whose name contains a text;
+  `sort` is by name (the default), date, size or kind, ascending or descending,
+  folders always first; the cursor of `pageInfo.endCursor` gives the next page
+  and is stable under every sort (the position ends in the id). Needs
+  `nodes:read`. 404 `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`;
+  400 `validation.errors.invalid-cursor` (field `after`) for a cursor of
+  another folder, filter or sort.
+  """
+  nodes(after: String @constraint(maxLength: 500), filter: NodeFilter, first: Int! = 50 @constraint(min: 1, max: 100), parentId: ID!, sort: NodeSort): NodePage!
   """
   The caller's roots: their private "My files", made when they joined (or here,
   for a member who joined before). Needs `nodes:read`.

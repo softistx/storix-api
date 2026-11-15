@@ -3,9 +3,15 @@ import { memberActor } from "@/core/audit";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { invalidInput } from "@/i18n/fail";
 import { recordFolderCreate, recordMove, recordRename } from "./nodes.audit";
+import { listNodes } from "./nodes.list";
 import { moveNodes } from "./nodes.move";
 import { checkName } from "./nodes.rules";
-import { createFolder, type NodesMongo, renameNode } from "./nodes.service";
+import {
+  createFolder,
+  type NodesMongo,
+  ownedNode,
+  renameNode,
+} from "./nodes.service";
 import { foldersOf, nodeView, pathTo, rootsOf } from "./nodes.tree";
 
 // The module's handle on the request's workspace database (the scope's, typed
@@ -59,6 +65,38 @@ export const nodesResolvers: Resolvers = {
       );
       const path = await pathTo(workspaceDb(scope), id, principal.accountId);
       return path.map(nodeView);
+    },
+    node: async (_, { id }, ctx) => {
+      const { principal, scope } = await requireWorkspacePermission(
+        ctx,
+        "nodes:read",
+      );
+      return nodeView(
+        await ownedNode(workspaceDb(scope), id, principal.accountId),
+      );
+    },
+    nodes: async (_, { parentId, filter, sort, first, after }, ctx) => {
+      const { principal, scope } = await requireWorkspacePermission(
+        ctx,
+        "nodes:read",
+      );
+      const page = await listNodes(workspaceDb(scope), {
+        parentId,
+        accountId: principal.accountId,
+        filter,
+        sort,
+        first,
+        after,
+      });
+      return {
+        nodes: page.items.map(nodeView),
+        pageInfo: {
+          startCursor: null,
+          endCursor: page.endCursor,
+          hasNextPage: page.endCursor !== null,
+          hasPreviousPage: after != null,
+        },
+      };
     },
   },
   Mutation: {
