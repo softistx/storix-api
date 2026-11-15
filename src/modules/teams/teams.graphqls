@@ -1,0 +1,56 @@
+"A group of the workspace's members, which a folder or a file is shared with as one."
+type Team {
+  id: ID!
+  "Unique in the workspace, ignoring case."
+  name: String!
+  "The ids of its members (`Member.id`), all current members of the workspace."
+  memberIds: [ID!]!
+  memberCount: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+extend type Query {
+  """
+  The request's workspace's teams, by name. Needs `teams:read`, which every
+  role holds. 400 `workspaces.errors.workspace-required`; 404
+  `workspaces.errors.not-found`; 401 `auth.errors.api-key-not-accepted` for a
+  personal API key.
+  """
+  teams: [Team!]!
+  """
+  One team of the request's workspace. 404 `teams.errors.not-found` for an
+  unknown id AND for a team of another workspace.
+  """
+  team(id: ID!): Team!
+}
+
+extend type Mutation {
+  """
+  Creates an empty team. Needs `teams:manage` (OWNER, ADMIN). 409
+  `teams.errors.name-taken` (field `name`) when a team has that name, in any
+  case.
+  """
+  createTeam(name: String! @constraint(minLength: 1, maxLength: 100)): Team!
+  """
+  Renames a team. Needs `teams:manage`. 404 `teams.errors.not-found`; 409
+  `teams.errors.name-taken` (field `name`) for another team's name, in any
+  case; the team's own name in another case is allowed.
+  """
+  renameTeam(
+    id: ID!
+    name: String! @constraint(minLength: 1, maxLength: 100)
+  ): Team!
+  """
+  Replaces the team's members with these members (`Member.id`, repeats
+  ignored; an empty list empties it). Needs `teams:manage`. 404
+  `teams.errors.not-found`; 400 `teams.errors.member-unknown` (field
+  `memberIds`) when an id is not a current member of the workspace, and then
+  the team is left as it was.
+  """
+  setTeamMembers(id: ID!, memberIds: [ID!]! @constraint(maxItems: 1000)): Team!
+  """
+  Deletes a team. Needs `teams:manage`. 404 `teams.errors.not-found`.
+  """
+  deleteTeam(id: ID!): Boolean!
+}

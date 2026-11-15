@@ -15,6 +15,7 @@ product (French is offered). Terms join this table slice by slice; the full mode
 | `Invitation` | An offer to join a workspace with a role, sent by e-mail (`src/core/invitations`, janus's invitation store in the core database). The code in the link is 43 characters of which only the sha256 is kept; it lives 7 days, and a workspace has one pending invitation per address. Accepting it makes the account if the address has none, and adds a `Member`. |
 | `Member` | An account's place in a workspace (`src/core/members`, core database): a role, and `removedAt` once it left. Never a personal API key: keys are refused on workspace operations until they are bound to a workspace. |
 | `Role` | `OWNER`, `ADMIN` or `MEMBER`. Permissions come from the modules' `defaultGrants`; OWNER holds all. Only an OWNER makes, demotes or removes an owner (`owners:manage`), and a workspace always keeps one. |
+| `Team` | A named group of a workspace's members (`src/modules/teams`, the workspace's own database): `name`, unique in the workspace ignoring case, and `memberIds`, the ids of `Member` rows. Anyone reads teams (`teams:read`); OWNER and ADMIN change them (`teams:manage`). A member who leaves is taken out of every team. |
 | `Principal` | Who a request is from, as the `Identity` port (`src/core/identity`) gives it. The rest of the API stores an `accountId` as an opaque string and never imports janus. |
 | `Identity` | The port (`src/core/identity`) behind which accounts live: sign-up, sign-in, reset, the second factor, step-up. janus is its adapter and is imported nowhere else (`bun run deps:check`). |
 | `Viewer` | The `Principal` of the request as the GraphQL type `Viewer` (null when anonymous). A personal API key is a viewer with `apiKeyId` and no session; keys are accepted on `/graphql`, `/media`, `/health` and `/ready` only. |
@@ -54,6 +55,9 @@ when a code lacks a message in English or French.
 | `invitations.errors.limit` | The workspace already has 200 pending invitations (409). |
 | `invitations.errors.already-member` | The address already belongs to a member of the workspace (409, field `email`). |
 | `invitations.errors.password-required` | The invitee has no account yet and gave no password (400, field `password`). |
+| `teams.errors.not-found` | No team with this id in the request's workspace; a team of another workspace is the same answer (404). |
+| `teams.errors.name-taken` | Another team of the workspace has this name, in any case (409, field `name`). |
+| `teams.errors.member-unknown` | An id given to `setTeamMembers` is not a current member of the workspace: malformed, unknown, of another workspace or of a member who left (400, field `memberIds`). |
 | `validation.errors.invalid-input` | An input was refused as a whole; `extensions.fields` lists each field (400). |
 | `validation.errors.invalid` | A field's value is not valid. |
 | `validation.errors.out-of-range` | A number is outside its bounds. |

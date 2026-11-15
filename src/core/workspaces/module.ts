@@ -1,6 +1,5 @@
 import { defineModule } from "@alxia/modules";
 import { workspaces as codes } from "@/i18n/codes";
-import { workspaceInfo } from "./workspace-info.collection";
 import { workspaces } from "./workspaces.collection";
 import typeDefs from "./workspaces.graphqls" with { type: "text" };
 import { workspacesResolvers } from "./workspaces.resolver";
@@ -12,7 +11,6 @@ export const workspacesModule = defineModule({
   name: "workspaces",
   dependsOn: ["members"],
   coreCollections: { workspaces },
-  collections: { workspaceInfo },
   codes,
   permissions: ["workspace:read"],
   defaultGrants: {

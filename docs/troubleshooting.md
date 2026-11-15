@@ -177,3 +177,17 @@ A user who enrolled an authenticator cannot confirm a code, or the server cannot
 mutation { requestStepUp { method challenge } }
 mutation { confirmStepUp(challenge: "...", code: "123456") }
 ```
+
+## `teams.errors.name-taken` (409) and `member-unknown` (400)
+
+**When:** `createTeam` or `renameTeam` with a name another team of the workspace already has (`name-taken`, field `name`); `setTeamMembers` with an id that is not a current member of the request's workspace (`member-unknown`, field `memberIds`).
+
+**Why:** names are compared ignoring case (`Design` and `design` are one). Member ids are `Member.id`s (not account ids), and a member who left, a member of another workspace or a malformed id is unknown.
+
+**Fix:** pick another name, or list `teams` to find the existing one. For `member-unknown`, take the ids from `members` of the same workspace (the `x-storix-workspace` header) and send the list again; the team was not changed.
+
+## `teams.errors.not-found` (404)
+
+**When:** a team operation named an id that is malformed, was deleted, or belongs to a team of another workspace.
+
+**Fix:** send the `x-storix-workspace` header of the workspace that owns the team, and an id from its `teams`.

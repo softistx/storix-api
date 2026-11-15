@@ -2,6 +2,11 @@
 // for, and the module. Everything else in this folder is private.
 
 export {
+  type MemberRemoval,
+  onMemberRemoved,
+} from "./members.removal";
+export {
+  activeMemberIds,
   addMember,
   type MembersMongo,
   membershipOf,

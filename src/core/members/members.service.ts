@@ -151,13 +151,14 @@ export async function changeRole(
 }
 
 // Ends a membership: an admin removes a member (`memberId`), or a member
-// leaves (`accountId` is theirs). The same rules as `changeRole`.
+// leaves (`accountId` is theirs). The same rules as `changeRole`. Answers the
+// member who left, for `memberRemoved` (members.removal.ts).
 export async function endMembership(
   mongo: MembersMongo,
   input: Change & ({ memberId: string } | { accountId: string }),
-): Promise<void> {
+): Promise<MemberDoc> {
   const workspaceId = toObjectId(input.workspaceId);
-  await mongo.transaction(async (tx) => {
+  return mongo.transaction(async (tx) => {
     await lockOwners(tx, workspaceId);
     const target = await activeMember(
       tx,
@@ -174,6 +175,7 @@ export async function endMembership(
     await tx.db.members
       .as(input.actorId)
       .update(target._id, { removedAt: new Date(), version: target.version });
+    return target;
   });
 }
 
@@ -202,3 +204,23 @@ export async function listMembers(
 // filters by the workspaces it loads).
 export const membershipsOfAccount = (mongo: MembersMongo, accountId: string) =>
   mongo.db.members.findMany({ filter: { accountId, removedAt: null } });
+
+// The ids among `ids` that are current members of the workspace, as strings.
+// An id that is malformed, unknown, of another workspace or of a member who
+// left is simply not in the answer.
+export async function activeMemberIds(
+  mongo: MembersMongo,
+  workspaceId: string,
+  ids: readonly string[],
+): Promise<Set<string>> {
+  const objectIds = ids.flatMap((id) => tryObjectId(id) ?? []);
+  if (objectIds.length === 0) return new Set();
+  const found = await mongo.db.members.findMany({
+    filter: {
+      workspaceId: toObjectId(workspaceId),
+      _id: { $in: objectIds },
+      removedAt: null,
+    },
+  });
+  return new Set(found.map((member) => member.id));
+}

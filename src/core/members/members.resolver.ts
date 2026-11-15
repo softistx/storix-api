@@ -2,6 +2,7 @@ import type { Resolvers } from "@/generated/graphql/resolvers";
 import type { Context } from "@/http/context";
 import { requireWorkspaceMember, requireWorkspacePermission } from "../access";
 import type { Account } from "../identity";
+import { memberRemoved } from "./members.removal";
 import {
   changeRole,
   endMembership,
@@ -82,22 +83,24 @@ export const membersResolvers: Resolvers = {
       );
       // Removing someone is sensitive too (leaving is not): a fresh session.
       ctx.identity.assertFresh(principal);
-      await endMembership(handleOf(scope), {
+      const removed = await endMembership(handleOf(scope), {
         workspaceId: scope.tenant.id,
         memberId,
         actorId: principal.accountId,
         canManageOwners: ctx.access.roleCan(scope.member, "owners:manage"),
       });
+      await memberRemoved(scope, removed);
       return true;
     },
     leaveWorkspace: async (_, __, ctx) => {
       const { principal, scope } = await requireWorkspaceMember(ctx);
-      await endMembership(handleOf(scope), {
+      const left = await endMembership(handleOf(scope), {
         workspaceId: scope.tenant.id,
         accountId: principal.accountId,
         actorId: principal.accountId,
         canManageOwners: true,
       });
+      await memberRemoved(scope, left);
       return true;
     },
   },
