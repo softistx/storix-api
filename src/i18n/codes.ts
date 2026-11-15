@@ -116,10 +116,15 @@ export const files = defineCodes("files", [
   // (another workspace's key and another kind's are the same), or a file
   // already holds it.
   "key-unknown",
-  // 400 (field `id`): `updateFile` named a folder.
+  // 400 (field `id`): `updateFile` or `setFocalPoint` named a folder.
   "not-a-file",
   // 409: the copied folder, with what it holds, has more than 5,000 nodes.
   "copy-too-large",
+  // 400 (field `id`): `setFocalPoint` named a file that is not a JPEG, PNG or
+  // WebP picture: only these have crops.
+  "not-renderable",
+  // 400 (field `focalPoint`): a coordinate that is not a number from 0 to 1.
+  "invalid-focal",
 ]);
 
 // The workspace's storage quota (src/core/workspaces, src/modules/quotas).

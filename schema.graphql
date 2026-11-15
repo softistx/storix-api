@@ -132,7 +132,7 @@ One thing that happened in the workspace. Never holds an address, a code, a pass
 """
 type AuditEvent {
   """
-  `<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete, node.folder-create, node.rename, node.move, node.copy, file.add, file.update, quota.exceeded.
+  `<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete, node.folder-create, node.rename, node.move, node.copy, file.add, file.update, file.focal, quota.exceeded.
   """
   action: String!
   actor: AuditActor!
@@ -258,6 +258,8 @@ type File implements Node {
   createdAt: DateTime!
   depth: Int!
   family: FileFamily!
+  """Where the crops are centred; null is the centre of the picture."""
+  focalPoint: FocalPoint
   id: ID!
   """
   The media key of the object: `GET /media/files/<key>` reads it. Never a URL.
@@ -268,6 +270,14 @@ type File implements Node {
   mimeType: String!
   name: String!
   parentId: ID
+  """One of the renditions, or null when the file does not have it (yet)."""
+  rendition(preset: RenditionPreset!): Rendition
+  """
+  The sizes available now: every one of a `READY` picture, `THUMB` and
+  `PREVIEW` of a `READY` PDF. Empty while the file is `PROCESSING` or `FAILED`
+  and for any other type.
+  """
+  renditions: [Rendition!]!
   """The size in bytes, as the storage reported it."""
   size: Float!
   status: FileStatus!
@@ -296,6 +306,20 @@ enum FileStatus {
   FAILED
   PROCESSING
   READY
+}
+
+"""A point of a picture, as fractions of it from its top left corner."""
+type FocalPoint {
+  x: Float!
+  y: Float!
+}
+
+"""
+Both coordinates are numbers from 0 to 1 (`files.errors.invalid-focal`).
+"""
+input FocalPointInput {
+  x: Float!
+  y: Float!
 }
 
 type Folder implements Node {
@@ -784,6 +808,18 @@ type Mutation {
   """
   revokeInvitation(id: ID!, scope: String!): JanusInvitation! @authenticated
   """
+  Moves the focal point of a JPEG, PNG or WebP picture (`null` puts it back at
+  the centre) and has the worker redo its four crops from the stored original:
+  the file is `PROCESSING`, then `READY` (or `FAILED` when only the crops
+  failed, the original stays readable), and the `ETag` of each crop changes
+  with its pixels. A copy shares the blob and so the point. Needs
+  `nodes:manage`. 404 `nodes.errors.not-found`; 400 `files.errors.not-a-file`
+  (field `id`) for a folder; 400 `files.errors.not-renderable` (field `id`)
+  for any other type; 400 `files.errors.invalid-focal` (field `focalPoint`) for
+  a coordinate outside 0 to 1.
+  """
+  setFocalPoint(focalPoint: FocalPointInput, id: ID!): File!
+  """
   Stars (`starred: true`) or unstars a node of the caller's tree; repeating it
   changes nothing. Answers the node. Needs `nodes:read`: a favourite is the
   member's own and touches nothing shared. 404 `nodes.errors.not-found` for an
@@ -1084,6 +1120,35 @@ The recovery codes of a second factor: ten single-use codes, shown once.
 """
 type RecoveryCodes {
   recoveryCodes: [String!]!
+}
+
+"""A size of a file that is stored and served."""
+type Rendition {
+  mimeType: String!
+  preset: RenditionPreset!
+  """
+  The name `GET /media/files/<key>/<size>` takes: the preset in lower case.
+  """
+  size: String!
+}
+
+"""
+The sizes a picture or a PDF has: `GET /media/files/<key>/<size>` serves them.
+The crops keep their ratio and are centred on the focal point.
+"""
+enum RenditionPreset {
+  """16:9, up to 1920 x 1080, JPEG; pictures."""
+  LANDSCAPE
+  """4:5, up to 1080 x 1350, JPEG; pictures."""
+  PORTRAIT
+  """1600 px on the longest side, WebP; pictures and PDFs."""
+  PREVIEW
+  """1:1, up to 1080 x 1080, JPEG; pictures."""
+  SQUARE
+  """9:16, up to 1080 x 1920, JPEG; pictures."""
+  STORY
+  """320 px on the longest side, WebP; pictures and PDFs."""
+  THUMB
 }
 
 """A SHA-256 digest: 64 hexadecimal digits."""

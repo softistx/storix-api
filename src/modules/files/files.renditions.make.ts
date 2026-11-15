@@ -1,10 +1,12 @@
 import { renderImage } from "@softistx/image";
 import { renderPdfFirstPage } from "@softistx/image/pdf";
 import { FILES_MAX_BYTES } from "@/core/storage";
+import { CROP_SPECS, cropBox, type Focal, targetSize } from "./files.crops";
 import {
+  CROP_SIZES,
+  PREVIEW_SIZES,
   RENDITION_MAX_PIXELS,
   RENDITION_SIDES,
-  RENDITION_SIZES,
   type RenditionKind,
   type RenditionSize,
 } from "./files.renditions";
@@ -12,7 +14,7 @@ import {
 export interface MadeRendition {
   size: RenditionSize;
   bytes: Uint8Array;
-  contentType: "image/webp";
+  contentType: "image/webp" | "image/jpeg";
 }
 
 // The limits the `files` kind allows: the 95 MiB the upload takes, and a
@@ -33,15 +35,26 @@ export function fitSide(width: number, height: number, side: number) {
   };
 }
 
-// Every size of a file's bytes, as WebP with every piece of metadata stripped.
-// `ImageError` (undecodable, too large, not that type) says the file itself
-// cannot be rendered: retrying cannot help.
+export interface MakeOptions {
+  signal?: AbortSignal | undefined;
+  // The picture's focal point; null is the centre. Only the crops read it.
+  focal?: Focal | null | undefined;
+  // Only the four crops: what a move of the focal point redoes.
+  cropsOnly?: boolean | undefined;
+}
+
+// Every size of a file's bytes with every piece of metadata stripped: the
+// previews as WebP, and for a picture the four crops as JPEG, centred on the
+// focal point. `ImageError` (undecodable, too large, not that type) says the
+// file itself cannot be rendered: retrying cannot help.
 export async function makeRenditions(
   bytes: Uint8Array,
   kind: RenditionKind,
-  signal?: AbortSignal,
+  options: MakeOptions = {},
 ): Promise<MadeRendition[]> {
-  if (kind === "pdf") return makeFromPdf(bytes, signal);
+  const { signal } = options;
+  if (kind === "pdf")
+    return options.cropsOnly ? [] : makeFromPdf(bytes, signal);
   // The upright size, which EXIF orientation may swap, is read by a first
   // render of one pixel.
   const { source } = await renderImage(bytes, {
@@ -51,7 +64,7 @@ export async function makeRenditions(
     ...limits(signal),
   });
   const made: MadeRendition[] = [];
-  for (const size of RENDITION_SIZES) {
+  for (const size of options.cropsOnly ? [] : PREVIEW_SIZES) {
     const target = fitSide(source.width, source.height, RENDITION_SIDES[size]);
     const image = await renderImage(bytes, {
       ...target,
@@ -60,6 +73,19 @@ export async function makeRenditions(
     });
     made.push({ size, bytes: image.bytes, contentType: "image/webp" });
   }
+  for (const size of CROP_SIZES) {
+    const spec = CROP_SPECS[size];
+    const box = cropBox(source, spec.aspect, options.focal ?? null);
+    const target = targetSize(size, box);
+    const image = await renderImage(bytes, {
+      crop: { x: box.x, y: box.y, width: box.width, height: box.height },
+      ...target,
+      format: "jpeg",
+      quality: spec.quality,
+      ...limits(signal),
+    });
+    made.push({ size, bytes: image.bytes, contentType: "image/jpeg" });
+  }
   return made;
 }
 
@@ -67,7 +93,7 @@ export async function makeRenditions(
 // page is not taller than the longest side.
 async function makeFromPdf(bytes: Uint8Array, signal: AbortSignal | undefined) {
   const made: MadeRendition[] = [];
-  for (const size of RENDITION_SIZES) {
+  for (const size of PREVIEW_SIZES) {
     const side = RENDITION_SIDES[size];
     const image = await renderPdfFirstPage(bytes, {
       width: side,

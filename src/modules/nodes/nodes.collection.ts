@@ -53,6 +53,12 @@ export const nodes = defineCollection({
     tags: z.array(z.string()).default([]),
     meta: z.record(z.string(), z.unknown()).default({}),
     status: z.enum(fileStatuses).nullable().default(null),
+    // The focal point of a picture, fractions of it from the top left (0 to 1);
+    // null is the centre. Every node of a shared blob holds the same one.
+    focalPoint: z
+      .object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })
+      .nullable()
+      .default(null),
   }),
   timestamps: true,
   optimisticLock: true,

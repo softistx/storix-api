@@ -20,7 +20,7 @@ curl localhost:3000/health
 | Script                 | Does                                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------------------ |
 | `bun run dev`          | the Docker services (MongoDB replica set, Redis, Mailpit, SeaweedFS), then the API in watch mode       |
-| `bun run worker`       | the queue worker in watch mode (renditions: thumbnails and previews); needs `REDIS_URL`, `S3_*` and `MONGO_URI`; `bun run dev` does not start it |
+| `bun run worker`       | the queue worker in watch mode (renditions: thumbnails, previews and crops); needs `REDIS_URL`, `S3_*` and `MONGO_URI`; `bun run dev` does not start it |
 | `bun run verify`       | the green bar: generate, schema check, Biome, context and dependency checks, `bun check`, tests, build |
 | `bun run verify:pr`    | the same with only the specs a diff against `origin/develop` affects                                   |
 | `bun run generate`     | scalars and validation SDL, then resolver types and Zod schemas into `src/generated/`                  |
@@ -36,7 +36,7 @@ curl localhost:3000/health
 | `src/core/storage/`             | `/media`: `@alxia/media` over one private S3 bucket (`files`, `avatars` kinds) |
 | `src/modules/teams/`            | a workspace's teams                                                  |
 | `src/modules/nodes/`            | the folder tree: each member's root, create, rename, move, `node` and `nodes` (filter, sort, cursor) |
-| `src/modules/files/`            | files: `addFile`, `copyNodes`, `updateFile`, `setStarred`, `openFile` (`blobs`, `stars`, `recents`) |
+| `src/modules/files/`            | files: `addFile`, `copyNodes`, `updateFile`, `setFocalPoint`, `setStarred`, `openFile` (`blobs`, `stars`, `recents`) |
 | `src/worker.ts`, `src/workers/`, `src/queues/` | the worker entry (`dist/worker.js`), its handlers and the queue definitions |
 | `src/modules/registry.ts`       | the one list of modules                                             |
 | `src/i18n/`                     | the error inventory (`defineCodes`, `ErrorCode`), `fail`, the i18n instance, the coverage check |
@@ -172,7 +172,7 @@ curl -s localhost:3000/media/files/<key> \
 
 | Kind      | Accepts                  | Limit   | Stored as                                  |
 | --------- | ------------------------ | ------- | ------------------------------------------ |
-| `files`   | any type                 | 95 MiB  | as sent; a type outside the inline-safe list is served as a download; JPEG, PNG, WebP and PDF also get `thumb` (320 px) and `preview` (1600 px) WebP renditions from the worker |
+| `files`   | any type                 | 95 MiB  | as sent; a type outside the inline-safe list is served as a download; JPEG, PNG, WebP and PDF also get `thumb` (320 px) and `preview` (1600 px) WebP renditions from the worker, and pictures four JPEG crops centred on the focal point (`square`, `portrait`, `story`, `landscape`) |
 | `avatars` | JPEG, PNG and WebP       | 10 MiB  | only its 64 and 256 px squares (EXIF dropped) |
 
 - **Storage settings**: `S3_BUCKET`, `S3_ACCESS_KEY` and `S3_SECRET_KEY` (and `S3_ENDPOINT`, `S3_REGION`), set together;
@@ -330,7 +330,7 @@ An input refused as a whole is one error, `validation.errors.invalid-input` (HTT
 
 The refusals of a schema `@constraint` arrive in this same shape: the plugin in `src/http/api-errors.ts` converts them with `invalidInputOf` of `@nxgt/graphql-validation`, which maps each argument to its code and params (`minLength` is `too-short` with `params.min`, `maxLength` `too-long` with `params.max`, `min`/`max` `out-of-range`, and so on); the `@nxgt/graphql-validation` guide `docs/guide/invalid-input.md` has the full table.
 
-### Thumbnails and previews (the worker)
+### Thumbnails and previews (the worker; crops follow)
 
 `addFile` of a JPEG, PNG, WebP or PDF records the file as `PROCESSING` and enqueues a `renditions` job (`@softistx/redis`
 queue, one job per file). The worker (`bun run worker`, `dist/worker.js` in production, a second process beside the API)
@@ -339,3 +339,29 @@ the original and sets the file `READY`; they are served at `GET /media/files/<ke
 then). A picture that cannot be decoded ends `FAILED` after at most 4 attempts (at once for a corrupt file): only the
 previews failed, the original stays downloadable. Other types stay `READY` with no previews, and so does every file when
 `REDIS_URL` is unset (no worker, no previews).
+
+### Focal point and crops
+
+A JPEG, PNG or WebP picture also gets four crops, JPEG at quality 85, written at most at these sizes and never enlarged:
+`square` (1:1, 1080 x 1080), `portrait` (4:5, 1080 x 1350), `story` (9:16, 1080 x 1920) and `landscape` (16:9, 1920 x 1080), the
+same presets as publix. Each is the largest box of its ratio, centred on the file's focal point (the centre of the picture
+until one is set) and held inside the picture near an edge. A PDF has `thumb` and `preview` only.
+
+```graphql
+mutation { setFocalPoint(id: "<file id>", focalPoint: { x: 0.2, y: 0.4 }) { status focalPoint { x y } } }
+query { node(id: "<file id>") { ... on File { renditions { preset size mimeType } rendition(preset: SQUARE) { size } } } }
+```
+
+`setFocalPoint(id, focalPoint)` (needs `nodes:manage`) takes `x` and `y` as fractions of the picture from its top left corner, 0
+to 1 (`focalPoint: null` puts it back at the centre). A coordinate outside 0 to 1 is `files.errors.invalid-focal` (400, field
+`focalPoint`), a folder `files.errors.not-a-file`, any file that is not a JPEG, PNG or WebP picture
+`files.errors.not-renderable` (400, field `id`). The file goes `PROCESSING` and a `renditions` job (`crops: true`) redoes the
+four crops from the stored original, then `READY` (or `FAILED` when only they failed, the original stays readable); without
+`REDIS_URL` the point is recorded and the crops stay as they were. A copy shares the blob, so it takes the point too. The
+move is audited as `file.focal` (the target only, never the coordinates).
+
+`File.focalPoint` is the point (null for the centre). `File.renditions` lists what is stored and served now: all six sizes of
+a `READY` picture, `THUMB` and `PREVIEW` of a `READY` PDF, and nothing while the file is `PROCESSING` or `FAILED`;
+`rendition(preset)` is one of them or null. `size` is the name in the URL, `GET /media/files/<key>/<size>`. The kind is
+`private, no-cache`, and `@alxia/media` serves the stored object's own `ETag`: the crops are rewritten with the new pixels, so
+their `ETag` changes after a move and a client that revalidates gets the new crop (200, not 304).

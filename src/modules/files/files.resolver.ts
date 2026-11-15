@@ -13,6 +13,7 @@ import {
 import { copyNodes } from "./files.copy";
 import { notAFile } from "./files.errors";
 import { listStarred, setStarred } from "./files.favourites";
+import { fileRenditionResolvers, setFocalPoint } from "./files.focal.resolver";
 import type { PersonalPage } from "./files.personal";
 import { listRecent, openFile, recordRecent } from "./files.recents";
 import { checkTags, MAX_META_BYTES, metaFits } from "./files.rules";
@@ -62,7 +63,9 @@ export const filesResolvers: Resolvers = {
       return pageOf(page, after);
     },
   },
+  File: fileRenditionResolvers,
   Mutation: {
+    setFocalPoint,
     setStarred: async (_, { id, starred }, ctx) => {
       const { principal, scope } = await requireWorkspacePermission(
         ctx,

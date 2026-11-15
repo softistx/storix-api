@@ -1,0 +1,46 @@
+import { requireWorkspacePermission } from "@/core/access";
+import { memberActor } from "@/core/audit";
+import type { Resolvers } from "@/generated/graphql/resolvers";
+import { nodeView } from "@/modules/nodes/public";
+import { recordFileFocal } from "./files.audit";
+import { notAFile } from "./files.errors";
+import { setFocalPoint as moveFocalPoint } from "./files.focal";
+import { renditionsOf } from "./files.renditions.list";
+import type { FilesMongo } from "./files.service";
+
+// `File.renditions` and `File.rendition(preset)`: derived from the node.
+export const fileRenditionResolvers: NonNullable<Resolvers["File"]> = {
+  renditions: (file) => renditionsOf(file),
+  rendition: (file, { preset }) =>
+    renditionsOf(file).find((one) => one.preset === preset) ?? null,
+};
+
+// `setFocalPoint` (needs `nodes:manage`), audited as `file.focal`.
+export const setFocalPoint: NonNullable<
+  NonNullable<Resolvers["Mutation"]>["setFocalPoint"]
+> = async (_, { id, focalPoint }, ctx) => {
+  const { principal, scope } = await requireWorkspacePermission(
+    ctx,
+    "nodes:manage",
+  );
+  // The registry types the slot, the scope's database is a plain record: as
+  // files.resolver.ts's `filesDb` (debt #85).
+  const mongo = scope.mongo as unknown as FilesMongo;
+  const { node } = await moveFocalPoint(mongo, ctx.renditions, {
+    id,
+    accountId: principal.accountId,
+    workspaceId: scope.tenant.id,
+    focalPoint: focalPoint ?? null,
+  });
+  await recordFileFocal(
+    {
+      workspaceId: scope.tenant.id,
+      actor: memberActor(principal),
+      ip: ctx.ip,
+    },
+    node,
+  );
+  const view = nodeView(node);
+  if (view.__typename !== "File") throw notAFile();
+  return view;
+};

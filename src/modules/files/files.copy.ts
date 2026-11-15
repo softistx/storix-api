@@ -131,6 +131,7 @@ async function makeCopy(
       tags: node.tags,
       meta: node.meta,
       status: node.status,
+      focalPoint: node.focalPoint,
     }),
   });
 }

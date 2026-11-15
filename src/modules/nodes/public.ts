@@ -26,4 +26,4 @@ export {
   rootLocked,
   tooDeep,
 } from "./nodes.service";
-export { nodeView } from "./nodes.tree";
+export { type FileNode, nodeView } from "./nodes.tree";

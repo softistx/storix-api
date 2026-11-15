@@ -44,6 +44,14 @@ export const recordFileUpdate = (
     meta: { changed: changed.join(",") },
   });
 
+// A move of a picture's focal point: the target only, never the coordinates.
+export const recordFileFocal = (done: Done, node: NodeDoc) =>
+  audit.record({
+    ...done,
+    action: "file.focal",
+    target: { type: node.type, id: node.id, name: node.name },
+  });
+
 // An upload `addFile` refused because the workspace is full. The target is the
 // workspace and the name is the one asked for; the sizes stay out (the
 // quota's figures are not for the audit log).

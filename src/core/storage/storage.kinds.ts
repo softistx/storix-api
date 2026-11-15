@@ -13,9 +13,17 @@ import type { UploadLimit } from "./storage.limit";
 const MIB = 1024 * 1024;
 
 export const FILES_MAX_BYTES = 95 * MIB;
-// The sizes of a file the worker makes (plan §3.4). The four focal crops
-// (`square`, `portrait`, `story`, `landscape`) are added by the focal slice.
-export const FILES_SIZES = ["thumb", "preview"] as const;
+// The sizes of a file the worker makes (plan §3.4): `thumb` and `preview`, then
+// the four crops centred on the focal point. Kept equal to the worker's
+// `RENDITION_SIZES` (src/modules/files/files.renditions.ts) by a spec.
+export const FILES_SIZES = [
+  "thumb",
+  "preview",
+  "square",
+  "portrait",
+  "story",
+  "landscape",
+] as const;
 export const AVATARS_MAX_BYTES = 10 * MIB;
 
 // The kinds (plan §3.4). `files` takes any type: known signatures are sniffed
@@ -23,7 +31,7 @@ export const AVATARS_MAX_BYTES = 10 * MIB;
 // Every use revalidates (`private, no-cache`): a reader can lose access.
 // Only `files` is counted against the quota: an avatar is not recorded as a
 // file and weighs at most 10 MiB.
-// `files` names its sizes (`thumb`, `preview`) and the worker writes them
+// `files` names its sizes (`thumb`, `preview` and the four crops) and the worker writes them
 // (src/modules/files/files.renditions.work.ts): @alxia/media serves
 // `GET /media/files/<key>/<size>` once one is stored, a 404 before.
 export function mediaKinds(options: {
