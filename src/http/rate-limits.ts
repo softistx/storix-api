@@ -17,6 +17,8 @@ export interface LimitsConfig {
   signIn: Window;
   passwordReset: Window;
   workspaceCreate: Window;
+  invitationSend: Window;
+  invitationCode: Window;
 }
 
 // The per-address limits of the operations anyone may call. Each takes the
@@ -27,6 +29,11 @@ export interface Limits {
   signIn(ip: string | undefined): Promise<void>;
   passwordReset(ip: string | undefined): Promise<void>;
   workspaceCreate(ip: string | undefined): Promise<void>;
+  // Per inviter (an account id): the invitations a person sends, each a mail.
+  invitationSend(inviter: string | undefined): Promise<void>;
+  // Per client address: the previews and accepts of an invitation code, open
+  // to whoever holds one.
+  invitationCode(ip: string | undefined): Promise<void>;
 }
 
 const unlimited: Limits = {
@@ -34,6 +41,8 @@ const unlimited: Limits = {
   signIn: async () => undefined,
   passwordReset: async () => undefined,
   workspaceCreate: async () => undefined,
+  invitationSend: async () => undefined,
+  invitationCode: async () => undefined,
 };
 
 // The limits over Redis (`@softistx/redis`, one bucket per address and
@@ -96,5 +105,7 @@ export function createLimits(
     signIn: guard("sign-in", config.signIn),
     passwordReset: guard("password-reset", config.passwordReset),
     workspaceCreate: guard("workspace-create", config.workspaceCreate),
+    invitationSend: guard("invitation-send", config.invitationSend),
+    invitationCode: guard("invitation-code", config.invitationCode),
   };
 }

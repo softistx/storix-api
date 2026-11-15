@@ -163,6 +163,12 @@ export const env = defineEnv({
   // RATE_LIMIT_WORKSPACE_CREATE: the same, for createWorkspace (each one
   // provisions a database).
   RATE_LIMIT_WORKSPACE_CREATE: attempts("10/3600"),
+  // RATE_LIMIT_INVITATION_SEND: the invitations (and resends) one person may
+  // send, each a mail; counted per inviter, not per address.
+  // RATE_LIMIT_INVITATION_CODE: the previews and accepts of an invitation code
+  // one client address may make (they are open to whoever holds a code).
+  RATE_LIMIT_INVITATION_SEND: attempts("50/3600"),
+  RATE_LIMIT_INVITATION_CODE: attempts("30/900"),
   // REDIS_URL: redis:// or rediss://. Rate limits, queues and tokens.
   // Required in production; unset elsewhere.
   REDIS_URL: orUnset(

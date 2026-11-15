@@ -14,4 +14,6 @@ export const limits = createLimits(redis, {
   signIn: env.RATE_LIMIT_SIGN_IN,
   passwordReset: env.RATE_LIMIT_PASSWORD_RESET,
   workspaceCreate: env.RATE_LIMIT_WORKSPACE_CREATE,
+  invitationSend: env.RATE_LIMIT_INVITATION_SEND,
+  invitationCode: env.RATE_LIMIT_INVITATION_CODE,
 });

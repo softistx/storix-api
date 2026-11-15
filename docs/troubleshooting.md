@@ -111,13 +111,33 @@ A user who enrolled an authenticator cannot confirm a code, or the server cannot
 
 **Fix:** restore the key. When it is truly lost, the affected accounts must have their second factor reset by an operator (clear it in the `users` collection) and enrol again.
 
-## `auth.errors.rate-limited` (429) on sign-up, sign-in, reset or workspace creation
+## `auth.errors.rate-limited` (429) on sign-up, sign-in, reset, workspace creation or invitations
 
-**When:** a client address went past `RATE_LIMIT_SIGN_UP`, `RATE_LIMIT_SIGN_IN` or `RATE_LIMIT_PASSWORD_RESET` or `RATE_LIMIT_WORKSPACE_CREATE` (`<attempts>/<seconds>`), or janus's per-account throttle (five mails per address and ten minutes, the tries of a challenge) tripped. `extensions.retryAfter` says how long to wait.
+**When:** a client address went past `RATE_LIMIT_SIGN_UP`, `RATE_LIMIT_SIGN_IN` or `RATE_LIMIT_PASSWORD_RESET`, `RATE_LIMIT_WORKSPACE_CREATE`, `RATE_LIMIT_INVITATION_CODE` (a code previewed or accepted) or, per inviter, `RATE_LIMIT_INVITATION_SEND` (`<attempts>/<seconds>`), or janus's per-account throttle (five mails per address and ten minutes, the tries of a challenge) tripped. `extensions.retryAfter` says how long to wait.
 
 **Why:** behind a proxy every visitor looks like one address unless the forwarded address is honoured (`API_PROXY_SECRET`, `src/http/client-ip.ts`).
 
 **Fix:** wait, or raise the variable. The limit is off when `REDIS_URL` is unset.
+
+## `invitations.errors.invalid` (400) on a link that looked fine
+
+**When:** `invitationPreview` or `acceptInvitation` got a code that names no pending invitation.
+
+**Why:** the code was already used, the invitation was revoked or sent again (a new code replaced it), or its 7 days passed. The reasons are never told apart, so a guesser learns nothing.
+
+**Fix:** an admin sends the invitation again (`resendInvitation`: a new code, the old one dies) or issues a new one. A mail scanner that follows links does not spend a code: the link opens a page that posts it from a button.
+
+## `invitations.errors.not-pending`, `limit`, `already-member` (409) and `password-required` (400)
+
+**When:** `revokeInvitation` or `resendInvitation` on an invitation that is no longer pending (`not-pending`); `issueInvitation` with 200 pending invitations in the workspace (`limit`) or to an address that is already a member (`already-member`, field `email`); `acceptInvitation` for a new account without a `password` (`password-required`).
+
+**Fix:** `not-pending`: list the invitations and act on a pending one, or issue a new one. `limit`: revoke stale invitations. `already-member`: change the member's role instead. `password-required`: `invitationPreview` says `needsPassword`; send the password with the code.
+
+## `invitations.errors.not-found` (404)
+
+**When:** an invitation operation named a scope that is not the workspace of the `x-storix-workspace` header, or an invitation id outside it.
+
+**Fix:** send the header of the workspace that owns the invitation, and pass that workspace's id as `scope`.
 
 ## `workspaces.errors.workspace-required` (400) on a workspace operation
 

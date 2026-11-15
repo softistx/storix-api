@@ -12,6 +12,7 @@ product (French is offered). Terms join this table slice by slice; the full mode
 | `Registry`  | The ONE list of modules (`src/modules/registry.ts`). Adding a module is one line there.                                                                              |
 | `Kernel`    | `src/core/`: what every module may use. It depends on no business module. Business modules live in `src/modules/`.                                                   |
 | `Workspace` | The tenant (`src/core/workspaces`). Registered in the core database, with its own database `storix_ws_<id>` (`MONGO_WORKSPACE_PREFIX`), named by the `x-storix-workspace` header (id or slug). Created `provisioning` with its first OWNER, then opened (`active`). |
+| `Invitation` | An offer to join a workspace with a role, sent by e-mail (`src/core/invitations`, janus's invitation store in the core database). The code in the link is 43 characters of which only the sha256 is kept; it lives 7 days, and a workspace has one pending invitation per address. Accepting it makes the account if the address has none, and adds a `Member`. |
 | `Member` | An account's place in a workspace (`src/core/members`, core database): a role, and `removedAt` once it left. Never a personal API key: keys are refused on workspace operations until they are bound to a workspace. |
 | `Role` | `OWNER`, `ADMIN` or `MEMBER`. Permissions come from the modules' `defaultGrants`; OWNER holds all. Only an OWNER makes, demotes or removes an owner (`owners:manage`), and a workspace always keeps one. |
 | `Principal` | Who a request is from, as the `Identity` port (`src/core/identity`) gives it. The rest of the API stores an `accountId` as an opaque string and never imports janus. |
@@ -47,6 +48,12 @@ when a code lacks a message in English or French.
 | `workspaces.errors.slug-taken` | A workspace with this slug exists (409, field `slug`). |
 | `workspaces.errors.last-owner` | The change (a demotion, a removal, leaving) would leave the workspace without an owner (409). |
 | `members.errors.not-found` | No active member with this id in the workspace (404). |
+| `invitations.errors.not-found` | No invitation with this id in the workspace, or the caller may not see it (404). |
+| `invitations.errors.invalid` | An invitation code names no pending invitation: unknown, already used, revoked or past its 7 days; the reasons are never told apart (400). |
+| `invitations.errors.not-pending` | The invitation was accepted or revoked, so it cannot be sent again or revoked (409). |
+| `invitations.errors.limit` | The workspace already has 200 pending invitations (409). |
+| `invitations.errors.already-member` | The address already belongs to a member of the workspace (409, field `email`). |
+| `invitations.errors.password-required` | The invitee has no account yet and gave no password (400, field `password`). |
 | `validation.errors.invalid-input` | An input was refused as a whole; `extensions.fields` lists each field (400). |
 | `validation.errors.invalid` | A field's value is not valid. |
 | `validation.errors.out-of-range` | A number is outside its bounds. |

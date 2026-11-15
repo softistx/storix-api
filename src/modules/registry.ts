@@ -1,6 +1,7 @@
 import { type Module, resolveModules } from "@alxia/modules";
 import type { Migration } from "@softistx/mongo/migrations";
 import { identityModule } from "../core/identity/module";
+import { invitationsModule } from "../core/invitations";
 import { membersModule } from "../core/members";
 import { system } from "../core/system/module";
 import { translationsModule } from "../core/translations/module";
@@ -15,6 +16,7 @@ const registered = [
   identityModule,
   membersModule,
   workspacesModule,
+  invitationsModule,
 ] as const;
 
 export const modules: readonly Module[] = resolveModules(registered);

@@ -4,6 +4,13 @@ schema {
 }
 
 """
+Only a signed-in user reaches this field, or every field of this type or
+interface. With `type`, only a user of one of these user types: any other is
+answered FORBIDDEN.
+"""
+directive @authenticated(type: [String!]) on FIELD_DEFINITION | INTERFACE | OBJECT
+
+"""
 Validates an argument or an input field when the request arrives, before the resolver runs. A value that breaks a constraint is refused with a BAD_USER_INPUT error whose extensions list each issue with its path and the constraint that refused it; null and omitted values are not checked. Each argument below is one constraint, and they combine on one field.
 """
 directive @constraint(
@@ -68,6 +75,23 @@ directive @constraint(
   """
   startsWith: String
 ) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
+
+"""
+Only a session that proved who it is less than `maxAge` seconds ago reaches
+this field, or every field of this type or interface: signed in, or confirmed
+since by a step-up. Anonymous is answered UNAUTHENTICATED, an older session
+STEP_UP_REQUIRED. Where several apply, the smallest `maxAge` holds.
+"""
+directive @fresh(maxAge: Int!) on FIELD_DEFINITION | INTERFACE | OBJECT
+
+"""
+Only a user holding permission `name` on the object of `type` whose id `id`
+reads reaches this field, or every field of this type or interface. `id` is
+`args.<path>` or `parent.<path>`: `args.id` on a field and `parent.id` on a
+type or an interface when absent. A list of ids requires the permission on
+every one. Repeated, every one must hold, in the order written.
+"""
+directive @permission(id: String, name: String!, onDeny: JanusPermissionDenial! = NOT_FOUND, type: String!) repeatable on FIELD_DEFINITION | INTERFACE | OBJECT
 
 """Standard base64 with padding, in its canonical spelling."""
 scalar Base64 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc4648#section-4")
@@ -178,6 +202,63 @@ scalar IPv6 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc4291")
 """An ISBN-10 or ISBN-13, digits only, with its check digit verified."""
 scalar ISBN @specifiedBy(url: "https://www.isbn-international.org/content/isbn-users-manual/29")
 
+union InvitationAcceptResult = InvitationSecondFactor | InvitationSignIn | InvitationSignedIn
+
+"""
+The invitation was accepted and a second factor is still to prove: confirm
+it with the challenge. No session is open yet. The challenge is a secret:
+never in a URL or a log.
+"""
+type InvitationSecondFactor {
+  challenge: String!
+  """When the challenge lapses, as an ISO-8601 string."""
+  expiresAt: String!
+  invitationId: ID!
+  """
+  What can answer the challenge: `totp` always, and `passkey` when the
+  user holds one.
+  """
+  methods: [String!]!
+  """
+  The JSON text for `navigator.credentials.get({ publicKey })`, present
+  exactly when `methods` holds `passkey`.
+  """
+  passkeyOptions: String
+  scope: String!
+}
+
+"""
+The address belongs to a proved user who already has a password (the password
+given is ignored), or who has none and gave none. They are NOT signed in: an
+invitation proves the inbox, not who holds the account. Send them to the
+sign-in page.
+"""
+type InvitationSignIn {
+  email: String!
+  invitationId: ID!
+  scope: String!
+}
+
+"""
+The invitation was accepted and a session was opened: a new invitee, an
+account whose e-mail was never proved, or a proved account with no password
+yet, given one.
+"""
+type InvitationSignedIn {
+  """When the session ends, as an ISO-8601 string."""
+  expiresAt: String!
+  invitationId: ID!
+  newDevice: Boolean!
+  role: String!
+  scope: String!
+  """
+  The session token, only with `answerToken`; otherwise the session
+  cookie is set and this is null.
+  """
+  token: String
+  userId: ID!
+}
+
 """Any JSON value."""
 scalar JSON @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc8259")
 
@@ -188,6 +269,131 @@ scalar JSONObject @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc8259#sect
 A signed JSON Web Token in compact form. Its signature is not verified.
 """
 scalar JWT @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc7519")
+
+"""
+An invitation into a scope (an organization, a team), as its owners see it.
+The code is never here: `issueInvitation` and `resendInvitation` answer it
+once.
+"""
+type JanusInvitation {
+  acceptedAt: String
+  acceptedBy: ID
+  """Timestamps, as ISO-8601 strings."""
+  createdAt: String!
+  email: String!
+  expiresAt: String!
+  id: ID!
+  """The id of the user who sent it, or null when the system issued it."""
+  invitedBy: ID
+  locale: String
+  name: String!
+  """
+  The application's opaque reference the invitation was issued with (its own
+  record), or null.
+  """
+  ref: String
+  """The id of the user who last sent it again, or null."""
+  resentBy: ID
+  revokedAt: String
+  """The id of the user who revoked it, or null."""
+  revokedBy: ID
+  role: String!
+  """The organization (or any grouping) the invitation is into."""
+  scope: String!
+  """
+  `pending`, `accepted` or `revoked`. A `pending` invitation past
+  `expiresAt` is lapsed: it cannot be previewed or accepted, and
+  `resendInvitation` gives it a new code.
+  """
+  status: String!
+  """
+  The user type the invitation is for, one of the configured types; an
+  invitation stored before types existed reads as the first one.
+  """
+  type: String!
+  updatedAt: String!
+}
+
+"""
+Whether lapsed invitations (pending, past their expiry) are left out of a
+list: `EXCLUDE` drops them and keeps every other invitation, `ONLY` keeps
+only them.
+"""
+enum JanusInvitationLapsed {
+  EXCLUDE
+  ONLY
+}
+
+"""The order of a scope's invitations: by creation."""
+enum JanusInvitationOrder {
+  NEWEST
+  OLDEST
+}
+
+"""
+One page of a scope's invitations. `nextCursor` is null on the last page.
+"""
+type JanusInvitationPage {
+  items: [JanusInvitation!]!
+  nextCursor: String
+  """
+  How many invitations of the scope match the filters (`status`, `role`,
+  `ref`), whatever the paging. Counted only when selected, and answered only on a page
+  `invitations` returned (a page of your own has no count and fails). A `pending`
+  invitation past `expiresAt` still counts, as it is still listed.
+  """
+  totalCount: Int!
+}
+
+"""
+What a code names, for the page the invitee lands on: the content of the
+invitation, nothing about who sent it or how it stands.
+"""
+type JanusInvitationPreview {
+  email: String!
+  expiresAt: String!
+  id: ID!
+  locale: String
+  name: String!
+  """
+  Whether the page should ask for a password: false for a user type with no
+  password, or somebody who already has an account with a proved e-mail and a
+  password.
+  """
+  needsPassword: Boolean!
+  """
+  The name of the scope's organization (school, clinic, workspace), from the
+  application's describeScope option; null when it names none or is not
+  given.
+  """
+  organization: String
+  role: String!
+  scope: String!
+  """
+  The user type the invitation is for, so the page can adapt its wording or
+  flow to it.
+  """
+  type: String!
+}
+
+"""An invitation just issued or sent again."""
+type JanusIssuedInvitation {
+  """
+  The code, a secret: null unless `answerCode` is on. It belongs in the
+  invitation e-mail's link, never in a URL you log or a response a cache
+  keeps (the response is `no-store`).
+  """
+  code: String
+  invitation: JanusInvitation!
+}
+
+"""What a denied `@permission` answers."""
+enum JanusPermissionDenial {
+  """403: the object exists, and this user may not do this to it."""
+  FORBIDDEN
+  """404: the object is not told to exist. The default."""
+  NOT_FOUND
+}
 
 """A KSUID: 27 characters of base62."""
 scalar KSUID @specifiedBy(url: "https://github.com/segmentio/ksuid")
@@ -246,6 +452,20 @@ type MemberPage {
 
 type Mutation {
   """
+  Accepts the invitation `code` names: the code proves the invitee's inbox.
+  A new invitee, an account whose e-mail was never proved, or a proved account
+  with no password yet (given one) is signed in (the session cookie, or `token`
+  with `answerToken`); a proved user who already has a password (the password
+  given is ignored), or who has none and gave none, is answered
+  `InvitationSignIn` and is not. INVITATION_INVALID (400) for a code that names no pending
+  invitation, PASSWORD_REQUIRED (400) when a password is needed and absent.
+  INVITATION_REFUSED (403) when the application's `beforeAccept` refused, with
+  nothing written. A `code` over 43 characters or a `password` over 1024 is
+  BAD_USER_INPUT (400, `field`), the code unspent.
+  Open to anybody and not throttled here.
+  """
+  acceptInvitation(code: String!, password: String): InvitationAcceptResult!
+  """
   The first code of the app: the factor is active, its ten recovery codes are answered once, the account's other sessions end. Needs a fresh session.
   """
   activateSecondFactor(code: String! @constraint(maxLength: 40)): RecoveryCodes!
@@ -290,6 +510,21 @@ type Mutation {
   """
   enrolSecondFactor: SecondFactorEnrolment!
   """
+  Invites `email` into `scope` with `role`; the inviter is the signed-in
+  user. Issuing again for an address that has a pending invitation revokes
+  it and makes a new one. INVITATION_INVALID (`field`) for an input that
+  cannot be kept, INVITATION_LIMIT (`maxActive`) when the scope is full,
+  NOT_FOUND when `authorize` refuses. `ref` is an opaque reference to your
+  own record (1 to 100 characters), answered back and usable as a filter of
+  `invitations`. An argument over its maximum (`scope` 512, `email` 254, `name`,
+  `role` and `ref` 100, `locale` 35 characters) is BAD_USER_INPUT (400, `field`)
+  before `authorize` runs. `type` is the user type the invitee becomes: required when
+  the instance configures several user types (null or absent means the
+  instance's single type), INVITATION_INVALID
+  (`field: 'type'`) when absent then, or when it names none of them.
+  """
+  issueInvitation(email: String!, locale: String, name: String!, ref: String, role: String!, scope: String!, type: String): JanusIssuedInvitation! @authenticated
+  """
   Leaves the request's workspace. Any member; 409
   `workspaces.errors.last-owner` for the last owner, who promotes another
   owner first.
@@ -320,9 +555,20 @@ type Mutation {
   """
   requestStepUp: StepUpChallenge!
   """
+  A new code and lifetime for a pending invitation, lapsed or not; the old
+  code stops working. NOT_FOUND for an id of another scope,
+  INVITATION_NOT_PENDING (409) when it is accepted or revoked.
+  """
+  resendInvitation(id: ID!, scope: String!): JanusIssuedInvitation! @authenticated
+  """
   Sets a new password with the token of the reset mail and signs the account out everywhere. 400 `identity.errors.token-invalid`; 400 `validation.errors.invalid-input`.
   """
   resetPassword(password: String! @constraint(maxLength: 1024), token: String! @constraint(maxLength: 200)): Boolean!
+  """
+  Takes a pending invitation back. NOT_FOUND as `resendInvitation`,
+  INVITATION_NOT_PENDING (409) when it is accepted or already revoked.
+  """
+  revokeInvitation(id: ID!, scope: String!): JanusInvitation! @authenticated
   """
   Signs in with a password. 401 `identity.errors.invalid-credentials` for a
   wrong password, an unknown address and a deactivated account alike; 429
@@ -401,6 +647,27 @@ type Query {
   `version`.
   """
   errorCatalogue(language: Language): ErrorCatalogue!
+  """
+  What `code` names, without spending it. INVITATION_INVALID (400) for
+  any code that names no pending, unlapsed invitation. Open to anybody: the
+  code is a secret (send it in the variables of a POST, never in a URL), and
+  the field is not throttled here. A `code` longer than 43 characters is
+  BAD_USER_INPUT (400, `field: 'code'`).
+  """
+  invitationPreview(code: String!): JanusInvitationPreview!
+  """
+  One scope's invitations, `OLDEST` first unless `order` says `NEWEST`.
+  `status` is `pending`, `accepted` or `revoked` (BAD_USER_INPUT
+  otherwise); `role` and `ref` keep the invitations with exactly that role
+  or reference; `lapsed` is `EXCLUDE` to leave out the lapsed (pending,
+  past `expiresAt`) or `ONLY` to keep just them, and `totalCount` follows
+  it; `limit` is a positive integer, 20 by default and at most
+  100; `after` is the previous page's `nextCursor`, in the same order. An
+  empty `role` or `ref` is BAD_USER_INPUT. Each BAD_USER_INPUT (and
+  INVALID_CURSOR) names the argument in `extensions.field`.
+  NOT_FOUND when the application's `authorize` refuses the scope.
+  """
+  invitations(after: String, lapsed: JanusInvitationLapsed, limit: Int, order: JanusInvitationOrder, ref: String, role: String, scope: String!, status: String): JanusInvitationPage! @authenticated
   """
   The current members of the request's workspace (the `x-storix-workspace`
   header), oldest first. Needs `members:read`, which every role holds. 400

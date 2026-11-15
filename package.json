@@ -46,6 +46,7 @@
     "@softistx/ai-telemetry": "^0.3.1",
     "@softistx/image": "^0.6.0",
     "@softistx/janus": "^0.64.0",
+    "@softistx/janus-graphql": "^0.28.2",
     "@softistx/janus-mail": "^0.26.6",
     "@softistx/janus-mongo": "^0.28.1",
     "@softistx/mail": "^1.6.0",

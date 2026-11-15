@@ -1,10 +1,13 @@
 import { tenancy, WORKSPACE_HEADER } from "@/config/tenancy";
 import { harness } from "@/core/identity/identity.harness";
+import { joinWorkspace } from "@/core/invitations";
 import {
   addMember,
   type MembersMongo,
   type WorkspaceRole,
 } from "@/core/members";
+import type { WorkspacesMongo } from "@/core/workspaces";
+import type { Limits } from "@/http/rate-limits";
 
 export { WORKSPACE_HEADER };
 
@@ -18,8 +21,12 @@ export interface Gql {
 
 // The identity harness plus workspaces: accounts that own or join workspaces,
 // and a `send` that speaks as one of them to one workspace (or none).
-export async function world() {
-  const h = await harness();
+export async function world(options: { limits?: Limits } = {}) {
+  const h = await harness({
+    ...(options.limits && { limits: options.limits }),
+    onAcceptedInvitation: (accepted) =>
+      joinWorkspace(tenancy.core as MembersMongo, accepted),
+  });
   let sequence = 0;
   const slug = () => `ws-${++sequence}-${crypto.randomUUID().slice(0, 6)}`;
 
@@ -94,5 +101,15 @@ export async function world() {
     return found.id;
   }
 
-  return { h, send, codeOf, workspaceOf, join, memberIdOf, slug };
+  // Closes a workspace as the tenancy lifecycle does: it is no longer active.
+  async function archive(workspace: { id: string; owner: User }) {
+    const mongo = tenancy.core as unknown as WorkspacesMongo;
+    const doc = await mongo.db.workspaces.findById(workspace.id);
+    if (!doc) throw new Error("no such workspace");
+    await mongo.db.workspaces
+      .as(workspace.owner.principal.accountId)
+      .update(workspace.id, { status: "archived", version: doc.version });
+  }
+
+  return { h, send, codeOf, workspaceOf, join, memberIdOf, slug, archive };
 }

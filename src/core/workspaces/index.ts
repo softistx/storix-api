@@ -5,6 +5,7 @@ export {
   workspaceRegistry,
 } from "./workspaces.registry";
 export {
+  activeWorkspaceName,
   createWorkspace,
   type Provisioner,
   type WorkspacesMongo,

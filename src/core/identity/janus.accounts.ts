@@ -9,6 +9,7 @@ import {
 import type {
   createMongoAdapter,
   createMongoApiKeys,
+  createMongoInvitations,
 } from "@softistx/janus-mongo";
 import { z } from "zod";
 
@@ -30,6 +31,25 @@ export const PASSWORD_MIN_LENGTH = 8;
 // The start of every API key: a leaked key is recognised and scanned for by it.
 export const API_KEY_PREFIX = "stx_";
 
+// How long an invitation's code is good for, and how many one workspace may
+// have pending at once (janus refuses the next one, `INVITATION_LIMIT`).
+export const INVITATION_LIFETIME = "7d";
+export const INVITATIONS_PENDING_MAX = 200;
+
+// The languages an account (and so a mail) is written in.
+const accountLocale = (locale: string | null): "en" | "fr" =>
+  locale?.toLowerCase().startsWith("fr") ? "fr" : "en";
+
+// What accepting an invitation asks of the application: add the account to
+// the invitation's scope (a workspace id) with its role.
+export interface Accepted {
+  scope: string;
+  role: string;
+  accountId: string;
+  // The inviter's account id; null for an invitation the system issued.
+  invitedBy: string | null;
+}
+
 // janus with storix's one account type, `user`: global (a person belongs to
 // workspaces through members, not through their account), signing in by
 // e-mail and password, with an optional TOTP second factor whose secrets are
@@ -48,6 +68,10 @@ export function createAccounts(options: {
   ];
   events: (event: UserEvent) => Promise<void>;
   mail?: MailConfig;
+  invitations: {
+    store: ReturnType<typeof createMongoInvitations>;
+    onAccepted: (accepted: Accepted) => Promise<void>;
+  };
 }) {
   return janus({
     users: {
@@ -68,6 +92,28 @@ export function createAccounts(options: {
       prefix: API_KEY_PREFIX,
       lifetimes: ["30d", "90d", "365d"],
       maxActive: 10,
+    },
+    // Invitations into a scope (a workspace id): one pending per scope and
+    // address, a 43-character code of which only the sha256 is stored. The
+    // invitee has no account yet: it is made (e-mail proved by the code) and
+    // signed in; one who has an account is added the same way.
+    invitations: {
+      store: options.invitations.store,
+      type: "user",
+      lifetime: INVITATION_LIFETIME,
+      maxPending: INVITATIONS_PENDING_MAX,
+      create: (invitation) => ({
+        email: invitation.email,
+        name: invitation.name,
+        locale: accountLocale(invitation.locale),
+      }),
+      onAccepted: ({ invitation, user }) =>
+        options.invitations.onAccepted({
+          scope: invitation.scope,
+          role: invitation.role,
+          accountId: user.id,
+          invitedBy: invitation.invitedBy,
+        }),
     },
     ...(options.mail && { mail: options.mail }),
   });

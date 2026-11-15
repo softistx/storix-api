@@ -10,13 +10,16 @@ import {
 import {
   createMongoAdapter,
   createMongoApiKeys,
+  createMongoInvitations,
   syncMongoAdapter,
   syncMongoApiKeys,
+  syncMongoInvitations,
 } from "@softistx/janus-mongo";
 import type { Mailer } from "@softistx/mail";
 import type { Db } from "mongodb";
+import { createInvitationResolvers } from "./identity.invitations";
 import type { Account, Identity } from "./identity.port";
-import { createAccounts } from "./janus.accounts";
+import { type Accepted, createAccounts } from "./janus.accounts";
 
 import { authCall } from "./janus.errors";
 import { createMail, securityNotices } from "./janus.mail";
@@ -47,6 +50,9 @@ export interface IdentityOptions {
   // `{ throttle: false }`.
   mail?: MailConfig;
   background?: Background;
+  // Adds an account that accepted an invitation to its scope (a workspace).
+  // Runs inside janus's accept, after the account exists: a throw refuses it.
+  onAcceptedInvitation: (accepted: Accepted) => Promise<void>;
 }
 
 const accountOf = (user: AccountUser): Account => ({
@@ -80,6 +86,10 @@ export function createJanusIdentity(options: IdentityOptions): Identity {
     totpKeys: options.totpKeys,
     events: notices,
     ...(options.mail && { mail: options.mail }),
+    invitations: {
+      store: createMongoInvitations(options.db),
+      onAccepted: options.onAcceptedInvitation,
+    },
   });
   const deps = { accounts, mail, background: runner, clock };
 
@@ -120,10 +130,17 @@ export function createJanusIdentity(options: IdentityOptions): Identity {
     ...stepUpFlows(deps),
     ...secondFactorFlows(deps),
 
-    // The keys are an opt-in port: not part of syncMongoAdapter.
+    invitations: {
+      resolvers: (hooks) =>
+        createInvitationResolvers(accounts, mail, options.uiOrigin, hooks),
+    },
+
+    // The keys and the invitations are opt-in ports: not part of
+    // syncMongoAdapter.
     syncStores: async (syncOptions = {}) => [
       ...(await syncMongoAdapter(options.db, syncOptions)),
       ...(await syncMongoApiKeys(options.db, syncOptions)),
+      ...(await syncMongoInvitations(options.db, syncOptions)),
     ],
 
     settled: () => runner.settled(),

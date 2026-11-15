@@ -38,6 +38,8 @@ const config: LimitsConfig = {
   signIn: window,
   passwordReset: window,
   workspaceCreate: window,
+  invitationSend: window,
+  invitationCode: window,
 };
 const refusalOf = async (promise: Promise<unknown>) => {
   try {
@@ -151,6 +153,8 @@ const atAddress = (inner: Limits, ip = "203.0.113.50"): Limits => ({
   signIn: () => inner.signIn(ip),
   passwordReset: () => inner.passwordReset(ip),
   workspaceCreate: () => inner.workspaceCreate(ip),
+  invitationSend: () => inner.invitationSend(ip),
+  invitationCode: () => inner.invitationCode(ip),
 });
 
 describe("over /graphql", () => {
