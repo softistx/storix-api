@@ -111,10 +111,34 @@ A user who enrolled an authenticator cannot confirm a code, or the server cannot
 
 **Fix:** restore the key. When it is truly lost, the affected accounts must have their second factor reset by an operator (clear it in the `users` collection) and enrol again.
 
-## `auth.errors.rate-limited` (429) on sign-up, sign-in or reset
+## `auth.errors.rate-limited` (429) on sign-up, sign-in, reset or workspace creation
 
-**When:** a client address went past `RATE_LIMIT_SIGN_UP`, `RATE_LIMIT_SIGN_IN` or `RATE_LIMIT_PASSWORD_RESET` (`<attempts>/<seconds>`), or janus's per-account throttle (five mails per address and ten minutes, the tries of a challenge) tripped. `extensions.retryAfter` says how long to wait.
+**When:** a client address went past `RATE_LIMIT_SIGN_UP`, `RATE_LIMIT_SIGN_IN` or `RATE_LIMIT_PASSWORD_RESET` or `RATE_LIMIT_WORKSPACE_CREATE` (`<attempts>/<seconds>`), or janus's per-account throttle (five mails per address and ten minutes, the tries of a challenge) tripped. `extensions.retryAfter` says how long to wait.
 
 **Why:** behind a proxy every visitor looks like one address unless the forwarded address is honoured (`API_PROXY_SECRET`, `src/http/client-ip.ts`).
 
 **Fix:** wait, or raise the variable. The limit is off when `REDIS_URL` is unset.
+
+## `workspaces.errors.workspace-required` (400) on a workspace operation
+
+**When:** a members or workspace query came without the `x-storix-workspace` header.
+
+**Fix:** send the header with the workspace id or slug. Refusals come in this order: 401 (not signed in), 400 (no header), 404 (`workspaces.errors.not-found`), 403 (missing permission).
+
+## `workspaces.errors.not-found` (404) for a workspace that exists
+
+**When:** the workspace is unknown, still `provisioning`, or the caller is not a member of it. All three answer alike so that a stranger learns nothing.
+
+**Fix:** check the id or slug and the membership. A workspace stuck in `provisioning` after a crash is not swept yet; ask an operator to remove or finish it.
+
+## `workspaces.errors.slug-taken` (409) on `createWorkspace`
+
+**When:** another workspace, even one still provisioning, holds the slug.
+
+**Fix:** choose another slug.
+
+## `workspaces.errors.last-owner` (409) on a role change, removal or leave
+
+**When:** the operation would leave the workspace with no OWNER.
+
+**Fix:** promote another member to OWNER first, then demote, remove or leave.
