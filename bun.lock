@@ -23,9 +23,9 @@
         "@softistx/ai-ollama": "^0.3.1",
         "@softistx/ai-telemetry": "^0.3.1",
         "@softistx/image": "^0.6.0",
-        "@softistx/janus": "^0.63.0",
-        "@softistx/janus-mail": "^0.26.4",
-        "@softistx/janus-mongo": "^0.28.0",
+        "@softistx/janus": "^0.64.0",
+        "@softistx/janus-mail": "^0.26.6",
+        "@softistx/janus-mongo": "^0.28.1",
         "@softistx/mail": "^1.6.0",
         "@softistx/mail-smtp": "^1.1.0",
         "@softistx/mongo": "^0.29.0",
@@ -333,11 +333,11 @@
 
     "@softistx/image": ["@softistx/image@0.6.0", "https://npm.softistx.com/@softistx/image/-/image-0.6.0.tgz", { "peerDependencies": { "@napi-rs/canvas": "^1.1.0", "@softistx/s3": "^0.13.0", "pdfjs-dist": "^6.5.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-YFgHQ2m1GZrdsh3SUhAU/xDurUNXqAHPJ5Ea7OTB4kmaZbLcj7D1CjnLRklDy8fkKFlaMzERB+qTn3ZJ/XtYZQ=="],
 
-    "@softistx/janus": ["@softistx/janus@0.63.0", "https://npm.softistx.com/@softistx/janus/-/janus-0.63.0.tgz", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-Ub+UcyjxfPWrseOL5nVghnMxLr/HhC+6l46G7fYp51D52jVlbw7tuabc490P0NJxgepzU3/7h4TIiz5wS3z3jQ=="],
+    "@softistx/janus": ["@softistx/janus@0.64.0", "https://npm.softistx.com/@softistx/janus/-/janus-0.64.0.tgz", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-8NCxXvDmwK7ali6oZ9aS5P9usUKIlm2VDbVytNokwxlow7X5O/cINSdSriAoriITu2PfmgynLFwH9iQewQcqAg=="],
 
-    "@softistx/janus-mail": ["@softistx/janus-mail@0.26.4", "https://npm.softistx.com/@softistx/janus-mail/-/janus-mail-0.26.4.tgz", { "peerDependencies": { "@softistx/janus": "^0.63.0", "@softistx/mail": ">=1.5.0 <2", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-vcEYekOuZXS0bc69WxjiE0wjTzvhkElwUWjA1aktsfxxrUybqD6kyKUbBoNdfAHeLBld3JyRNxsWuWJyrjgyzA=="],
+    "@softistx/janus-mail": ["@softistx/janus-mail@0.26.6", "https://npm.softistx.com/@softistx/janus-mail/-/janus-mail-0.26.6.tgz", { "peerDependencies": { "@softistx/janus": "^0.64.0", "@softistx/mail": ">=1.5.0 <2", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-0RdxoitZ6GRDTuTrp42BwZNDCck3q5X3qKqCWw4IkD8lPj8H7rGwZ+uXh6KaeItW11sSwGnPEOf01gE5UEJj3w=="],
 
-    "@softistx/janus-mongo": ["@softistx/janus-mongo@0.28.0", "https://npm.softistx.com/@softistx/janus-mongo/-/janus-mongo-0.28.0.tgz", { "peerDependencies": { "@softistx/janus": "^0.63.0", "@softistx/mongo": ">=0.27.0 <1", "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-Rd6iIQ5wtW2deR+qoSh+WNKWl8IkS2bEKKDw/1thAea/Oc8CSnwP3BMywJW/qSx1Tt/Aegsk/lRUVL44Q05wCw=="],
+    "@softistx/janus-mongo": ["@softistx/janus-mongo@0.28.1", "https://npm.softistx.com/@softistx/janus-mongo/-/janus-mongo-0.28.1.tgz", { "peerDependencies": { "@softistx/janus": "^0.64.0", "@softistx/mongo": ">=0.27.0 <1", "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-9duBdqAcERF9rcw6HmeLI84DNXvozAuceIQvbjKhJEt17+OTKUsyl/x3mYZtTeU4Kn53xNAqZdz8RDHWiXr5TQ=="],
 
     "@softistx/mail": ["@softistx/mail@1.6.0", "https://npm.softistx.com/@softistx/mail/-/mail-1.6.0.tgz", { "peerDependencies": { "@opentelemetry/api": "^1.9.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-smc3Ku2BDTMFkaLTvVjhI8TxVwHxm1UwfVXJMS8n4N9LtDBgTvtp5KTbknAvIc/ql6Ex3LI18yjhkV2fUcyNZw=="],
 
