@@ -7,7 +7,15 @@ import { codegenScalars } from "@nxgt/graphql-scalars";
 //   whose context is the app's own (`Context`, src/http/context.ts). A module maps
 //   a type to the document its collection stores with `mappers`.
 // - src/generated/graphql/zod.ts: the Zod schemas of the inputs.
-const schema = ["src/**/*.graphqls", "generated/graphql/**/*.graphqls"];
+const janusSdl = "node_modules/@softistx/janus-graphql/graphql";
+const schema = [
+  "src/**/*.graphqls",
+  "generated/graphql/**/*.graphqls",
+  // The invitation fields and the directives they declare, as janus-graphql
+  // ships them (src/core/invitations serves them).
+  `${janusSdl}/janus.graphqls`,
+  `${janusSdl}/janus-invitations.graphqls`,
+];
 
 const config: CodegenConfig = {
   schema,

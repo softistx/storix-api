@@ -1,0 +1,69 @@
+"What a member may do in a workspace, highest first."
+enum WorkspaceRole {
+  "Everything, deletes the workspace, and the only role that makes or changes an owner."
+  OWNER
+  "Members, teams, settings, API keys, audit and storage."
+  ADMIN
+  "Their own files and what is shared with them."
+  MEMBER
+}
+
+"A person in a workspace."
+type Member {
+  id: ID!
+  "The account's opaque id."
+  accountId: ID!
+  "The account's name; null when the account no longer exists."
+  name: String
+  "The account's address; null when the account no longer exists."
+  email: EmailAddress
+  role: WorkspaceRole!
+  joinedAt: DateTime!
+}
+
+"A page of members."
+type MemberPage {
+  nodes: [Member!]!
+  pageInfo: PageInfo!
+  "Every current member of the workspace."
+  totalCount: Int!
+}
+
+extend type Query {
+  """
+  The current members of the request's workspace (the `x-storix-workspace`
+  header), oldest first. Needs `members:read`, which every role holds. 400
+  `workspaces.errors.workspace-required`; 404 `workspaces.errors.not-found`;
+  401 `auth.errors.api-key-not-accepted` for a personal API key.
+  """
+  members(
+    first: Int! = 50 @constraint(min: 1, max: 100)
+    after: String @constraint(maxLength: 500)
+  ): MemberPage!
+}
+
+extend type Mutation {
+  """
+  Changes a member's role. Needs `members:manage` (OWNER, ADMIN) AND a fresh
+  session (403 `auth.errors.step-up-required`: `requestStepUp` then
+  `confirmStepUp`); only an OWNER may make or change an owner (403
+  `auth.errors.forbidden`). 404 `members.errors.not-found` for a member of
+  another workspace; 409 `workspaces.errors.last-owner` when it would leave
+  no owner.
+  """
+  changeMemberRole(memberId: ID!, role: WorkspaceRole!): Member!
+  """
+  Removes a member from the workspace. Needs `members:manage` AND a fresh
+  session (403 `auth.errors.step-up-required`: `requestStepUp` then
+  `confirmStepUp`); removing an owner needs `owners:manage` (OWNER). To leave
+  yourself, use `leaveWorkspace` (no step-up). 404 `members.errors.not-found`;
+  409 `workspaces.errors.last-owner`.
+  """
+  removeMember(memberId: ID!): Boolean!
+  """
+  Leaves the request's workspace. Any member; 409
+  `workspaces.errors.last-owner` for the last owner, who promotes another
+  owner first.
+  """
+  leaveWorkspace: Boolean!
+}

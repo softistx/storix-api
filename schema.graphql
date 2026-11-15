@@ -1,6 +1,14 @@
 schema {
   query: Query
+  mutation: Mutation
 }
+
+"""
+Only a signed-in user reaches this field, or every field of this type or
+interface. With `type`, only a user of one of these user types: any other is
+answered FORBIDDEN.
+"""
+directive @authenticated(type: [String!]) on FIELD_DEFINITION | INTERFACE | OBJECT
 
 """
 Validates an argument or an input field when the request arrives, before the resolver runs. A value that breaks a constraint is refused with a BAD_USER_INPUT error whose extensions list each issue with its path and the constraint that refused it; null and omitted values are not checked. Each argument below is one constraint, and they combine on one field.
@@ -68,6 +76,94 @@ directive @constraint(
   startsWith: String
 ) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
 
+"""
+Only a session that proved who it is less than `maxAge` seconds ago reaches
+this field, or every field of this type or interface: signed in, or confirmed
+since by a step-up. Anonymous is answered UNAUTHENTICATED, an older session
+STEP_UP_REQUIRED. Where several apply, the smallest `maxAge` holds.
+"""
+directive @fresh(maxAge: Int!) on FIELD_DEFINITION | INTERFACE | OBJECT
+
+"""
+Only a user holding permission `name` on the object of `type` whose id `id`
+reads reaches this field, or every field of this type or interface. `id` is
+`args.<path>` or `parent.<path>`: `args.id` on a field and `parent.id` on a
+type or an interface when absent. A list of ids requires the permission on
+every one. Repeated, every one must hold, in the order written.
+"""
+directive @permission(id: String, name: String!, onDeny: JanusPermissionDenial! = NOT_FOUND, type: String!) repeatable on FIELD_DEFINITION | INTERFACE | OBJECT
+
+type AuditActor {
+  """The account id (or key, token or link id)."""
+  id: ID!
+  """The name the actor had when it happened; null when it had none."""
+  label: String
+  type: AuditActorType!
+}
+
+"""Who did it."""
+enum AuditActorType {
+  """A workspace API key."""
+  API_KEY
+  """A share link."""
+  LINK
+  """A signed-in account."""
+  MEMBER
+  """A scoped access token."""
+  TOKEN
+}
+
+"""
+One thing that happened in the workspace. Never holds an address, a code, a password or a token.
+"""
+type AuditEvent {
+  """
+  `<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete.
+  """
+  action: String!
+  actor: AuditActor!
+  at: DateTime!
+  id: ID!
+  """
+  A keyed hash of the client address; null when the request had none. Equal hashes are the same address.
+  """
+  ipHash: String
+  """
+  Short facts about the change (a role's before and after, a team's new name): strings, numbers and booleans.
+  """
+  meta: JSONObject!
+  target: AuditTarget!
+}
+
+input AuditEventFilter {
+  """Events of exactly this action."""
+  action: String
+  """Events of this actor (an account id)."""
+  actorId: ID
+  """Events at or after this instant."""
+  from: DateTime
+  """
+  Events about this target (a member, an invitation, a team, the workspace).
+  """
+  targetId: ID
+  """Events before this instant."""
+  to: DateTime
+}
+
+"""A page of audit events, newest first."""
+type AuditPage {
+  nodes: [AuditEvent!]!
+  pageInfo: PageInfo!
+}
+
+type AuditTarget {
+  id: ID!
+  """The target's name when it had one; null otherwise."""
+  name: String
+  """What was acted on: WORKSPACE, MEMBER, INVITATION, TEAM."""
+  type: String!
+}
+
 """Standard base64 with padding, in its canonical spelling."""
 scalar Base64 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc4648#section-4")
 
@@ -87,6 +183,15 @@ scalar CIDRv6 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc4291")
 
 """An ISO 3166-1 alpha-2 country code, such as FR."""
 scalar CountryCode @specifiedBy(url: "https://www.iso.org/iso-3166-country-codes.html")
+
+input CreateWorkspaceInput {
+  """1 to 100 characters, spaces around are dropped."""
+  name: String! @constraint(minLength: 1, maxLength: 100)
+  """
+  1 to 40 characters: lower case letters, digits and hyphens, not starting or ending with a hyphen, and not 24 hexadecimal digits (an id).
+  """
+  slug: String! @constraint(minLength: 1, maxLength: 40, pattern: "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
+}
 
 """
 A cuid2: a lowercase letter, then lowercase letters and digits, 2 to 32 in all.
@@ -168,6 +273,63 @@ scalar IPv6 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc4291")
 """An ISBN-10 or ISBN-13, digits only, with its check digit verified."""
 scalar ISBN @specifiedBy(url: "https://www.isbn-international.org/content/isbn-users-manual/29")
 
+union InvitationAcceptResult = InvitationSecondFactor | InvitationSignIn | InvitationSignedIn
+
+"""
+The invitation was accepted and a second factor is still to prove: confirm
+it with the challenge. No session is open yet. The challenge is a secret:
+never in a URL or a log.
+"""
+type InvitationSecondFactor {
+  challenge: String!
+  """When the challenge lapses, as an ISO-8601 string."""
+  expiresAt: String!
+  invitationId: ID!
+  """
+  What can answer the challenge: `totp` always, and `passkey` when the
+  user holds one.
+  """
+  methods: [String!]!
+  """
+  The JSON text for `navigator.credentials.get({ publicKey })`, present
+  exactly when `methods` holds `passkey`.
+  """
+  passkeyOptions: String
+  scope: String!
+}
+
+"""
+The address belongs to a proved user who already has a password (the password
+given is ignored), or who has none and gave none. They are NOT signed in: an
+invitation proves the inbox, not who holds the account. Send them to the
+sign-in page.
+"""
+type InvitationSignIn {
+  email: String!
+  invitationId: ID!
+  scope: String!
+}
+
+"""
+The invitation was accepted and a session was opened: a new invitee, an
+account whose e-mail was never proved, or a proved account with no password
+yet, given one.
+"""
+type InvitationSignedIn {
+  """When the session ends, as an ISO-8601 string."""
+  expiresAt: String!
+  invitationId: ID!
+  newDevice: Boolean!
+  role: String!
+  scope: String!
+  """
+  The session token, only with `answerToken`; otherwise the session
+  cookie is set and this is null.
+  """
+  token: String
+  userId: ID!
+}
+
 """Any JSON value."""
 scalar JSON @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc8259")
 
@@ -178,6 +340,131 @@ scalar JSONObject @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc8259#sect
 A signed JSON Web Token in compact form. Its signature is not verified.
 """
 scalar JWT @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc7519")
+
+"""
+An invitation into a scope (an organization, a team), as its owners see it.
+The code is never here: `issueInvitation` and `resendInvitation` answer it
+once.
+"""
+type JanusInvitation {
+  acceptedAt: String
+  acceptedBy: ID
+  """Timestamps, as ISO-8601 strings."""
+  createdAt: String!
+  email: String!
+  expiresAt: String!
+  id: ID!
+  """The id of the user who sent it, or null when the system issued it."""
+  invitedBy: ID
+  locale: String
+  name: String!
+  """
+  The application's opaque reference the invitation was issued with (its own
+  record), or null.
+  """
+  ref: String
+  """The id of the user who last sent it again, or null."""
+  resentBy: ID
+  revokedAt: String
+  """The id of the user who revoked it, or null."""
+  revokedBy: ID
+  role: String!
+  """The organization (or any grouping) the invitation is into."""
+  scope: String!
+  """
+  `pending`, `accepted` or `revoked`. A `pending` invitation past
+  `expiresAt` is lapsed: it cannot be previewed or accepted, and
+  `resendInvitation` gives it a new code.
+  """
+  status: String!
+  """
+  The user type the invitation is for, one of the configured types; an
+  invitation stored before types existed reads as the first one.
+  """
+  type: String!
+  updatedAt: String!
+}
+
+"""
+Whether lapsed invitations (pending, past their expiry) are left out of a
+list: `EXCLUDE` drops them and keeps every other invitation, `ONLY` keeps
+only them.
+"""
+enum JanusInvitationLapsed {
+  EXCLUDE
+  ONLY
+}
+
+"""The order of a scope's invitations: by creation."""
+enum JanusInvitationOrder {
+  NEWEST
+  OLDEST
+}
+
+"""
+One page of a scope's invitations. `nextCursor` is null on the last page.
+"""
+type JanusInvitationPage {
+  items: [JanusInvitation!]!
+  nextCursor: String
+  """
+  How many invitations of the scope match the filters (`status`, `role`,
+  `ref`), whatever the paging. Counted only when selected, and answered only on a page
+  `invitations` returned (a page of your own has no count and fails). A `pending`
+  invitation past `expiresAt` still counts, as it is still listed.
+  """
+  totalCount: Int!
+}
+
+"""
+What a code names, for the page the invitee lands on: the content of the
+invitation, nothing about who sent it or how it stands.
+"""
+type JanusInvitationPreview {
+  email: String!
+  expiresAt: String!
+  id: ID!
+  locale: String
+  name: String!
+  """
+  Whether the page should ask for a password: false for a user type with no
+  password, or somebody who already has an account with a proved e-mail and a
+  password.
+  """
+  needsPassword: Boolean!
+  """
+  The name of the scope's organization (school, clinic, workspace), from the
+  application's describeScope option; null when it names none or is not
+  given.
+  """
+  organization: String
+  role: String!
+  scope: String!
+  """
+  The user type the invitation is for, so the page can adapt its wording or
+  flow to it.
+  """
+  type: String!
+}
+
+"""An invitation just issued or sent again."""
+type JanusIssuedInvitation {
+  """
+  The code, a secret: null unless `answerCode` is on. It belongs in the
+  invitation e-mail's link, never in a URL you log or a response a cache
+  keeps (the response is `no-store`).
+  """
+  code: String
+  invitation: JanusInvitation!
+}
+
+"""What a denied `@permission` answers."""
+enum JanusPermissionDenial {
+  """403: the object exists, and this user may not do this to it."""
+  FORBIDDEN
+  """404: the object is not told to exist. The default."""
+  NOT_FOUND
+}
 
 """A KSUID: 27 characters of base62."""
 scalar KSUID @specifiedBy(url: "https://github.com/segmentio/ksuid")
@@ -212,6 +499,185 @@ scalar Longitude
 A MAC address: six hex pairs separated by colons (not the IEEE hyphen form).
 """
 scalar MAC
+
+"""A person in a workspace."""
+type Member {
+  """The account's opaque id."""
+  accountId: ID!
+  """The account's address; null when the account no longer exists."""
+  email: EmailAddress
+  id: ID!
+  joinedAt: DateTime!
+  """The account's name; null when the account no longer exists."""
+  name: String
+  role: WorkspaceRole!
+}
+
+"""A page of members."""
+type MemberPage {
+  nodes: [Member!]!
+  pageInfo: PageInfo!
+  """Every current member of the workspace."""
+  totalCount: Int!
+}
+
+type Mutation {
+  """
+  Accepts the invitation `code` names: the code proves the invitee's inbox.
+  A new invitee, an account whose e-mail was never proved, or a proved account
+  with no password yet (given one) is signed in (the session cookie, or `token`
+  with `answerToken`); a proved user who already has a password (the password
+  given is ignored), or who has none and gave none, is answered
+  `InvitationSignIn` and is not. INVITATION_INVALID (400) for a code that names no pending
+  invitation, PASSWORD_REQUIRED (400) when a password is needed and absent.
+  INVITATION_REFUSED (403) when the application's `beforeAccept` refused, with
+  nothing written. A `code` over 43 characters or a `password` over 1024 is
+  BAD_USER_INPUT (400, `field`), the code unspent.
+  Open to anybody and not throttled here.
+  """
+  acceptInvitation(code: String!, password: String): InvitationAcceptResult!
+  """
+  The first code of the app: the factor is active, its ten recovery codes are answered once, the account's other sessions end. Needs a fresh session.
+  """
+  activateSecondFactor(code: String! @constraint(maxLength: 40)): RecoveryCodes!
+  """
+  Changes a member's role. Needs `members:manage` (OWNER, ADMIN) AND a fresh
+  session (403 `auth.errors.step-up-required`: `requestStepUp` then
+  `confirmStepUp`); only an OWNER may make or change an owner (403
+  `auth.errors.forbidden`). 404 `members.errors.not-found` for a member of
+  another workspace; 409 `workspaces.errors.last-owner` when it would leave
+  no owner.
+  """
+  changeMemberRole(memberId: ID!, role: WorkspaceRole!): Member!
+  """
+  Ends a sign-up: the token of the verification mail and the password the
+  visitor chose, posted together. Proves the address, sets the password and
+  signs in. 400 `identity.errors.token-invalid`; 400
+  `validation.errors.invalid-input` (`too-short` on `password`) with the link
+  NOT spent.
+  """
+  completeSignUp(password: String! @constraint(maxLength: 1024), token: String! @constraint(maxLength: 200)): SignInPayload!
+  """
+  The code of the authenticator app, for the challenge signIn answered. 400 `identity.errors.second-factor-invalid` (with `attemptsLeft`); 400 `identity.errors.token-invalid`.
+  """
+  confirmSecondFactor(challenge: String! @constraint(maxLength: 200), code: String! @constraint(maxLength: 40)): SignInPayload!
+  """
+  Confirms a step-up and answers until when the session is fresh. 400 `identity.errors.second-factor-invalid`.
+  """
+  confirmStepUp(challenge: String! @constraint(maxLength: 200), code: String! @constraint(maxLength: 40)): DateTime!
+  """
+  Creates an empty team. Needs `teams:manage` (OWNER, ADMIN). 409
+  `teams.errors.name-taken` (field `name`) when a team has that name, in any
+  case.
+  """
+  createTeam(name: String! @constraint(minLength: 1, maxLength: 100)): Team!
+  """
+  Creates a workspace, with its own database, and makes the caller its OWNER.
+  Needs a session. 409 `workspaces.errors.slug-taken`; 400
+  `validation.errors.invalid-input` (a slug of 24 hexadecimal digits or an
+  empty name); 429 `auth.errors.rate-limited`.
+  """
+  createWorkspace(input: CreateWorkspaceInput!): Workspace!
+  """Deletes a team. Needs `teams:manage`. 404 `teams.errors.not-found`."""
+  deleteTeam(id: ID!): Boolean!
+  """
+  Turns the factor off on a current code of the app, or on a recovery code when the phone is lost. Needs a fresh session.
+  """
+  disableSecondFactor(code: String! @constraint(maxLength: 40)): Boolean!
+  """
+  Starts a second factor. Needs a verified address (403 `identity.errors.email-unverified`) and a fresh session (403 `auth.errors.step-up-required`).
+  """
+  enrolSecondFactor: SecondFactorEnrolment!
+  """
+  Invites `email` into `scope` with `role`; the inviter is the signed-in
+  user. Issuing again for an address that has a pending invitation revokes
+  it and makes a new one. INVITATION_INVALID (`field`) for an input that
+  cannot be kept, INVITATION_LIMIT (`maxActive`) when the scope is full,
+  NOT_FOUND when `authorize` refuses. `ref` is an opaque reference to your
+  own record (1 to 100 characters), answered back and usable as a filter of
+  `invitations`. An argument over its maximum (`scope` 512, `email` 254, `name`,
+  `role` and `ref` 100, `locale` 35 characters) is BAD_USER_INPUT (400, `field`)
+  before `authorize` runs. `type` is the user type the invitee becomes: required when
+  the instance configures several user types (null or absent means the
+  instance's single type), INVITATION_INVALID
+  (`field: 'type'`) when absent then, or when it names none of them.
+  """
+  issueInvitation(email: String!, locale: String, name: String!, ref: String, role: String!, scope: String!, type: String): JanusIssuedInvitation! @authenticated
+  """
+  Leaves the request's workspace. Any member; 409
+  `workspaces.errors.last-owner` for the last owner, who promotes another
+  owner first.
+  """
+  leaveWorkspace: Boolean!
+  """
+  A recovery code instead of the app's; each works once. Refused as confirmSecondFactor.
+  """
+  recoverSecondFactor(challenge: String! @constraint(maxLength: 200), recoveryCode: String! @constraint(maxLength: 40)): SignInPayload!
+  """
+  Ten new recovery codes on a current code of the app; the old ones end. Needs a fresh session.
+  """
+  regenerateRecoveryCodes(code: String! @constraint(maxLength: 40)): RecoveryCodes!
+  """
+  Removes a member from the workspace. Needs `members:manage` AND a fresh
+  session (403 `auth.errors.step-up-required`: `requestStepUp` then
+  `confirmStepUp`); removing an owner needs `owners:manage` (OWNER). To leave
+  yourself, use `leaveWorkspace` (no step-up). 404 `members.errors.not-found`;
+  409 `workspaces.errors.last-owner`.
+  """
+  removeMember(memberId: ID!): Boolean!
+  """
+  Renames a team. Needs `teams:manage`. 404 `teams.errors.not-found`; 409
+  `teams.errors.name-taken` (field `name`) for another team's name, in any
+  case; the team's own name in another case is allowed.
+  """
+  renameTeam(id: ID!, name: String! @constraint(minLength: 1, maxLength: 100)): Team!
+  """
+  Sends a password-reset link. True once accepted, whether or not the e-mail holds an account; 429 `auth.errors.rate-limited` past five per ten minutes for an address.
+  """
+  requestPasswordReset(email: String! @constraint(maxLength: 320)): Boolean!
+  """
+  Starts a step-up of the session: a code of the app, else a code mailed to the account. 401 `auth.errors.unauthenticated`.
+  """
+  requestStepUp: StepUpChallenge!
+  """
+  A new code and lifetime for a pending invitation, lapsed or not; the old
+  code stops working. NOT_FOUND for an id of another scope,
+  INVITATION_NOT_PENDING (409) when it is accepted or revoked.
+  """
+  resendInvitation(id: ID!, scope: String!): JanusIssuedInvitation! @authenticated
+  """
+  Sets a new password with the token of the reset mail and signs the account out everywhere. 400 `identity.errors.token-invalid`; 400 `validation.errors.invalid-input`.
+  """
+  resetPassword(password: String! @constraint(maxLength: 1024), token: String! @constraint(maxLength: 200)): Boolean!
+  """
+  Takes a pending invitation back. NOT_FOUND as `resendInvitation`,
+  INVITATION_NOT_PENDING (409) when it is accepted or already revoked.
+  """
+  revokeInvitation(id: ID!, scope: String!): JanusInvitation! @authenticated
+  """
+  Replaces the team's members with these members (`Member.id`, repeats
+  ignored; an empty list empties it). Needs `teams:manage`. 404
+  `teams.errors.not-found`; 400 `teams.errors.member-unknown` (field
+  `memberIds`) when an id is not a current member of the workspace, and then
+  the team is left as it was.
+  """
+  setTeamMembers(id: ID!, memberIds: [ID!]! @constraint(maxItems: 1000)): Team!
+  """
+  Signs in with a password. 401 `identity.errors.invalid-credentials` for a
+  wrong password, an unknown address and a deactivated account alike; 429
+  `auth.errors.rate-limited`.
+  """
+  signIn(input: SignInInput!): SignInPayload!
+  """Ends the request's session. True also when there was none."""
+  signOut: Boolean!
+  """
+  Opens an account with NO password, unverified, and mails the verification
+  link. Opens no session: answers VERIFICATION_SENT. An address that already
+  holds an account answers the very same payload and creates nothing (its owner
+  is mailed a notice), so the answer never tells whether an address is taken.
+  """
+  signUp(input: SignUpInput!): SignInPayload!
+}
 
 """A Nano ID: 21 characters of A-Z, a-z, 0-9, _ and -."""
 scalar NanoID @specifiedBy(url: "https://github.com/ai/nanoid")
@@ -267,6 +733,14 @@ scalar PositiveInt
 
 type Query {
   """
+  The request's workspace's audit log, newest first, filtered and paged by
+  cursor. Needs `audit:read` (OWNER, ADMIN). 400 `validation.errors.invalid-cursor`
+  (field `after`) for a cursor of another filter; 403 `auth.errors.forbidden`
+  for a MEMBER; 401 `auth.errors.api-key-not-accepted` for a personal API key;
+  400 `workspaces.errors.workspace-required`; 404 `workspaces.errors.not-found`.
+  """
+  auditEvents(after: String @constraint(maxLength: 500), filter: AuditEventFilter, first: Int! = 50 @constraint(min: 1, max: 100)): AuditPage!
+  """
   The API's error messages in one language, for a client that words refusals
   itself. A refusal carries `extensions.code` and `extensions.params`; the
   client finds the code in `messages` and fills the message with the params.
@@ -274,7 +748,65 @@ type Query {
   `version`.
   """
   errorCatalogue(language: Language): ErrorCatalogue!
+  """
+  What `code` names, without spending it. INVITATION_INVALID (400) for
+  any code that names no pending, unlapsed invitation. Open to anybody: the
+  code is a secret (send it in the variables of a POST, never in a URL), and
+  the field is not throttled here. A `code` longer than 43 characters is
+  BAD_USER_INPUT (400, `field: 'code'`).
+  """
+  invitationPreview(code: String!): JanusInvitationPreview!
+  """
+  One scope's invitations, `OLDEST` first unless `order` says `NEWEST`.
+  `status` is `pending`, `accepted` or `revoked` (BAD_USER_INPUT
+  otherwise); `role` and `ref` keep the invitations with exactly that role
+  or reference; `lapsed` is `EXCLUDE` to leave out the lapsed (pending,
+  past `expiresAt`) or `ONLY` to keep just them, and `totalCount` follows
+  it; `limit` is a positive integer, 20 by default and at most
+  100; `after` is the previous page's `nextCursor`, in the same order. An
+  empty `role` or `ref` is BAD_USER_INPUT. Each BAD_USER_INPUT (and
+  INVALID_CURSOR) names the argument in `extensions.field`.
+  NOT_FOUND when the application's `authorize` refuses the scope.
+  """
+  invitations(after: String, lapsed: JanusInvitationLapsed, limit: Int, order: JanusInvitationOrder, ref: String, role: String, scope: String!, status: String): JanusInvitationPage! @authenticated
+  """
+  The current members of the request's workspace (the `x-storix-workspace`
+  header), oldest first. Needs `members:read`, which every role holds. 400
+  `workspaces.errors.workspace-required`; 404 `workspaces.errors.not-found`;
+  401 `auth.errors.api-key-not-accepted` for a personal API key.
+  """
+  members(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): MemberPage!
+  """
+  The workspaces the caller belongs to, by name. Needs a session, no header.
+  """
+  myWorkspaces: [Workspace!]!
+  """
+  Whether the caller's second factor is on and how many recovery codes are left. 401 `auth.errors.unauthenticated`.
+  """
+  secondFactorStatus: SecondFactorStatus!
+  """
+  One team of the request's workspace. 404 `teams.errors.not-found` for an
+  unknown id AND for a team of another workspace.
+  """
+  team(id: ID!): Team!
+  """
+  The request's workspace's teams, by name. Needs `teams:read`, which every
+  role holds. 400 `workspaces.errors.workspace-required`; 404
+  `workspaces.errors.not-found`; 401 `auth.errors.api-key-not-accepted` for a
+  personal API key.
+  """
+  teams: [Team!]!
   version: String!
+  """The caller, or null when anonymous."""
+  viewer: Viewer
+  """
+  The request's workspace, named by the `x-storix-workspace` header (its id or
+  its slug), with the caller's role. 400 `workspaces.errors.workspace-required`
+  without the header; 404 `workspaces.errors.not-found` for an unknown workspace
+  AND for one the caller does not belong to; 401
+  `auth.errors.api-key-not-accepted` for a personal API key.
+  """
+  workspace: Workspace!
 }
 
 """A CSS rgb() color, such as rgb(255, 0, 0)."""
@@ -282,6 +814,13 @@ scalar RGB @specifiedBy(url: "https://www.w3.org/TR/css-color-4/#rgb-functions")
 
 """A CSS rgba() color, such as rgba(255, 0, 0, 0.5)."""
 scalar RGBA @specifiedBy(url: "https://www.w3.org/TR/css-color-4/#rgb-functions")
+
+"""
+The recovery codes of a second factor: ten single-use codes, shown once.
+"""
+type RecoveryCodes {
+  recoveryCodes: [String!]!
+}
 
 """A SHA-256 digest: 64 hexadecimal digits."""
 scalar SHA256 @specifiedBy(url: "https://csrc.nist.gov/pubs/fips/180-4/upd1/final")
@@ -292,8 +831,72 @@ scalar SHA512 @specifiedBy(url: "https://csrc.nist.gov/pubs/fips/180-4/upd1/fina
 """An integer from -9007199254740991 to 9007199254740991."""
 scalar SafeInt
 
+"""The authenticator-app secret of a second factor being enrolled."""
+type SecondFactorEnrolment {
+  """Base32, for a user who types it in."""
+  secret: String!
+  """otpauth://, to show as a QR code."""
+  uri: String!
+}
+
+type SecondFactorStatus {
+  enabled: Boolean!
+  """Null when the factor is off."""
+  recoveryCodesLeft: Int
+}
+
 """A Semantic Versioning 2.0.0 version, such as 1.0.0-rc.1."""
 scalar SemVer @specifiedBy(url: "https://semver.org/spec/v2.0.0.html")
+
+"""The credentials of a password sign-in."""
+input SignInInput {
+  """The account's address, at most 320 characters."""
+  email: String! @constraint(maxLength: 320)
+  """The password, at most 1024 characters."""
+  password: String! @constraint(maxLength: 1024)
+}
+
+type SignInPayload {
+  """SECOND_FACTOR: keep it for the next call only."""
+  challenge: String
+  """
+  SIGNED_IN: when the session ends. SECOND_FACTOR: when the challenge does.
+  """
+  expiresAt: DateTime
+  status: SignInStatus!
+  """The session token, set only with SIGNED_IN."""
+  token: String
+  """The signed-in account, set only with SIGNED_IN."""
+  viewer: Viewer
+}
+
+"""What a sign-in or sign-up step answered and what the client does next."""
+enum SignInStatus {
+  """
+  The password was right and the account has a second factor: send a code with `challenge` to confirmSecondFactor (or a recovery code to recoverSecondFactor) before `expiresAt`.
+  """
+  SECOND_FACTOR
+  """
+  Signed in: `token` is the session's, to send as `Authorization: Bearer`.
+  """
+  SIGNED_IN
+  """
+  A sign-up was accepted: the verification link is mailed and no session was opened, whether or not the address already held an account.
+  """
+  VERIFICATION_SENT
+}
+
+"""
+What opening an account needs. No password: the visitor chooses it from the verification link.
+"""
+input SignUpInput {
+  """The address to verify and sign in with."""
+  email: EmailAddress!
+  """The language of the mails to this account."""
+  locale: Language!
+  """Display name, 1 to 200 characters."""
+  name: String! @constraint(minLength: 1, maxLength: 200)
+}
 
 """
 The direction of a list's `orderBy`. Every sorted list also orders by `id` after
@@ -302,6 +905,43 @@ its `orderBy`, so a cursor page across a sort neither skips nor repeats a row.
 enum SortDirection {
   ASC
   DESC
+}
+
+"""
+A step-up under way: keep `challenge` (never in a URL) and post it to confirmStepUp with the code.
+"""
+type StepUpChallenge {
+  """Opaque, single-use value to post to `confirmStepUp` with the code."""
+  challenge: String!
+  """When the challenge and its code stop working."""
+  expiresAt: DateTime!
+  method: StepUpMethod!
+}
+
+"""How a step-up is confirmed."""
+enum StepUpMethod {
+  """
+  A code of the authenticator app: the account has an active second factor. Nothing is mailed.
+  """
+  AUTHENTICATOR
+  """A six-digit code mailed to the account's current address."""
+  EMAIL
+}
+
+"""
+A group of the workspace's members, which a folder or a file is shared with as one.
+"""
+type Team {
+  createdAt: DateTime!
+  id: ID!
+  memberCount: Int!
+  """
+  The ids of its members (`Member.id`), all current members of the workspace.
+  """
+  memberIds: [ID!]!
+  """Unique in the workspace, ignoring case."""
+  name: String!
+  updatedAt: DateTime!
 }
 
 """A time of day with its offset, such as 10:15:30Z (RFC 3339 full-time)."""
@@ -333,8 +973,61 @@ scalar UUIDv7 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc9562")
 """A UTC offset from -12:00 to +14:00, such as +05:30."""
 scalar UtcOffset
 
+"""
+Who is calling. `viewer` is null for an anonymous request. A session and a
+personal API key both answer here; a key has no session (`apiKeyId` is set and
+the session fields are null).
+"""
+type Viewer {
+  """The id of the API key the call came in with; null for a session."""
+  apiKeyId: ID
+  email: EmailAddress!
+  """Whether the address was proved (the verification link)."""
+  emailVerified: Boolean!
+  """Whether an authenticator app protects the account."""
+  hasSecondFactor: Boolean!
+  """The account's opaque id."""
+  id: ID!
+  """The language of the account's mails."""
+  locale: Language!
+  name: String!
+  """
+  Until when the session counts as fresh for sensitive operations (sign-in or last step-up, plus 10 minutes); null for an API key, which is never fresh.
+  """
+  sessionConfirmedUntil: DateTime
+  """When the session ends; null for an API key."""
+  sessionExpiresAt: DateTime
+}
+
 """No value: always null."""
 scalar Void
+
+"""
+A workspace: the tenant. Its files, members and settings are its own, in a database of its own.
+"""
+type Workspace {
+  createdAt: DateTime!
+  id: ID!
+  """The caller's role in it."""
+  myRole: WorkspaceRole!
+  name: String!
+  """
+  Lower case words joined by hyphens, unique across workspaces; the tenant header may carry it instead of the id.
+  """
+  slug: String!
+}
+
+"""What a member may do in a workspace, highest first."""
+enum WorkspaceRole {
+  """Members, teams, settings, API keys, audit and storage."""
+  ADMIN
+  """Their own files and what is shared with them."""
+  MEMBER
+  """
+  Everything, deletes the workspace, and the only role that makes or changes an owner.
+  """
+  OWNER
+}
 
 """An xid: 20 characters of lowercase base32hex."""
 scalar XID @specifiedBy(url: "https://github.com/rs/xid")

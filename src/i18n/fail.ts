@@ -29,6 +29,17 @@ export function fail(
 export const unauthenticated = () =>
   fail("auth.errors.unauthenticated", { status: 401 });
 
+// 429 `auth.errors.rate-limited`, with the minutes to wait (rounded up) and
+// the seconds in `extensions.retryAfter`.
+export function rateLimited(retryAfter: number): GraphQLError {
+  const error = fail("auth.errors.rate-limited", {
+    params: { minutes: Math.max(1, Math.ceil(retryAfter / 60)) },
+    status: 429,
+  });
+  error.extensions["retryAfter"] = retryAfter;
+  return error;
+}
+
 export const forbidden = () => fail("auth.errors.forbidden", { status: 403 });
 
 // One refused field of an input: `path` is relative to the input

@@ -23,11 +23,11 @@
         "@softistx/ai-ollama": "^0.3.1",
         "@softistx/ai-telemetry": "^0.3.1",
         "@softistx/image": "^0.6.0",
-        "@softistx/janus": "^0.60.0",
-        "@softistx/janus-graphql": "^0.27.0",
-        "@softistx/janus-mail": "^0.26.0",
-        "@softistx/janus-mongo": "^0.27.0",
-        "@softistx/mail": "^1.5.0",
+        "@softistx/janus": "^0.64.0",
+        "@softistx/janus-graphql": "^0.28.2",
+        "@softistx/janus-mail": "^0.26.6",
+        "@softistx/janus-mongo": "^0.28.1",
+        "@softistx/mail": "^1.6.0",
         "@softistx/mail-smtp": "^1.1.0",
         "@softistx/mongo": "^0.29.0",
         "@softistx/redis": "^0.21.0",
@@ -50,6 +50,7 @@
         "@types/bun": "^1.4.4",
         "@types/nodemailer": "^8.0.2",
         "mongodb-memory-server-core": "^11.3.0",
+        "redis-memory-server": "^0.17.2",
         "typescript": "^7.0.2",
       },
     },
@@ -317,8 +318,6 @@
 
     "@nxgt/zod": ["@nxgt/zod@0.2.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-+KwQg+aex1loT6CzeUT0s4WipC/dxemQota8oVft404NfBtopJY3Um9vlydctEdhV9T/RoP5+B9+CUpmcoiGXg=="],
 
-    "@opentelemetry/api": ["@opentelemetry/api@1.10.0", "", {}, "sha512-lMkyes8iHrG+mk6WH7X70MdCLI2RS0FwNBY1PyQ8UemaijE2m5mv5A0Niy3HtbYTFrgkUEQjFMXmSAk2hQDuPQ=="],
-
     "@repeaterjs/repeater": ["@repeaterjs/repeater@3.1.0", "", {}, "sha512-TaoVksZRSx2KWYYpyLQtMQXXeS98VsgZImzW65xmiVgbYhXLk+aEsmzPLirqVuE4/XuUapH2iMtxUzaBNDzdSQ=="],
 
     "@softistx/ai-anthropic": ["@softistx/ai-anthropic@0.4.0", "https://npm.softistx.com/@softistx/ai-anthropic/-/ai-anthropic-0.4.0.tgz", { "peerDependencies": { "@softistx/ai-core": "^0.7.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-dPa8sDe9x4N6twKMrSeLMlFT59GKUXxp2/fi4SSLTtzEEWcMCNUDTbv0kVfWnAOWP1cPvfdZWH+aplLX6AWy+A=="],
@@ -335,15 +334,15 @@
 
     "@softistx/image": ["@softistx/image@0.6.0", "https://npm.softistx.com/@softistx/image/-/image-0.6.0.tgz", { "peerDependencies": { "@napi-rs/canvas": "^1.1.0", "@softistx/s3": "^0.13.0", "pdfjs-dist": "^6.5.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-YFgHQ2m1GZrdsh3SUhAU/xDurUNXqAHPJ5Ea7OTB4kmaZbLcj7D1CjnLRklDy8fkKFlaMzERB+qTn3ZJ/XtYZQ=="],
 
-    "@softistx/janus": ["@softistx/janus@0.60.0", "https://npm.softistx.com/@softistx/janus/-/janus-0.60.0.tgz", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-Iypr60AaTGNh2P/7Yw4tC2Si46FOlxLzUej9wF1K8wnu37GysR6598988zEsu+m4RULc7mTY42ZyRAeldKxzDQ=="],
+    "@softistx/janus": ["@softistx/janus@0.64.0", "https://npm.softistx.com/@softistx/janus/-/janus-0.64.0.tgz", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-8NCxXvDmwK7ali6oZ9aS5P9usUKIlm2VDbVytNokwxlow7X5O/cINSdSriAoriITu2PfmgynLFwH9iQewQcqAg=="],
 
-    "@softistx/janus-graphql": ["@softistx/janus-graphql@0.27.0", "https://npm.softistx.com/@softistx/janus-graphql/-/janus-graphql-0.27.0.tgz", { "peerDependencies": { "@envelop/core": "^5.0.0 || ^6.0.0", "@graphql-tools/utils": ">=10.0.0 <14", "@softistx/janus": "^0.60.0", "graphql": "^16.9.0 || ^17.0.0", "graphql-ws": "^6.0.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-PuXNVmvgVtvWyReSk8NMa6hgOWtRTZ886WtxYsmQYzOGgSR/DtR4bPcGFrwdxdfToPaKPmW8GvJvqJZDGY/eUw=="],
+    "@softistx/janus-graphql": ["@softistx/janus-graphql@0.28.2", "https://npm.softistx.com/@softistx/janus-graphql/-/janus-graphql-0.28.2.tgz", { "peerDependencies": { "@envelop/core": "^5.0.0 || ^6.0.0", "@graphql-tools/utils": ">=10.0.0 <14", "@softistx/janus": "^0.64.0", "graphql": "^16.9.0 || ^17.0.0", "graphql-ws": "^6.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["graphql-ws"] }, "sha512-GsuuM1P6GEDYcr1VKrqIqp3yUzTZZMjxMe238ZiZ7QLo9Zhe+MIMpFdBduRMQyU3J7ZFQGhYThbI63F7XPJ7nA=="],
 
-    "@softistx/janus-mail": ["@softistx/janus-mail@0.26.0", "https://npm.softistx.com/@softistx/janus-mail/-/janus-mail-0.26.0.tgz", { "peerDependencies": { "@softistx/janus": "^0.60.0", "@softistx/mail": ">=1.5.0 <2", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-3hbC25BIi35sR3gtlOmR17yLFn9wSBwZ+zW0/VcTxj9wADj8hzSUyo20X8rJAgpCLhJpXZDasXfpcFajT1SoFA=="],
+    "@softistx/janus-mail": ["@softistx/janus-mail@0.26.6", "https://npm.softistx.com/@softistx/janus-mail/-/janus-mail-0.26.6.tgz", { "peerDependencies": { "@softistx/janus": "^0.64.0", "@softistx/mail": ">=1.5.0 <2", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-0RdxoitZ6GRDTuTrp42BwZNDCck3q5X3qKqCWw4IkD8lPj8H7rGwZ+uXh6KaeItW11sSwGnPEOf01gE5UEJj3w=="],
 
-    "@softistx/janus-mongo": ["@softistx/janus-mongo@0.27.0", "https://npm.softistx.com/@softistx/janus-mongo/-/janus-mongo-0.27.0.tgz", { "peerDependencies": { "@softistx/janus": "^0.60.0", "@softistx/mongo": ">=0.27.0 <1", "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-uiMSxuUYuiHAKVY+73kPsWkG7EKT+fIEHhOwyF8ERyJ/gKzRJDvCO8rPMr4VeP8looMwdCEahBe6bA8naSX3Qw=="],
+    "@softistx/janus-mongo": ["@softistx/janus-mongo@0.28.1", "https://npm.softistx.com/@softistx/janus-mongo/-/janus-mongo-0.28.1.tgz", { "peerDependencies": { "@softistx/janus": "^0.64.0", "@softistx/mongo": ">=0.27.0 <1", "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-9duBdqAcERF9rcw6HmeLI84DNXvozAuceIQvbjKhJEt17+OTKUsyl/x3mYZtTeU4Kn53xNAqZdz8RDHWiXr5TQ=="],
 
-    "@softistx/mail": ["@softistx/mail@1.5.0", "https://npm.softistx.com/@softistx/mail/-/mail-1.5.0.tgz", { "peerDependencies": { "@opentelemetry/api": "^1.9.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-Uli7pJE07nz2IhKKs3s7Jyq4QuHkHoS2YWNlC4mBPnUTWQCa2IIzEBc2ko/ExYAU9lMjgUMM4UI4SkW1De39bg=="],
+    "@softistx/mail": ["@softistx/mail@1.6.0", "https://npm.softistx.com/@softistx/mail/-/mail-1.6.0.tgz", { "peerDependencies": { "@opentelemetry/api": "^1.9.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-smc3Ku2BDTMFkaLTvVjhI8TxVwHxm1UwfVXJMS8n4N9LtDBgTvtp5KTbknAvIc/ql6Ex3LI18yjhkV2fUcyNZw=="],
 
     "@softistx/mail-smtp": ["@softistx/mail-smtp@1.1.0", "https://npm.softistx.com/@softistx/mail-smtp/-/mail-smtp-1.1.0.tgz", { "peerDependencies": { "@softistx/mail": "^1.3.0", "nodemailer": ">=7.0.0 <11", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-+8gFDtoSqXEKmEob8OCq++PJjonwCMr+FMAWg+Zz11xo4Nc3nXLUTJjQOjqDSLyj39XHDxfN5thX5nxDLi83ng=="],
 

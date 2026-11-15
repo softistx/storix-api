@@ -70,3 +70,159 @@ The server stops at startup while it loads the translations.
 ```sh
 bun run db:migrate
 ```
+
+## `TOTP_KEYS: ...`
+
+The server stops at startup while it reads the environment.
+
+**When:** `TOTP_KEYS` is missing in production, an entry has no `id:` (`id:key`), two entries share an id, a key is not 32 random bytes in base64, or the development key is used in production.
+
+**Fix:** generate a key and list it as `id:key`; the first entry seals, every entry opens.
+
+```sh
+echo "TOTP_KEYS=k1:$(openssl rand -base64 32)"
+```
+
+## `MAIL_URL`, `UI_ORIGIN` or `MAIL_FROM` is invalid
+
+The server stops at startup while it reads the environment.
+
+**When:** `MAIL_URL` is not `smtp://` or `smtps://`, `UI_ORIGIN` is not an origin (`https://app.example.com`, no path), or `MAIL_FROM` is not a plain e-mail address.
+
+**Fix:** correct the variable. Unset `MAIL_URL` prints the mails to the console instead (tokens print as `<hidden>` outside `NODE_ENV=development`).
+
+## Sign-up or sign-in fails with a missing index or validator
+
+Identity operations fail on first use, or two accounts share an address.
+
+**When:** the identity collections (users, sessions, tokens, relations, API keys) were never synced. Outside production the server syncs them at boot; in production only with `MONGO_AUTO_SYNC`.
+
+**Fix:** run the schema step of the deploy.
+
+```sh
+bun run db:sync
+```
+
+## Second factors no longer open (a lost `TOTP_KEYS` key)
+
+A user who enrolled an authenticator cannot confirm a code, or the server cannot read the secret.
+
+**Why:** the secrets are sealed with a key of `TOTP_KEYS`; every key that ever sealed one must stay listed to open it. A key removed from the list makes its secrets unreadable.
+
+**Fix:** restore the key. When it is truly lost, the affected accounts must have their second factor reset by an operator (clear it in the `users` collection) and enrol again.
+
+## `auth.errors.rate-limited` (429) on sign-up, sign-in, reset, workspace creation or invitations
+
+**When:** a client address went past `RATE_LIMIT_SIGN_UP`, `RATE_LIMIT_SIGN_IN` or `RATE_LIMIT_PASSWORD_RESET`, `RATE_LIMIT_WORKSPACE_CREATE`, `RATE_LIMIT_INVITATION_CODE` (a code previewed or accepted) or, per inviter, `RATE_LIMIT_INVITATION_SEND` (`<attempts>/<seconds>`), or janus's per-account throttle (five mails per address and ten minutes, the tries of a challenge) tripped. `extensions.retryAfter` says how long to wait.
+
+**Why:** behind a proxy every visitor looks like one address unless the forwarded address is honoured (`API_PROXY_SECRET`, `src/http/client-ip.ts`).
+
+**Fix:** wait, or raise the variable. The limit is off when `REDIS_URL` is unset.
+
+## `invitations.errors.invalid` (400) on a link that looked fine
+
+**When:** `invitationPreview` or `acceptInvitation` got a code that names no pending invitation.
+
+**Why:** the code was already used, the invitation was revoked or sent again (a new code replaced it), or its 7 days passed. The reasons are never told apart, so a guesser learns nothing.
+
+**Fix:** an admin sends the invitation again (`resendInvitation`: a new code, the old one dies) or issues a new one. A mail scanner that follows links does not spend a code: the link opens a page that posts it from a button.
+
+## `invitations.errors.not-pending`, `limit`, `already-member` (409) and `password-required` (400)
+
+**When:** `revokeInvitation` or `resendInvitation` on an invitation that is no longer pending (`not-pending`); `issueInvitation` with 200 pending invitations in the workspace (`limit`) or to an address that is already a member (`already-member`, field `email`); `acceptInvitation` for a new account without a `password` (`password-required`).
+
+**Fix:** `not-pending`: list the invitations and act on a pending one, or issue a new one. `limit`: revoke stale invitations. `already-member`: change the member's role instead. `password-required`: `invitationPreview` says `needsPassword`; send the password with the code.
+
+## `invitations.errors.not-found` (404)
+
+**When:** an invitation operation named a scope that is not the workspace of the `x-storix-workspace` header, or an invitation id outside it.
+
+**Fix:** send the header of the workspace that owns the invitation, and pass that workspace's id as `scope`.
+
+## `auth.errors.client-header-required` (403)
+
+**When:** a `/graphql` request came without an `x-storix-client` header, or with an empty one. The refusal comes before the query is parsed, so it hits every operation, signed in or not.
+
+**Why:** a browser sends a custom header only after a CORS preflight, which a page of another origin does not pass; the check keeps cross-site requests from reaching a resolver, cookie or not.
+
+**Fix:** send the header with any non-empty value, the client's name.
+
+```sh
+curl -s localhost:3000/graphql -H 'content-type: application/json' -H 'x-storix-client: my-app' \
+  -d '{"query":"{ viewer { id } }"}'
+```
+
+## `members.errors.not-found` (404)
+
+**When:** `changeMemberRole` or `removeMember` named a `memberId` that is not a current member of the request's workspace: malformed, unknown, a member of another workspace, or one who already left.
+
+**Why:** the answer is the same for all four so that an id from another workspace tells nothing.
+
+**Fix:** send the `x-storix-workspace` header of the workspace that owns the member, and an id from its `members` list (`nodes { id }`, not the `accountId`).
+
+## `workspaces.errors.workspace-required` (400) on a workspace operation
+
+**When:** a members or workspace query came without the `x-storix-workspace` header.
+
+**Fix:** send the header with the workspace id or slug. Refusals come in this order: 401 (not signed in), 400 (no header), 404 (`workspaces.errors.not-found`), 403 (missing permission).
+
+## `workspaces.errors.not-found` (404) for a workspace that exists
+
+**When:** the workspace is unknown, still `provisioning`, or the caller is not a member of it. All three answer alike so that a stranger learns nothing.
+
+**Fix:** check the id or slug and the membership. A workspace stuck in `provisioning` after a crash is not swept yet; ask an operator to remove or finish it.
+
+## `workspaces.errors.slug-taken` (409) on `createWorkspace`
+
+**When:** another workspace, even one still provisioning, holds the slug.
+
+**Fix:** choose another slug.
+
+## `workspaces.errors.last-owner` (409) on a role change, removal or leave
+
+**When:** the operation would leave the workspace with no OWNER.
+
+**Fix:** promote another member to OWNER first, then demote, remove or leave.
+
+## `auth.errors.step-up-required` (403) on a role change or a member removal
+
+`changeMemberRole` and `removeMember` answer 403 with this code.
+
+**When:** the acting account's session is older than 10 minutes. `leaveWorkspace` never asks for it.
+
+**Why:** both mutations are sensitive, so they need a recent password or second-factor check, after the permission check (a caller who may not manage members gets `auth.errors.forbidden` instead).
+
+**Fix:** step up, then retry the same mutation.
+
+```graphql
+mutation { requestStepUp { method challenge } }
+mutation { confirmStepUp(challenge: "...", code: "123456") }
+```
+
+## `teams.errors.name-taken` (409) and `member-unknown` (400)
+
+**When:** `createTeam` or `renameTeam` with a name another team of the workspace already has (`name-taken`, field `name`); `setTeamMembers` with an id that is not a current member of the request's workspace (`member-unknown`, field `memberIds`).
+
+**Why:** names are compared ignoring case (`Design` and `design` are one). Member ids are `Member.id`s (not account ids), and a member who left, a member of another workspace or a malformed id is unknown.
+
+**Fix:** pick another name, or list `teams` to find the existing one. For `member-unknown`, take the ids from `members` of the same workspace (the `x-storix-workspace` header) and send the list again; the team was not changed.
+
+## `teams.errors.not-found` (404)
+
+**When:** a team operation named an id that is malformed, was deleted, or belongs to a team of another workspace.
+
+**Fix:** send the `x-storix-workspace` header of the workspace that owns the team, and an id from its `teams`.
+
+## `AUDIT_IP_KEY` must be at least 32 characters (boot error in production)
+
+**When:** the API refuses to start in production with an environment error naming `AUDIT_IP_KEY`.
+
+**Why:** the audit log stores a keyed hash of each client address, and the key is mandatory in production. In development a built-in default is used.
+
+**Fix:** set `AUDIT_IP_KEY` to a random secret of 32 characters or more (for example `openssl rand -hex 32`). Changing it later only breaks the correlation of old and new `ipHash` values.
+
+## `validation.errors.invalid-cursor` (400) on `auditEvents`
+
+**When:** `auditEvents` is called with an `after` that is malformed, or that came from a page read with another `filter`.
+
+**Fix:** start again without `after`, then send each page's `endCursor` with the same `filter`.
