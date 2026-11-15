@@ -1,6 +1,6 @@
+import { bucket } from "./config/bucket";
 import { closeDatabases } from "./config/db";
 import { appRedis, closeQueues } from "./config/redis";
-import { bucket } from "./config/bucket";
 import { startRenditionsWorker } from "./workers/renditions";
 
 // The background jobs as their own process (dist/worker.js): today the
