@@ -1,7 +1,14 @@
 import { requireWorkspacePermission } from "@/core/access";
+import { memberActor } from "@/core/audit";
 import { activeMemberIds, type MembersMongo } from "@/core/members";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { invalidInput } from "@/i18n/fail";
+import {
+  recordTeamCreate,
+  recordTeamDelete,
+  recordTeamMembers,
+  recordTeamRename,
+} from "./teams.audit";
 import {
   createTeam,
   deleteTeam,
@@ -55,6 +62,17 @@ async function view(scope: Scope, team: TeamDoc) {
   return one as NonNullable<typeof one>;
 }
 
+// Who and where an audit event of this request is about.
+const auditOf = (
+  ctx: { ip?: string | null | undefined },
+  scope: Scope,
+  principal: { accountId: string; name: string },
+) => ({
+  workspaceId: scope.tenant.id,
+  actor: memberActor(principal),
+  ip: ctx.ip,
+});
+
 // A name is trimmed; a blank one is refused like a too short one.
 function nameOf(raw: string): string {
   const name = raw.trim();
@@ -92,6 +110,7 @@ export const teamsResolvers: Resolvers = {
         nameOf(name),
         principal.accountId,
       );
+      await recordTeamCreate(auditOf(ctx, scope, principal), team);
       return view(scope, team);
     },
     renameTeam: async (_, { id, name }, ctx) => {
@@ -99,11 +118,12 @@ export const teamsResolvers: Resolvers = {
         ctx,
         "teams:manage",
       );
-      const team = await renameTeam(workspaceDb(scope), {
+      const { team, before } = await renameTeam(workspaceDb(scope), {
         id,
         name: nameOf(name),
         actorId: principal.accountId,
       });
+      await recordTeamRename(auditOf(ctx, scope, principal), team, before);
       return view(scope, team);
     },
     setTeamMembers: async (_, { id, memberIds }, ctx) => {
@@ -124,11 +144,12 @@ export const teamsResolvers: Resolvers = {
       if (wanted.some((memberId) => !known.has(memberId))) {
         throw memberUnknown();
       }
-      const team = await setTeamMembers(mongo, {
+      const { team, before } = await setTeamMembers(mongo, {
         id,
         memberIds: wanted,
         actorId: principal.accountId,
       });
+      await recordTeamMembers(auditOf(ctx, scope, principal), team, before);
       return view(scope, team);
     },
     deleteTeam: async (_, { id }, ctx) => {
@@ -136,7 +157,12 @@ export const teamsResolvers: Resolvers = {
         ctx,
         "teams:manage",
       );
-      await deleteTeam(workspaceDb(scope), id, principal.accountId);
+      const team = await deleteTeam(
+        workspaceDb(scope),
+        id,
+        principal.accountId,
+      );
+      await recordTeamDelete(auditOf(ctx, scope, principal), team);
       return true;
     },
   },

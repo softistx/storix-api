@@ -12,7 +12,7 @@ import { invitationsResolvers } from "./invitations.resolver";
 // src/config/auth.ts).
 export const invitationsModule = defineModule({
   name: "invitations",
-  dependsOn: ["identity", "members", "workspaces"],
+  dependsOn: ["identity", "members", "workspaces", "audit"],
   codes,
   typeDefs: [invitationTypeDefs],
   resolvers: invitationsResolvers,

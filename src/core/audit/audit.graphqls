@@ -1,0 +1,75 @@
+"Who did it."
+enum AuditActorType {
+  "A signed-in account."
+  MEMBER
+  "A workspace API key."
+  API_KEY
+  "A scoped access token."
+  TOKEN
+  "A share link."
+  LINK
+}
+
+type AuditActor {
+  type: AuditActorType!
+  "The account id (or key, token or link id)."
+  id: ID!
+  "The name the actor had when it happened; null when it had none."
+  label: String
+}
+
+type AuditTarget {
+  "What was acted on: WORKSPACE, MEMBER, INVITATION, TEAM."
+  type: String!
+  id: ID!
+  "The target's name when it had one; null otherwise."
+  name: String
+}
+
+"One thing that happened in the workspace. Never holds an address, a code, a password or a token."
+type AuditEvent {
+  id: ID!
+  at: DateTime!
+  actor: AuditActor!
+  "`<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete."
+  action: String!
+  target: AuditTarget!
+  "A keyed hash of the client address; null when the request had none. Equal hashes are the same address."
+  ipHash: String
+  "Short facts about the change (a role's before and after, a team's new name): strings, numbers and booleans."
+  meta: JSONObject!
+}
+
+input AuditEventFilter {
+  "Events of this actor (an account id)."
+  actorId: ID
+  "Events of exactly this action."
+  action: String
+  "Events about this target (a member, an invitation, a team, the workspace)."
+  targetId: ID
+  "Events at or after this instant."
+  from: DateTime
+  "Events before this instant."
+  to: DateTime
+}
+
+"A page of audit events, newest first."
+type AuditPage {
+  nodes: [AuditEvent!]!
+  pageInfo: PageInfo!
+}
+
+extend type Query {
+  """
+  The request's workspace's audit log, newest first, filtered and paged by
+  cursor. Needs `audit:read` (OWNER, ADMIN). 400 `validation.errors.invalid-cursor`
+  (field `after`) for a cursor of another filter; 403 `auth.errors.forbidden`
+  for a MEMBER; 401 `auth.errors.api-key-not-accepted` for a personal API key;
+  400 `workspaces.errors.workspace-required`; 404 `workspaces.errors.not-found`.
+  """
+  auditEvents(
+    filter: AuditEventFilter
+    first: Int! = 50 @constraint(min: 1, max: 100)
+    after: String @constraint(maxLength: 500)
+  ): AuditPage!
+}

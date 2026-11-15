@@ -93,6 +93,77 @@ every one. Repeated, every one must hold, in the order written.
 """
 directive @permission(id: String, name: String!, onDeny: JanusPermissionDenial! = NOT_FOUND, type: String!) repeatable on FIELD_DEFINITION | INTERFACE | OBJECT
 
+type AuditActor {
+  """The account id (or key, token or link id)."""
+  id: ID!
+  """The name the actor had when it happened; null when it had none."""
+  label: String
+  type: AuditActorType!
+}
+
+"""Who did it."""
+enum AuditActorType {
+  """A workspace API key."""
+  API_KEY
+  """A share link."""
+  LINK
+  """A signed-in account."""
+  MEMBER
+  """A scoped access token."""
+  TOKEN
+}
+
+"""
+One thing that happened in the workspace. Never holds an address, a code, a password or a token.
+"""
+type AuditEvent {
+  """
+  `<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete.
+  """
+  action: String!
+  actor: AuditActor!
+  at: DateTime!
+  id: ID!
+  """
+  A keyed hash of the client address; null when the request had none. Equal hashes are the same address.
+  """
+  ipHash: String
+  """
+  Short facts about the change (a role's before and after, a team's new name): strings, numbers and booleans.
+  """
+  meta: JSONObject!
+  target: AuditTarget!
+}
+
+input AuditEventFilter {
+  """Events of exactly this action."""
+  action: String
+  """Events of this actor (an account id)."""
+  actorId: ID
+  """Events at or after this instant."""
+  from: DateTime
+  """
+  Events about this target (a member, an invitation, a team, the workspace).
+  """
+  targetId: ID
+  """Events before this instant."""
+  to: DateTime
+}
+
+"""A page of audit events, newest first."""
+type AuditPage {
+  nodes: [AuditEvent!]!
+  pageInfo: PageInfo!
+}
+
+type AuditTarget {
+  id: ID!
+  """The target's name when it had one; null otherwise."""
+  name: String
+  """What was acted on: WORKSPACE, MEMBER, INVITATION, TEAM."""
+  type: String!
+}
+
 """Standard base64 with padding, in its canonical spelling."""
 scalar Base64 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc4648#section-4")
 
@@ -661,6 +732,14 @@ scalar PositiveFloat
 scalar PositiveInt
 
 type Query {
+  """
+  The request's workspace's audit log, newest first, filtered and paged by
+  cursor. Needs `audit:read` (OWNER, ADMIN). 400 `validation.errors.invalid-cursor`
+  (field `after`) for a cursor of another filter; 403 `auth.errors.forbidden`
+  for a MEMBER; 401 `auth.errors.api-key-not-accepted` for a personal API key;
+  400 `workspaces.errors.workspace-required`; 404 `workspaces.errors.not-found`.
+  """
+  auditEvents(after: String @constraint(maxLength: 500), filter: AuditEventFilter, first: Int! = 50 @constraint(min: 1, max: 100)): AuditPage!
   """
   The API's error messages in one language, for a client that words refusals
   itself. A refusal carries `extensions.code` and `extensions.params`; the

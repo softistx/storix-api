@@ -1,6 +1,7 @@
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { invalidInput } from "@/i18n/fail";
 import { requireAccountSession, requireWorkspacePermission } from "../access";
+import { audit, memberActor } from "../audit";
 import { membershipsOfAccount, type WorkspaceRole } from "../members";
 import { isObjectIdLike } from "./workspaces.collection";
 import { type Workspace, workspaceOf } from "./workspaces.registry";
@@ -41,7 +42,8 @@ export const workspacesResolvers: Resolvers = {
   },
   Mutation: {
     createWorkspace: async (_, { input }, ctx) => {
-      const { accountId } = requireAccountSession(ctx);
+      const principal = requireAccountSession(ctx);
+      const { accountId } = principal;
       await ctx.limits.workspaceCreate(ctx.ip);
       const name = input.name.trim();
       if (name === "") {
@@ -67,6 +69,14 @@ export const workspacesResolvers: Resolvers = {
           accountId,
         },
       );
+      await audit.record({
+        workspaceId: workspace.id,
+        actor: memberActor(principal),
+        action: "workspace.create",
+        target: { type: "WORKSPACE", id: workspace.id, name: workspace.name },
+        ip: ctx.ip,
+        meta: { slug: workspace.slug },
+      });
       return view(workspace, "OWNER");
     },
   },

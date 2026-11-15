@@ -191,3 +191,17 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 **When:** a team operation named an id that is malformed, was deleted, or belongs to a team of another workspace.
 
 **Fix:** send the `x-storix-workspace` header of the workspace that owns the team, and an id from its `teams`.
+
+## `AUDIT_IP_KEY` must be at least 32 characters (boot error in production)
+
+**When:** the API refuses to start in production with an environment error naming `AUDIT_IP_KEY`.
+
+**Why:** the audit log stores a keyed hash of each client address, and the key is mandatory in production. In development a built-in default is used.
+
+**Fix:** set `AUDIT_IP_KEY` to a random secret of 32 characters or more (for example `openssl rand -hex 32`). Changing it later only breaks the correlation of old and new `ipHash` values.
+
+## `validation.errors.invalid-cursor` (400) on `auditEvents`
+
+**When:** `auditEvents` is called with an `after` that is malformed, or that came from a page read with another `filter`.
+
+**Fix:** start again without `after`, then send each page's `endCursor` with the same `filter`.

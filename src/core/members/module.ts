@@ -9,7 +9,7 @@ import { membersResolvers } from "./members.resolver";
 // only the OWNER role holds: making or touching an owner is the owners' alone.
 export const membersModule = defineModule({
   name: "members",
-  dependsOn: ["identity"],
+  dependsOn: ["identity", "audit"],
   coreCollections: { members },
   codes,
   permissions: ["members:read", "members:manage", "owners:manage"],
