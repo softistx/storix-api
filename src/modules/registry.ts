@@ -6,6 +6,7 @@ import { membersModule } from "../core/members";
 import { system } from "../core/system/module";
 import { translationsModule } from "../core/translations/module";
 import { workspacesModule } from "../core/workspaces";
+import { teamsModule } from "./teams/public";
 
 // THE list of modules: adding one is one line here. Dependency order is
 // computed (`resolveModules`), not written. Each module of the plan's §3.2 is
@@ -17,6 +18,7 @@ const registered = [
   membersModule,
   workspacesModule,
   invitationsModule,
+  teamsModule,
 ] as const;
 
 export const modules: readonly Module[] = resolveModules(registered);

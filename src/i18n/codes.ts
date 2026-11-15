@@ -76,6 +76,18 @@ export const invitations = defineCodes("invitations", [
   "password-required",
 ]);
 
+// The teams of a workspace (src/modules/teams).
+export const teams = defineCodes("teams", [
+  // 404: no team with this id in the workspace (a team of another workspace
+  // is the same answer).
+  "not-found",
+  // 409: another team of the workspace has this name, in any case (field
+  // `name`).
+  "name-taken",
+  // 400: an id is not a current member of the workspace (field `memberIds`).
+  "member-unknown",
+]);
+
 // Every code the API answers with, in module order: the inventory. tsc refuses
 // a code that is not in it (`fail`, `FieldIssue`), the coverage spec requires
 // a message for each in every shipped language and a row in CONTEXT.md, and
@@ -88,6 +100,7 @@ export const errorCodes = [
   ...workspaces,
   ...members,
   ...invitations,
+  ...teams,
 ] as const;
 
 export type ErrorCode = (typeof errorCodes)[number];

@@ -99,6 +99,16 @@ An admin invites an address into the request's workspace; the invitee accepts wi
 - `invitationPreview` and `acceptInvitation` are open to whoever holds a code: counted per client address (`RATE_LIMIT_INVITATION_CODE`). Sends are counted per inviter (`RATE_LIMIT_INVITATION_SEND`); a refused request sends no mail.
 - The SDL is janus-graphql's own (`node_modules/@softistx/janus-graphql/graphql`, read by `codegen.ts`), with its `@authenticated`, `@fresh` and `@permission` declarations: they do nothing here, `authorize` (`src/core/invitations/invitations.hooks.ts`) is the guard.
 
+## Teams
+
+`src/modules/teams` keeps the workspace's teams in its own database (`teams`: `name`, `memberIds`). The fields: `teams`, `team(id)`, `createTeam`, `renameTeam`, `setTeamMembers`, `deleteTeam`.
+
+- `teams:read` is held by every role; `teams:manage` (every mutation) by `OWNER` and `ADMIN`, granted by the module's `defaultGrants` like `members:manage`. No step-up. A personal API key is refused (401 `auth.errors.api-key-not-accepted`).
+- A name is trimmed, 1 to 100 characters, and unique in the workspace ignoring case (a unique index with collation `en`, strength 2): 409 `teams.errors.name-taken`. A team may be renamed to its own name in another case.
+- `memberIds` are `Member.id`s. `setTeamMembers` replaces the list, drops repeats, and refuses every id that is not a current member of the request's workspace (400 `teams.errors.member-unknown`, nothing changes).
+- A team of another workspace is 404 `teams.errors.not-found`: the request's workspace database is the only one a resolver reaches.
+- A member who is removed or leaves is taken out of every team: the kernel cannot import a business module, so `src/core/members` exposes `onMemberRemoved` and `teams` registers itself when its manifest loads; `removeMember` and `leaveWorkspace` call the listeners once the membership has ended. A listener that fails is logged and never undoes the removal; the `Team` view only ever lists current members, so a missed clean-up stays invisible.
+
 ## The proxy secret
 
 `@alxia/core` 0.23's `requireProxySecret({ paths, secret })` refuses a request to a path that
