@@ -21,8 +21,12 @@ const listeners = new Set<Listener>();
 // its own data stops naming them: the kernel cannot import it (the layers of
 // test/boundaries.spec.ts), so the module registers itself when its manifest
 // loads. `teams` takes the member out of its teams.
-export function onMemberRemoved(listener: Listener): void {
+// It returns the function that unregisters the listener.
+export function onMemberRemoved(listener: Listener): () => void {
   listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 // Tells every listener, after the membership ended (the core database
