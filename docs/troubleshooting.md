@@ -139,6 +139,27 @@ A user who enrolled an authenticator cannot confirm a code, or the server cannot
 
 **Fix:** send the header of the workspace that owns the invitation, and pass that workspace's id as `scope`.
 
+## `auth.errors.client-header-required` (403)
+
+**When:** a `/graphql` request came without an `x-storix-client` header, or with an empty one. The refusal comes before the query is parsed, so it hits every operation, signed in or not.
+
+**Why:** a browser sends a custom header only after a CORS preflight, which a page of another origin does not pass; the check keeps cross-site requests from reaching a resolver, cookie or not.
+
+**Fix:** send the header with any non-empty value, the client's name.
+
+```sh
+curl -s localhost:3000/graphql -H 'content-type: application/json' -H 'x-storix-client: my-app' \
+  -d '{"query":"{ viewer { id } }"}'
+```
+
+## `members.errors.not-found` (404)
+
+**When:** `changeMemberRole` or `removeMember` named a `memberId` that is not a current member of the request's workspace: malformed, unknown, a member of another workspace, or one who already left.
+
+**Why:** the answer is the same for all four so that an id from another workspace tells nothing.
+
+**Fix:** send the `x-storix-workspace` header of the workspace that owns the member, and an id from its `members` list (`nodes { id }`, not the `accountId`).
+
 ## `workspaces.errors.workspace-required` (400) on a workspace operation
 
 **When:** a members or workspace query came without the `x-storix-workspace` header.

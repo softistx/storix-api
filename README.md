@@ -31,7 +31,8 @@ curl localhost:3000/health
 
 | Path                            | Holds                                                               |
 | ------------------------------- | ------------------------------------------------------------------- |
-| `src/core/`                     | the kernel: modules every other module may use                      |
+| `src/core/`                     | the kernel: `workspaces`, `members`, `invitations`, `audit`, `access`, `identity`, `translations`, `system` |
+| `src/modules/teams/`            | the first business module: a workspace's teams                      |
 | `src/modules/registry.ts`       | the one list of modules                                             |
 | `src/i18n/`                     | the error inventory (`defineCodes`, `ErrorCode`), `fail`, the i18n instance, the coverage check |
 | `src/config/`                   | `env.ts` (read once at import), the MongoDB handle                  |
@@ -39,13 +40,18 @@ curl localhost:3000/health
 | `docker-compose.yml`, `docker/` | the development services                                            |
 | `CONTEXT.md`                    | the domain glossary and the error-code table                        |
 
-The runtime dependencies are declared up front for the v1 slices, so some are not imported yet; `mongodb` and `nodemailer` are peers of `@softistx/mongo` and `@softistx/mail-smtp` (which asks for `nodemailer` `>=7 <11`, `mongodb` `>=7 <8`), hence listed here.
+Some runtime dependencies are declared ahead of the slices that import them; `mongodb` and `nodemailer` are peers of `@softistx/mongo` and `@softistx/mail-smtp` (which asks for `nodemailer` `>=7 <11`, `mongodb` `>=7 <8`), hence listed here.
 
 ## Accounts
 
-Every operation below is a field of `POST /graphql`. A session token goes in `Authorization: Bearer <token>`; every
+Every operation below is a field of `POST /graphql`. Every request carries an `x-storix-client` header (any non-empty value, the client's name); without it the refusal is 403 `auth.errors.client-header-required`. A session token goes in `Authorization: Bearer <token>`; every
 operation except `viewer` refuses a personal API key (`stx_...`) with 401 `auth.errors.api-key-not-accepted`. The
 sign-up, sign-in and password-reset operations are also limited per client address (see [Rate limits](#rate-limits)).
+
+```sh
+curl -s localhost:3000/graphql -H 'content-type: application/json' -H 'x-storix-client: my-app' \
+  -d '{"query":"mutation { signUp(input: { email: \"ada@example.com\", name: \"Ada\", locale: EN }) { status } }"}'
+```
 
 ```graphql
 # 1. Sign up: passwordless. Answers VERIFICATION_SENT whether or not the address is taken.
@@ -89,8 +95,8 @@ factor is lost, sign in with a recovery code, `disableSecondFactor` with another
 
 ### Rate limits
 
-`signUp`, `signIn` (with `confirmSecondFactor` and `recoverSecondFactor`) and `requestPasswordReset` are limited per
-client address with `@softistx/redis`; past the limit the refusal is 429 `auth.errors.rate-limited` and `extensions.retryAfter`
+`signUp`, `signIn` (with `confirmSecondFactor` and `recoverSecondFactor`), `requestPasswordReset`, `createWorkspace` (`RATE_LIMIT_WORKSPACE_CREATE`, each one provisions a database) and the open invitation operations `invitationPreview` and `acceptInvitation` (`RATE_LIMIT_INVITATION_CODE`) are limited per
+client address; `issueInvitation` and `resendInvitation` (`RATE_LIMIT_INVITATION_SEND`, each one sends a mail) are limited per inviter with `@softistx/redis`; past the limit the refusal is 429 `auth.errors.rate-limited` and `extensions.retryAfter`
 says when to retry. The limits are `<attempts>/<seconds>` in the environment:
 
 | Variable                    | Default   |
@@ -98,9 +104,46 @@ says when to retry. The limits are `<attempts>/<seconds>` in the environment:
 | `RATE_LIMIT_SIGN_UP`        | `10/3600` |
 | `RATE_LIMIT_SIGN_IN`        | `30/900`  |
 | `RATE_LIMIT_PASSWORD_RESET` | `10/3600` |
+| `RATE_LIMIT_WORKSPACE_CREATE` | `10/3600` |
+| `RATE_LIMIT_INVITATION_SEND` | `50/3600` |
+| `RATE_LIMIT_INVITATION_CODE` | `30/900`  |
 
 They need `REDIS_URL` (required in production); without it nothing is limited. A Redis that does not answer lets the
 request through (logged), janus's own per-account throttles still hold.
+
+## Workspaces
+
+A workspace is the tenant: its files and teams live in a database of its own. Create one, then name it in the
+`x-storix-workspace` header (its id or its slug) on every workspace operation. Both headers are needed on a
+workspace call: `x-storix-client` (403 `auth.errors.client-header-required` without it) and `x-storix-workspace`
+(400 `workspaces.errors.workspace-required` without it). A workspace you are not a member of, one that does not
+exist and one not yet open are all 404 `workspaces.errors.not-found`.
+
+```sh
+TOKEN=<session token>
+# Create a workspace (no workspace header yet): you become its OWNER
+curl -s localhost:3000/graphql -H 'content-type: application/json' -H 'x-storix-client: my-app' \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"query":"mutation { createWorkspace(input: { name: \"Acme\", slug: \"acme\" }) { id slug myRole } }"}'
+
+# A workspace-scoped call: the members of "acme"
+curl -s localhost:3000/graphql -H 'content-type: application/json' -H 'x-storix-client: my-app' \
+  -H "Authorization: Bearer $TOKEN" -H 'x-storix-workspace: acme' \
+  -d '{"query":"{ members { totalCount nodes { id email role } } }"}'
+```
+
+A personal API key is refused on workspace operations (401 `auth.errors.api-key-not-accepted`). The detail is in
+[docs/development.md](docs/development.md):
+
+- members, roles and permissions: [Workspaces, members and roles](docs/development.md#workspaces-members-and-roles)
+- inviting people: [Invitations](docs/development.md#invitations)
+- groups of members: [Teams](docs/development.md#teams)
+- the record of writes: [Audit log](docs/development.md#audit-log)
+
+Settings that belong here: `MONGO_WORKSPACE_PREFIX` (default `storix_ws_`) prefixes each workspace's database;
+`AUDIT_IP_KEY` (32 characters or more, required in production) keys the hash of client addresses in the audit log;
+`TOTP_KEYS` (`id:key`, 32 random bytes in base64) seals the accounts' second-factor secrets, and the server refuses to start in
+production when it is unset (a development key stands in elsewhere). See `.env.example`.
 
 ## Errors
 
