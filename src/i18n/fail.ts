@@ -51,7 +51,7 @@ export interface FieldIssue {
   params?: Params;
 }
 
-const translate: Translate = (code, params) =>
+export const translate: Translate = (code, params) =>
   i18n.t(code as ErrorCode, params as Params | undefined);
 
 // An input refused as a whole, with every field that refused it: one error
