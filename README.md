@@ -35,7 +35,7 @@ curl localhost:3000/health
 | `src/core/storage/`             | `/media`: `@alxia/media` over one private S3 bucket (`files`, `avatars` kinds) |
 | `src/modules/teams/`            | a workspace's teams                                                  |
 | `src/modules/nodes/`            | the folder tree: each member's root, create, rename, move, `node` and `nodes` (filter, sort, cursor) |
-| `src/modules/files/`            | files: `addFile` records an upload as a file (`blobs`)              |
+| `src/modules/files/`            | files: `addFile`, `copyNodes`, `updateFile` (`blobs`)               |
 | `src/modules/registry.ts`       | the one list of modules                                             |
 | `src/i18n/`                     | the error inventory (`defineCodes`, `ErrorCode`), `fail`, the i18n instance, the coverage check |
 | `src/config/`                   | `env.ts` (read once at import), the MongoDB handle                  |
@@ -198,6 +198,21 @@ query { nodes(parentId: "<folder id>", filter: { families: [IMAGE], name: "png" 
 `nodes` lists folders first, then the files sorted by `NAME`, `DATE`, `SIZE` or `KIND` (either direction); `after` takes the
 last page's `endCursor` with the same folder, filter and sort. `node(id)` answers one folder or file. Once recorded, a
 `files` object is readable at `/media/files/<key>` by its owner only; an unrecorded one is 404.
+
+### Rename, move, copy, tags and metadata
+
+`renameNode` and `moveNodes` work on files and folders alike (a name clash is `nodes.errors.name-taken`, in any case).
+`copyNodes(ids, parentId)` copies files and folders: a copy shares its blob, so the bucket gets no new object and
+`blobs.refs` goes up; a copied folder takes what is under it (up to 5,000 nodes, `files.errors.copy-too-large`), and a
+taken name becomes `report (1).pdf`. `updateFile(id, input)` replaces a file's `tags` (trimmed, lower case, unique, at most
+20 of 50 characters) and `meta` (a JSON object of at most 16 KiB); a field left out stays, and `version` makes the write
+conditional (`nodes.errors.conflict`). A folder is `files.errors.not-a-file`. Every bulk takes 1 to 100 ids and is all or
+nothing: one refused node leaves the tree and the counts as they were.
+
+```graphql
+mutation { copyNodes(ids: ["<file id>", "<folder id>"], parentId: "<folder id>") { id name } }
+mutation { updateFile(id: "<file id>", input: { tags: ["invoice", "2026"], meta: { client: "acme" } }) { tags meta version } }
+```
 
 The detail is in [Files storage](docs/development.md#files-storage-media); every `storage.errors.*` refusal is in
 [docs/troubleshooting.md](docs/troubleshooting.md).

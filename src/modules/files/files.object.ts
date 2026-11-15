@@ -1,8 +1,6 @@
 import { isMediaKey, type MediaBucket, mediaPlace } from "@alxia/media";
 import { fail } from "@/i18n/fail";
-
-export const keyUnknown = () =>
-  fail("files.errors.key-unknown", { status: 400, field: "key" });
+import { keyUnknown } from "./files.errors";
 
 export interface StoredObject {
   size: number;

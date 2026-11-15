@@ -261,7 +261,7 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 
 ## `nodes.errors.name-taken`, `too-deep`, `cycle`, `move-too-large`, `root-locked` (409)
 
-**When:** a sibling holds the name in any case (`name-taken`, field `name`); the folder would pass 16 levels (`too-deep`); a folder is moved into itself or its own subtree (`cycle`); the moved folder holds more than 5,000 nodes (`move-too-large`); a root is renamed or moved (`root-locked`).
+**When:** a sibling holds the name in any case (`name-taken`, field `name`); the folder would pass 16 levels (`too-deep`); a folder is moved or copied into itself or its own subtree (`cycle`); the moved folder holds more than 5,000 nodes (`move-too-large`); a root is renamed or moved (`root-locked`).
 
 **Fix:** pick another name or destination. `too-deep`: flatten the destination. `move-too-large`: move the folder's sub-folders in turn (a batched move is planned).
 
@@ -272,6 +272,22 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 **Why:** the object is looked up under this workspace's `files` prefix, so a key of another workspace or of another kind (an avatar), a malformed key and a key never uploaded all fail alike; so does an empty object and a key a file already holds (a key is recorded once).
 
 **Fix:** upload again with `PUT /media/files` in the same workspace (`x-storix-workspace`) and record the key it answers, once. For a second file, upload again.
+
+## `files.errors.not-a-file` (400) on `updateFile`
+
+**When:** `updateFile` named a folder (field `id`).
+
+**Why:** tags and metadata belong to files; a folder has neither.
+
+**Fix:** send the id of a file. Folders are renamed with `renameNode`.
+
+## `files.errors.copy-too-large` (409) on `copyNodes`
+
+**When:** the folders to copy, with everything under them, hold more than 5,000 nodes in one call.
+
+**Why:** a copy makes one node per source node in one transaction, so its size is bounded like a move's.
+
+**Fix:** copy the folder's sub-folders in turn. Nothing was copied.
 
 ## `nodes.errors.not-a-folder` (400)
 

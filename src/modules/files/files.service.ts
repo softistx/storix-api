@@ -9,7 +9,8 @@ import {
   named,
   type OnConflict,
 } from "@/modules/nodes/public";
-import { keyUnknown, storedObject } from "./files.object";
+import { keyUnknown } from "./files.errors";
+import { storedObject } from "./files.object";
 
 // The module's handle on a workspace's database: its own collection, and the
 // nodes it records files in.
