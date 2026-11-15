@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, spyOn, test } from "bun:test";
+import { afterAll, afterEach, describe, expect, spyOn, test } from "bun:test";
 import { audit } from "@/core/audit";
 import type { Context } from "@/http/context";
 import {
@@ -16,6 +16,7 @@ const ctx = (v: unknown) =>
 
 const record = spyOn(audit, "record").mockResolvedValue(undefined as never);
 afterEach(() => record.mockClear());
+afterAll(() => record.mockRestore());
 
 describe("the invitation write events", () => {
   for (const answer of [null, undefined, "x", {}, { invitation: null }]) {
