@@ -1,4 +1,5 @@
-import type { ObjectId } from "mongodb";
+import { ObjectId } from "mongodb";
+import { fail } from "@/i18n/fail";
 import type { NodeDoc } from "@/modules/nodes/public";
 import { decodeCursor, encodeCursor } from "@/modules/nodes/public";
 import type { FilesMongo } from "./files.service";
@@ -48,7 +49,13 @@ export async function personalPage(
   let position: { date: Date; _id: ObjectId } | null = null;
   if (input.after) {
     const [date, id] = decodeCursor(input.scope, input.after, 2);
-    position = { date: date as Date, _id: id as ObjectId };
+    if (!(date instanceof Date) || !(id instanceof ObjectId)) {
+      throw fail("validation.errors.invalid-cursor", {
+        status: 400,
+        field: "after",
+      });
+    }
+    position = { date, _id: id };
   }
   const items: { node: NodeDoc; row: Row }[] = [];
   for (;;) {

@@ -19,6 +19,11 @@ import { checkTags, MAX_META_BYTES, metaFits } from "./files.rules";
 import { addFile, type FilesMongo, isQuotaExceeded } from "./files.service";
 import { updateFile } from "./files.update";
 
+// The module's handle on the request's workspace database (the scope's, typed
+// by the registry; see src/core/access/ports.ts): the one cast of this file.
+const filesDb = (scope: { readonly mongo: unknown }) =>
+  scope.mongo as unknown as FilesMongo;
+
 // A personal page as the API says it: the nodes and the cursor to go on.
 const pageOf = (page: PersonalPage, after: string | null | undefined) => ({
   nodes: page.items.map(nodeView),
@@ -37,7 +42,7 @@ export const filesResolvers: Resolvers = {
         ctx,
         "nodes:read",
       );
-      const page = await listStarred(scope.mongo as unknown as FilesMongo, {
+      const page = await listStarred(filesDb(scope), {
         accountId: principal.accountId,
         first,
         after,
@@ -49,7 +54,7 @@ export const filesResolvers: Resolvers = {
         ctx,
         "nodes:read",
       );
-      const page = await listRecent(scope.mongo as unknown as FilesMongo, {
+      const page = await listRecent(filesDb(scope), {
         accountId: principal.accountId,
         first,
         after,
@@ -63,7 +68,7 @@ export const filesResolvers: Resolvers = {
         ctx,
         "nodes:read",
       );
-      const node = await setStarred(scope.mongo as unknown as FilesMongo, {
+      const node = await setStarred(filesDb(scope), {
         id,
         starred,
         accountId: principal.accountId,
@@ -75,7 +80,7 @@ export const filesResolvers: Resolvers = {
         ctx,
         "nodes:read",
       );
-      const node = await openFile(scope.mongo as unknown as FilesMongo, {
+      const node = await openFile(filesDb(scope), {
         id,
         accountId: principal.accountId,
       });
@@ -108,7 +113,7 @@ export const filesResolvers: Resolvers = {
       let node: Awaited<ReturnType<typeof addFile>>;
       try {
         node = await addFile(
-          scope.mongo as unknown as FilesMongo,
+          filesDb(scope),
           ctx.tenancy.core as WorkspacesMongo,
           ctx.media,
           {
@@ -126,7 +131,7 @@ export const filesResolvers: Resolvers = {
       }
       await recordFileAdd(done, node);
       // An upload is a recent file; the upload stands if the note fails.
-      await recordRecent(scope.mongo as unknown as FilesMongo, {
+      await recordRecent(filesDb(scope), {
         accountId: principal.accountId,
         nodeId: node._id,
       }).catch((error) =>
@@ -142,7 +147,7 @@ export const filesResolvers: Resolvers = {
         "nodes:manage",
       );
       const copies = await copyNodes(
-        scope.mongo as unknown as FilesMongo,
+        filesDb(scope),
         ctx.tenancy.core as WorkspacesMongo,
         {
           ids,
@@ -189,7 +194,7 @@ export const filesResolvers: Resolvers = {
         });
       }
       if (issues.length > 0) throw invalidInput(issues);
-      const { node } = await updateFile(scope.mongo as unknown as FilesMongo, {
+      const { node } = await updateFile(filesDb(scope), {
         id,
         accountId: principal.accountId,
         ...(tags && { tags }),
