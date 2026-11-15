@@ -11,6 +11,7 @@
     "db:migrate": "bun src/scripts/db-migrate.ts",
     "workspace:quota": "bun src/scripts/workspace-quota.ts",
     "quota:reconcile": "bun src/scripts/quota-reconcile.ts",
+    "storage:sweep": "bun src/scripts/storage-sweep.ts",
     "services:up": "docker compose up -d --wait mongo redis mailpit seaweedfs && docker compose up -d media-bucket",
     "services:down": "docker compose down",
     "build": "bun run generate && bun build src/server.ts --target=bun --outdir=dist --minify --sourcemap=linked",

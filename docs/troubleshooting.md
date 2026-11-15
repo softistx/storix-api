@@ -273,6 +273,14 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 
 **Fix:** upload again with `PUT /media/files` in the same workspace (`x-storix-workspace`) and record the key it answers, once. For a second file, upload again.
 
+## `bun run storage:sweep` exits 1
+
+**When:** the script printed `no bucket`, `workspace <id>: not swept` or a count of objects `not removed`.
+
+**Why:** without `S3_BUCKET`, `S3_ACCESS_KEY` and `S3_SECRET_KEY` there is nothing to sweep. A workspace whose database could not be opened or listed fails alone, the others are swept. An object the storage refused to delete (`storage sweep <id>: <key> not removed` on stderr) stays and is retried by the next run; a run also stops at 1,000 deletes per workspace. A page of 10 or more old unrecorded keys in a workspace with no blob is skipped on purpose (`storage sweep <id> stopped`): check that `MONGO_URI` and `S3_BUCKET` belong together.
+
+**Fix:** set the bucket variables, or run the script again once the storage answers. Usage never needs the sweep: `bun run quota:reconcile` recounts it.
+
 ## `files.errors.not-a-file` (400) on `updateFile`
 
 **When:** `updateFile` named a folder (field `id`).
