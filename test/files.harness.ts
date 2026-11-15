@@ -1,8 +1,16 @@
 import { afterAll, beforeAll, beforeEach } from "bun:test";
+import { defineRedis, openRedis } from "@softistx/redis";
 import { startTestRedis, type TestRedis } from "@softistx/redis/testing";
 import { startTestS3, type TestS3 } from "@softistx/s3/testing";
 import { RedisClient } from "bun";
+import { store } from "@/config/tenancy";
 import { createUploadLimit, openBucket } from "@/core/storage";
+import {
+  type FilesMongo,
+  type RenditionsQueue,
+  renditionsHandler,
+} from "@/modules/files/public";
+import { defineRenditionsQueue } from "@/queues/renditions";
 import { NODE } from "../src/modules/nodes/nodes.harness";
 import { world } from "./workspaces.harness";
 
@@ -42,8 +50,15 @@ export type User = Awaited<ReturnType<World["h"]["account"]>>;
 // A real SeaweedFS and Redis behind `/media`, started once per spec file, and
 // the world of workspaces over them. Call it at the top of the file; the hooks
 // it registers stop everything afterwards.
-export function filesWorld() {
+//
+// `renditions: true` runs the real queue and its worker over that Redis, with
+// a short backoff; a queue passed instead is handed to the app as it is, and no
+// worker runs.
+export function filesWorld(
+  options: { renditions?: true | RenditionsQueue } = {},
+) {
   const ctx = {} as {
+    appRedis: Awaited<ReturnType<typeof openRenditions>> | undefined;
     s3: TestS3;
     redis: TestRedis;
     client: RedisClient;
@@ -62,7 +77,14 @@ export function filesWorld() {
       endpoint: ctx.s3.endpoint,
       region: ctx.s3.region,
     });
+    if (options.renditions === true) ctx.appRedis = await openRenditions(ctx);
     ctx.w = await world({
+      ...(options.renditions && {
+        renditions:
+          options.renditions === true
+            ? ctx.appRedis?.queues.renditions
+            : options.renditions,
+      }),
       media: {
         bucket: ctx.bucket,
         limit: createUploadLimit(ctx.client, {
@@ -74,6 +96,7 @@ export function filesWorld() {
     });
   }, 300_000);
   afterAll(async () => {
+    await ctx.appRedis?.close({ grace: "2s" });
     ctx.client?.close();
     await ctx.redis?.stop();
     await ctx.s3?.stop();
@@ -151,3 +174,31 @@ export const png = (size: number) =>
   Uint8Array.from({ length: size }, (_, i) => PNG_SIGNATURE[i] ?? 0);
 export const pdf = (size: number) =>
   new TextEncoder().encode("%PDF-1.4".padEnd(size, " "));
+
+// The `renditions` queue over the spec's Redis, and its worker over the spec's
+// bucket and databases.
+async function openRenditions(ctx: {
+  client: RedisClient;
+  bucket: ReturnType<typeof openBucket>;
+}) {
+  const appRedis = await openRedis(
+    defineRedis({
+      client: ctx.client,
+      queues: {
+        renditions: defineRenditionsQueue({
+          attempts: 3,
+          backoff: { base: "50ms", max: "200ms" },
+        }),
+      },
+    }),
+  );
+  appRedis.queues.renditions.work(
+    renditionsHandler({
+      bucket: ctx.bucket,
+      mongoOf: async (id) =>
+        (await store.databaseOf(id)) as unknown as FilesMongo,
+    }),
+    { concurrency: 2 },
+  );
+  return appRedis;
+}

@@ -10,8 +10,10 @@ import {
   named,
   type OnConflict,
 } from "@/modules/nodes/public";
+import { renditionJobId } from "@/queues/renditions";
 import { keyUnknown } from "./files.errors";
 import { discardObject, storedObject } from "./files.object";
+import { type RenditionsQueue, renditionKindOf } from "./files.renditions";
 
 // The module's handle on a workspace's database: its own collection, and the
 // nodes it records files in.
@@ -33,6 +35,10 @@ const ATTEMPTS = 3;
 // and the node are one transaction, so a key is never half recorded.
 // `key-unknown` for a key that is not recordable, `name-taken` (REFUSE) for a
 // name a sibling holds, `not-found` / `not-a-folder` for the folder.
+// A picture or a PDF is recorded `PROCESSING` and a `renditions` job is added
+// once the transaction commits (the worker makes `thumb` and `preview`, plan
+// §3.14); any other type, or no queue, is `READY` at once. A job that cannot be
+// added leaves the file `FAILED` for its previews: the original stays readable.
 // The workspace counters rise in the same transaction (`core` is the core
 // database, joined to it): a file that does not fit in the quota is
 // `quotas.errors.exceeded`, nothing is recorded, and the object is deleted.
@@ -40,6 +46,7 @@ export async function addFile(
   mongo: FilesMongo,
   core: WorkspacesMongo,
   bucket: MediaBucket | undefined,
+  renditions: RenditionsQueue | undefined,
   input: {
     workspaceId: string;
     accountId: string;
@@ -50,9 +57,10 @@ export async function addFile(
   },
 ): Promise<NodeDoc> {
   const object = await storedObject(bucket, input.workspaceId, input.key);
+  const rendered = renditions && renditionKindOf(object.mimeType) !== null;
   for (let attempt = 1; ; attempt++) {
     try {
-      return await named(() =>
+      const node = await named(() =>
         mongo.transaction(async (tx) => {
           await lockTree(tx as unknown as NodesMongo, input.accountId);
           await recordBlob(tx, input.key, object);
@@ -68,9 +76,11 @@ export async function addFile(
             blobKey: input.key,
             mimeType: object.mimeType,
             size: object.size,
+            status: rendered ? "PROCESSING" : "READY",
           });
         }),
       );
+      return rendered ? await enqueue(mongo, renditions, input, node) : node;
     } catch (error) {
       if (error instanceof KeyRecorded) throw keyUnknown();
       if (isQuotaExceeded(error)) {
@@ -87,6 +97,31 @@ export async function addFile(
       }
       throw error;
     }
+  }
+}
+
+// Adds the node's `renditions` job. When Redis refuses it, the previews are
+// given up: the node is `FAILED` (logged), never left `PROCESSING` for ever.
+async function enqueue(
+  mongo: FilesMongo,
+  queue: RenditionsQueue,
+  input: { workspaceId: string; key: string },
+  node: NodeDoc,
+): Promise<NodeDoc> {
+  const job = { workspaceId: input.workspaceId, key: input.key };
+  try {
+    await queue.add(job, { id: renditionJobId(job) });
+    return node;
+  } catch (error) {
+    console.error(
+      `storix-api: could not queue the renditions of ${input.key} in workspace ${input.workspaceId}: ${error instanceof Error ? error.message : error}`,
+    );
+    await mongo.db.nodes.updateMany(
+      { blobKey: input.key, status: "PROCESSING" },
+      { status: "FAILED" },
+      { audit: false },
+    );
+    return { ...node, status: "FAILED" };
   }
 }
 

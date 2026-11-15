@@ -27,6 +27,15 @@ The services keep running when the API stops: `bun run services:down` stops them
 
 Each port is overridable in `.env` (see `.env.example`).
 
+### The worker
+
+`bun run worker` (`src/worker.ts`) starts the queue worker beside the API: it consumes the `renditions` queue that
+`addFile` fills. It needs the same `REDIS_URL`, `S3_*` and `MONGO_*` settings as the API (it exits 1 without Redis or the
+bucket) and shares the dev services (`bun run services:up`). Without it, a JPEG, PNG, WebP or PDF recorded by `addFile`
+stays `PROCESSING`. In production run `bun --no-install dist/worker.js` (`bun run build` writes it with `dist/server.js`)
+in a second container; SIGTERM waits up to 20 seconds for running jobs. The specs start their own worker over the spec
+Redis (`filesWorld({ renditions: true })`). The PDF renderer needs `pdfjs-dist` and `@napi-rs/canvas`, both prebuilt.
+
 ## The green bar
 
 `bun run verify` runs, in order: `generate`, `schema:print --check` (`schema.graphql` is
@@ -137,7 +146,7 @@ An admin invites an address into the request's workspace; the invitee accepts wi
 `src/modules/files` records an upload; `src/modules/nodes` lists. `addFile(input: { key, name, parentId, onConflict })` needs `nodes:manage`. It opens the object under `workspaces/<workspaceId>/files/<key>` (`storedObject`: type and size come from there; a missing, empty or foreign object is 400 `files.errors.key-unknown`, an unreachable bucket 503), then in one transaction raises the tree's `treeRev`, writes the `blobs` row (unique `key`: a second recorder loses with `key-unknown`) and the `FILE` node. `REFUSE` is `nodes.errors.name-taken`; `KEEP_BOTH` picks `stem (n).ext` and tries again up to 3 times if a writer took the name first. The audit event is `file.add` (parent, type, size; never the key).
 
 - **`nodes(parentId, filter, sort, first, after)`**: folders first, then the sort keys (`NAME`; `DATE` is `updatedAt`; `SIZE` then name; `KIND` is the family then name), then `_id`, in the direction asked, so the order is total. `families` is any of, `tags` all of, `name` a case-insensitive contains. The cursor is a keyset of the last row's sort values, bound to the folder, filter and sort by a hash: another listing's cursor is 400 `validation.errors.invalid-cursor`. A row added meanwhile never repeats or skips a row of the walk.
-- **`family`** comes from the MIME type (`nodes.family.ts`); unknown types are `OTHER`. `tags` and `meta` are stored, set by a later slice. `status` is `READY` until a worker exists.
+- **`family`** comes from the MIME type (`nodes.family.ts`); unknown types are `OTHER`. `tags` and `meta` are stored, set by a later slice. `status` is `PROCESSING` for a JPEG, PNG, WebP or PDF until the renditions worker has rendered its `thumb` and `preview` (then `READY`, or `FAILED` when only the previews failed; the original stays downloadable), and `READY` for any other type or when `REDIS_URL` is unset.
 - **The bucket** reaches the resolvers through the GraphQL context (`ctx.media`), the same one `/media` uses.
 - **Favourites and recents** (`files.favourites.ts`, `files.recents.ts`, `files.personal.ts`): the `stars` and `recents` collections hold one row per account and node. Both lists page the rows newest first by a keyset cursor `[date, _id]` bound to the list and the member, look up the nodes in batches of 100 and skip rows whose node is trashed, gone or not the member's, so a restore brings them back and a trash writes nothing. `recents` keeps 200 per member (the oldest are removed when one is noted). `addFile` notes the upload after its commit; if noting fails it is logged and the upload stands. `setStarred` and `openFile` record no audit event: they are a member's own preferences.
 

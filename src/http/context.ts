@@ -8,6 +8,7 @@ import { env } from "../config/env";
 import { tenancy } from "../config/tenancy";
 import type { Identity, Principal } from "../core/identity";
 import { i18n } from "../i18n";
+import type { RenditionsQueue } from "../modules/files/public";
 import { clientIp } from "./client-ip";
 import type { Limits } from "./rate-limits";
 import { refusalError } from "./refusal";
@@ -81,8 +82,11 @@ export type Base = ReturnType<typeof createBase>;
 // What src/app.ts's `context` option adds to every request: the files' bucket
 // (`undefined` when none is configured), which `addFile` reads an upload's type
 // and size from.
+// The `renditions` queue (`undefined` without Redis) takes the job of each
+// upload that has previews.
 export interface Extras {
   media: MediaBucket | undefined;
+  renditions: RenditionsQueue | undefined;
 }
 
 // A resolver's context: Yoga's and the base's, plus `Extras`. The generated

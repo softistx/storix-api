@@ -116,6 +116,7 @@ export const filesResolvers: Resolvers = {
           filesDb(scope),
           ctx.tenancy.core as WorkspacesMongo,
           ctx.media,
+          ctx.renditions,
           {
             workspaceId: scope.tenant.id,
             accountId: principal.accountId,

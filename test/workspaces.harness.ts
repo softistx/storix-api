@@ -25,11 +25,16 @@ export interface Gql {
 // The identity harness plus workspaces: accounts that own or join workspaces,
 // and a `send` that speaks as one of them to one workspace (or none).
 export async function world(
-  options: { limits?: Limits; media?: HarnessOptions["media"] } = {},
+  options: {
+    limits?: Limits;
+    media?: HarnessOptions["media"];
+    renditions?: HarnessOptions["renditions"];
+  } = {},
 ) {
   const h = await harness({
     ...(options.limits && { limits: options.limits }),
     ...(options.media && { media: options.media }),
+    ...(options.renditions && { renditions: options.renditions }),
     onAcceptedInvitation: (accepted) =>
       joinWorkspace(tenancy.core as MembersMongo, accepted),
   });

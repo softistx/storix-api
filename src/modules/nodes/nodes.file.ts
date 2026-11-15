@@ -19,6 +19,8 @@ export interface NewFile {
   blobKey: string;
   mimeType: string;
   size: number;
+  // `PROCESSING` while the worker makes the previews; `READY` when none are made.
+  status?: "READY" | "PROCESSING";
 }
 
 // The most `name (n).ext` tried before giving up; a folder holding that many
@@ -77,6 +79,6 @@ export async function insertFile(
     mimeType: input.mimeType,
     size: input.size,
     family: familyOf(input.mimeType),
-    status: "READY",
+    status: input.status ?? "READY",
   });
 }

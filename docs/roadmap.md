@@ -4,7 +4,7 @@ What a user gets, in order. An entry moves Next, Now, Shipped as its effort star
 
 ## Now
 
-- **E2 Files and folders** (started): each member has a private "My files", with nested folders that can be created, renamed and moved (up to 16 levels deep), uploaded files recorded in them (two on a name keep both, or refuse), files and folders copied (a copy of a file adds no stored object), files tagged and given free metadata, and a folder listed by type, tag and name, sorted by name, date, size or kind. Moves, copies and the like take up to 100 items at once and apply all or nothing. A workspace has a storage quota (10 GiB by default) that refuses an upload before it is read, and a `storage` query shows what is used. Files can be starred as favourites, and the files a member uploaded or opened lately are listed (200 kept). ([issue](https://github.com/softistx/storix-api/issues/14))
+- **E2 Files and folders** (started): each member has a private "My files", with nested folders that can be created, renamed and moved (up to 16 levels deep), uploaded files recorded in them (two on a name keep both, or refuse), files and folders copied (a copy of a file adds no stored object), files tagged and given free metadata, and a folder listed by type, tag and name, sorted by name, date, size or kind. Moves, copies and the like take up to 100 items at once and apply all or nothing. A workspace has a storage quota (10 GiB by default) that refuses an upload before it is read, and a `storage` query shows what is used. Files can be starred as favourites, and the files a member uploaded or opened lately are listed (200 kept). Pictures (JPEG, PNG, WebP) and PDFs get a 320 px thumbnail and a 1600 px preview made in the background by a worker, `PROCESSING` until ready; a corrupt picture ends `FAILED` and stays downloadable. ([issue](https://github.com/softistx/storix-api/issues/14))
 
 ## Next
 
@@ -19,6 +19,7 @@ What a user gets, in order. An entry moves Next, Now, Shipped as its effort star
 
 - Files larger than one request (resumable upload).
 - Office documents previewed as PDF; video posters and thumbnails.
+- Animated images and audio waveforms as previews.
 - Custom crop presets; webhooks; live updates; moving very large folders.
 
 ## Not planned

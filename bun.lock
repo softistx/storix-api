@@ -15,6 +15,7 @@
         "@alxia/modules": "^0.4.0",
         "@alxia/tenancy": "^0.6.0",
         "@graphql-tools/merge": "^10.0.6",
+        "@napi-rs/canvas": "^1.1.0",
         "@nxgt/graphql-client": "^0.7.0",
         "@nxgt/graphql-scalars": "^0.7.1",
         "@nxgt/graphql-validation": "^0.9.0",
@@ -37,6 +38,7 @@
         "graphql-yoga": "^5.24.2",
         "mongodb": "^7.8.0",
         "nodemailer": "^8",
+        "pdfjs-dist": "^6.5.0",
         "zod": "^4.6.7",
       },
       "devDependencies": {

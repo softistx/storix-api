@@ -20,6 +20,7 @@ curl localhost:3000/health
 | Script                 | Does                                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------------------ |
 | `bun run dev`          | the Docker services (MongoDB replica set, Redis, Mailpit, SeaweedFS), then the API in watch mode       |
+| `bun run worker`       | the queue worker in watch mode (renditions: thumbnails and previews); needs `REDIS_URL`, `S3_*` and MongoDB |
 | `bun run verify`       | the green bar: generate, schema check, Biome, context and dependency checks, `bun check`, tests, build |
 | `bun run verify:pr`    | the same with only the specs a diff against `origin/develop` affects                                   |
 | `bun run generate`     | scalars and validation SDL, then resolver types and Zod schemas into `src/generated/`                  |
@@ -36,6 +37,7 @@ curl localhost:3000/health
 | `src/modules/teams/`            | a workspace's teams                                                  |
 | `src/modules/nodes/`            | the folder tree: each member's root, create, rename, move, `node` and `nodes` (filter, sort, cursor) |
 | `src/modules/files/`            | files: `addFile`, `copyNodes`, `updateFile`, `setStarred`, `openFile` (`blobs`, `stars`, `recents`) |
+| `src/worker.ts`, `src/workers/`, `src/queues/` | the worker entry (`dist/worker.js`), its handlers and the queue definitions |
 | `src/modules/registry.ts`       | the one list of modules                                             |
 | `src/i18n/`                     | the error inventory (`defineCodes`, `ErrorCode`), `fail`, the i18n instance, the coverage check |
 | `src/config/`                   | `env.ts` (read once at import), the MongoDB handle                  |
@@ -170,7 +172,7 @@ curl -s localhost:3000/media/files/<key> \
 
 | Kind      | Accepts                  | Limit   | Stored as                                  |
 | --------- | ------------------------ | ------- | ------------------------------------------ |
-| `files`   | any type                 | 95 MiB  | as sent; a type outside the inline-safe list is served as a download |
+| `files`   | any type                 | 95 MiB  | as sent; a type outside the inline-safe list is served as a download; JPEG, PNG, WebP and PDF also get `thumb` (320 px) and `preview` (1600 px) WebP renditions from the worker |
 | `avatars` | JPEG, PNG and WebP       | 10 MiB  | only its 64 and 256 px squares (EXIF dropped) |
 
 - **Storage settings**: `S3_BUCKET`, `S3_ACCESS_KEY` and `S3_SECRET_KEY` (and `S3_ENDPOINT`, `S3_REGION`), set together;
@@ -320,3 +322,13 @@ An input refused as a whole is one error, `validation.errors.invalid-input` (HTT
 ```
 
 The refusals of a schema `@constraint` arrive in this same shape: the plugin in `src/http/api-errors.ts` converts them with `invalidInputOf` of `@nxgt/graphql-validation`, which maps each argument to its code and params (`minLength` is `too-short` with `params.min`, `maxLength` `too-long` with `params.max`, `min`/`max` `out-of-range`, and so on); the `@nxgt/graphql-validation` guide `docs/guide/invalid-input.md` has the full table.
+
+### Thumbnails and previews (the worker)
+
+`addFile` of a JPEG, PNG, WebP or PDF records the file as `PROCESSING` and enqueues a `renditions` job (`@softistx/redis`
+queue, one job per file). The worker (`bun run worker`, `dist/worker.js` in production, a second process beside the API)
+renders `thumb` (320 px) and `preview` (1600 px) WebP images with `@softistx/image` (page 1 for a PDF), stores them next to
+the original and sets the file `READY`; they are served at `GET /media/files/<key>/thumb` and `/preview` (404 before
+then). A picture that cannot be decoded ends `FAILED` after at most 4 attempts (at once for a corrupt file): only the
+previews failed, the original stays downloadable. Other types stay `READY` with no previews, and so does every file when
+`REDIS_URL` is unset (no worker, no previews).
