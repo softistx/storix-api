@@ -4,8 +4,6 @@ What a user gets, in order. An entry moves Next, Now, Shipped as its effort star
 
 ## Now
 
-- **E1 Accounts and workspaces**: sign in, create a workspace, invite members, group them in teams, with every change in an audit log. ([issue](https://github.com/softistx/storix-api/issues/13))
-
 ## Next
 
 - **E2 Files and folders**: upload, organise, tag, copy and move files, with thumbnails, previews, image crops around a focal point and a storage quota. ([issue](https://github.com/softistx/storix-api/issues/14))
@@ -29,4 +27,5 @@ What a user gets, in order. An entry moves Next, Now, Shipped as its effort star
 
 ## Shipped
 
+- **E1 Accounts and workspaces**: sign in, create a workspace with its own isolated database, invite members by e-mail, group them in teams, give them owner, admin or member permissions, and read every change in an audit log. ([issue](https://github.com/softistx/storix-api/issues/13))
 - **E0 Bootstrap**: a running API skeleton with health, the verify script, and an error catalogue whose codes and messages, in English and French, any client can read. ([issue](https://github.com/softistx/storix-api/issues/12))
