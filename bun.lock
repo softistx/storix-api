@@ -17,7 +17,7 @@
         "@graphql-tools/merge": "^10.0.6",
         "@nxgt/graphql-client": "^0.7.0",
         "@nxgt/graphql-scalars": "^0.7.1",
-        "@nxgt/graphql-validation": "^0.8.1",
+        "@nxgt/graphql-validation": "^0.9.0",
         "@softistx/ai-anthropic": "^0.4.0",
         "@softistx/ai-core": "^0.7.0",
         "@softistx/ai-ollama": "^0.3.1",
@@ -44,7 +44,7 @@
         "@graphql-codegen/typescript": "6.1.2",
         "@graphql-codegen/typescript-resolvers": "6.1.1",
         "@graphql-tools/utils": "^13.1.3",
-        "@nxgt/graphql-codegen-zod": "^0.4.0",
+        "@nxgt/graphql-codegen-zod": "^0.4.1",
         "@softistx/ai-testing": "^0.3.0",
         "@types/bun": "^1.4.4",
         "@types/nodemailer": "^8.0.2",
@@ -307,11 +307,11 @@
 
     "@nxgt/graphql-client": ["@nxgt/graphql-client@0.7.0", "", { "dependencies": { "@graphql-typed-document-node/core": "^3.2.0", "@nxgt/httpyz": "^0.5.0" }, "peerDependencies": { "@types/react": "^19.0.0", "graphql": "^16.11.0 || ^17.0.0", "react": "^19.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@types/react", "react"] }, "sha512-PydzJwLtPQ9aKyLzEHy3XAS77swEMSsZBf9bb21e9NXN3hjIQ7/8DuH39DaBrWPBFoVEivHzqiNI4GxmvXb/WQ=="],
 
-    "@nxgt/graphql-codegen-zod": ["@nxgt/graphql-codegen-zod@0.4.0", "", { "dependencies": { "@nxgt/graphql-validation": "^0.8.0", "change-case": "^5.4.4" }, "peerDependencies": { "graphql": "^16.11.0 || ^17.0.0", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-8lWVkfvnSwzK97b2KMFR2XQINYBtqy7Qh7/CBELPBiiyIu/weq9ejlrJId1yzpM4JArCfUAz22Nxjs1UG6uGyQ=="],
+    "@nxgt/graphql-codegen-zod": ["@nxgt/graphql-codegen-zod@0.4.1", "", { "dependencies": { "@nxgt/graphql-validation": "^0.9.0", "change-case": "^5.4.4" }, "peerDependencies": { "graphql": "^16.11.0 || ^17.0.0", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-y2Mp3Sa6vgp/1Y/jGTNt39ZjEraSspm+3GCIeSuFHCVCeQf6mrGTIOomfb6dTintzRMbk48+cZTs55FQ0VmN5g=="],
 
     "@nxgt/graphql-scalars": ["@nxgt/graphql-scalars@0.7.1", "", { "dependencies": { "@nxgt/zod": "^0.2.0" }, "peerDependencies": { "graphql": "^16.11.0 || ^17.0.0", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "bin": { "nxgt-graphql-scalars": "dist/cli.js" } }, "sha512-LijZdSwXT1cjE0gvtomEXMCZP2cnNofNUW1rBuDWTeu5pBBuAJlQSTu8twoMdxuPEH08SiyyxzUfFKMaaf9GgA=="],
 
-    "@nxgt/graphql-validation": ["@nxgt/graphql-validation@0.8.1", "", { "peerDependencies": { "graphql": "^16.11.0 || ^17.0.0", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "bin": { "nxgt-graphql-validation": "dist/cli.js" } }, "sha512-pLC6Y4f1FYR+74/eBIYtlznbW6VYsyJy547T1LolEpq4OIOfdMi12EiMrgQtIYS9T7xqzSJgm5Gbb07ma1b09Q=="],
+    "@nxgt/graphql-validation": ["@nxgt/graphql-validation@0.9.0", "", { "peerDependencies": { "graphql": "^16.11.0 || ^17.0.0", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "bin": { "nxgt-graphql-validation": "dist/cli.js" } }, "sha512-zA1TvDmgkS5jysiIzyjSC72U3zxoLNFot3G77B0Fm6ZQdz6CN9888DfvDvibociNGVKlVM+cgsy2NEKXsCPxcw=="],
 
     "@nxgt/httpyz": ["@nxgt/httpyz@0.5.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-mEJofa6wB3s9FAPFlKO5FxHMIuZLTEIg3KafWMc7TDOBxy1LWKZiXI5O5LH7ISxgsCYoFekJlZe0fxlrPgQx8g=="],
 
