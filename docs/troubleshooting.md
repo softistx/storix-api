@@ -281,6 +281,30 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 
 **Fix:** send the id of a file. Folders are renamed with `renameNode`.
 
+## `files.errors.not-a-file` (400) on `openFile`
+
+**When:** `openFile` named a folder (field `id`).
+
+**Why:** only a file is opened and noted among the recent files.
+
+**Fix:** send the id of a file; list a folder with `nodes`.
+
+## `nodes.errors.not-found` (404) on `setStarred` or `openFile`
+
+**When:** the id is unknown, another member's, or (to star, or to open) a trashed node.
+
+**Why:** favourites and recents belong to your own tree. A trashed node is treated as gone: it cannot be starred or opened, and its existing star or recent entry is hidden from `starred` and `recentFiles` until it is restored.
+
+**Fix:** restore the node, or send the id of a node of your own tree. Unstarring a trashed node of your own works.
+
+## `validation.errors.invalid-cursor` (400) on `starred` and `recentFiles`
+
+**When:** `after` is not a cursor this list gave you.
+
+**Why:** a cursor is bound to its list and to the member: `starred`'s cursor does not fit `recentFiles`, and another member's does not fit yours.
+
+**Fix:** page with the `pageInfo.endCursor` of the same list, or start again without `after`.
+
 ## `files.errors.copy-too-large` (409) on `copyNodes`
 
 **When:** the folders to copy, with everything under them, hold more than 5,000 nodes in one call.

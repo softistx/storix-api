@@ -12,12 +12,82 @@ import {
 } from "./files.audit";
 import { copyNodes } from "./files.copy";
 import { notAFile } from "./files.errors";
+import { listStarred, setStarred } from "./files.favourites";
+import type { PersonalPage } from "./files.personal";
+import { listRecent, openFile, recordRecent } from "./files.recents";
 import { checkTags, MAX_META_BYTES, metaFits } from "./files.rules";
 import { addFile, type FilesMongo, isQuotaExceeded } from "./files.service";
 import { updateFile } from "./files.update";
 
+// The module's handle on the request's workspace database (the scope's, typed
+// by the registry; see src/core/access/ports.ts): the one cast of this file.
+const filesDb = (scope: { readonly mongo: unknown }) =>
+  scope.mongo as unknown as FilesMongo;
+
+// A personal page as the API says it: the nodes and the cursor to go on.
+const pageOf = (page: PersonalPage, after: string | null | undefined) => ({
+  nodes: page.items.map(nodeView),
+  pageInfo: {
+    startCursor: null,
+    endCursor: page.endCursor,
+    hasNextPage: page.endCursor !== null,
+    hasPreviousPage: after != null,
+  },
+});
+
 export const filesResolvers: Resolvers = {
+  Query: {
+    starred: async (_, { first, after }, ctx) => {
+      const { principal, scope } = await requireWorkspacePermission(
+        ctx,
+        "nodes:read",
+      );
+      const page = await listStarred(filesDb(scope), {
+        accountId: principal.accountId,
+        first,
+        after,
+      });
+      return pageOf(page, after);
+    },
+    recentFiles: async (_, { first, after }, ctx) => {
+      const { principal, scope } = await requireWorkspacePermission(
+        ctx,
+        "nodes:read",
+      );
+      const page = await listRecent(filesDb(scope), {
+        accountId: principal.accountId,
+        first,
+        after,
+      });
+      return pageOf(page, after);
+    },
+  },
   Mutation: {
+    setStarred: async (_, { id, starred }, ctx) => {
+      const { principal, scope } = await requireWorkspacePermission(
+        ctx,
+        "nodes:read",
+      );
+      const node = await setStarred(filesDb(scope), {
+        id,
+        starred,
+        accountId: principal.accountId,
+      });
+      return nodeView(node);
+    },
+    openFile: async (_, { id }, ctx) => {
+      const { principal, scope } = await requireWorkspacePermission(
+        ctx,
+        "nodes:read",
+      );
+      const node = await openFile(filesDb(scope), {
+        id,
+        accountId: principal.accountId,
+      });
+      const view = nodeView(node);
+      if (view.__typename !== "File") throw notAFile();
+      return view;
+    },
     addFile: async (_, { input }, ctx) => {
       const { principal, scope } = await requireWorkspacePermission(
         ctx,
@@ -43,7 +113,7 @@ export const filesResolvers: Resolvers = {
       let node: Awaited<ReturnType<typeof addFile>>;
       try {
         node = await addFile(
-          scope.mongo as unknown as FilesMongo,
+          filesDb(scope),
           ctx.tenancy.core as WorkspacesMongo,
           ctx.media,
           {
@@ -60,6 +130,15 @@ export const filesResolvers: Resolvers = {
         throw error;
       }
       await recordFileAdd(done, node);
+      // An upload is a recent file; the upload stands if the note fails.
+      await recordRecent(filesDb(scope), {
+        accountId: principal.accountId,
+        nodeId: node._id,
+      }).catch((error) =>
+        console.error(
+          `storix-api: could not note the upload ${node.id} as recent: ${error instanceof Error ? error.message : error}`,
+        ),
+      );
       return nodeView(node) as never;
     },
     copyNodes: async (_, { ids, parentId }, ctx) => {
@@ -68,7 +147,7 @@ export const filesResolvers: Resolvers = {
         "nodes:manage",
       );
       const copies = await copyNodes(
-        scope.mongo as unknown as FilesMongo,
+        filesDb(scope),
         ctx.tenancy.core as WorkspacesMongo,
         {
           ids,
@@ -115,7 +194,7 @@ export const filesResolvers: Resolvers = {
         });
       }
       if (issues.length > 0) throw invalidInput(issues);
-      const { node } = await updateFile(scope.mongo as unknown as FilesMongo, {
+      const { node } = await updateFile(filesDb(scope), {
         id,
         accountId: principal.accountId,
         ...(tags && { tags }),

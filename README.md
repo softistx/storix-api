@@ -35,7 +35,7 @@ curl localhost:3000/health
 | `src/core/storage/`             | `/media`: `@alxia/media` over one private S3 bucket (`files`, `avatars` kinds) |
 | `src/modules/teams/`            | a workspace's teams                                                  |
 | `src/modules/nodes/`            | the folder tree: each member's root, create, rename, move, `node` and `nodes` (filter, sort, cursor) |
-| `src/modules/files/`            | files: `addFile`, `copyNodes`, `updateFile` (`blobs`)               |
+| `src/modules/files/`            | files: `addFile`, `copyNodes`, `updateFile`, `setStarred`, `openFile` (`blobs`, `stars`, `recents`) |
 | `src/modules/registry.ts`       | the one list of modules                                             |
 | `src/i18n/`                     | the error inventory (`defineCodes`, `ErrorCode`), `fail`, the i18n instance, the coverage check |
 | `src/config/`                   | `env.ts` (read once at import), the MongoDB handle                  |
@@ -226,6 +226,22 @@ nothing: one refused node leaves the tree and the counts as they were.
 ```graphql
 mutation { copyNodes(ids: ["<file id>", "<folder id>"], parentId: "<folder id>") { id name } }
 mutation { updateFile(id: "<file id>", input: { tags: ["invoice", "2026"], meta: { client: "acme" } }) { tags meta version } }
+```
+
+### Favourites and recent files
+
+`setStarred(id, starred)` stars or unstars any node of your tree (a repeat changes nothing) and answers it; `starred(first,
+after)` lists your favourites, the latest star first. `recentFiles(first, after)` lists the files you uploaded or opened,
+the latest first, one entry per file, 200 kept per member. `openFile(id)` is the "open": it notes the file as recent and
+answers it. The three need `nodes:read` and see only your own tree; a trashed node leaves both lists and returns with its
+restore. Both lists are paged by cursor (`pageInfo.endCursor`); a cursor of the other list is
+`validation.errors.invalid-cursor`.
+
+```graphql
+mutation { setStarred(id: "<node id>", starred: true) { id name } }
+query { starred(first: 20) { nodes { id name } pageInfo { endCursor hasNextPage } } }
+mutation { openFile(id: "<file id>") { id name } }
+query { recentFiles(first: 20) { nodes { id name } pageInfo { endCursor } } }
 ```
 
 The detail is in [Files storage](docs/development.md#files-storage-media); every `storage.errors.*` refusal is in
