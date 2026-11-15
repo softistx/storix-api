@@ -1,7 +1,7 @@
 import type { Viewer } from "@alxia/access";
 import type { TenantScope } from "@alxia/tenancy";
-import type { WorkspaceRole } from "../members/roles";
-import type { Workspace } from "../workspaces/workspaces.registry";
+import type { WorkspaceRole } from "../members";
+import type { Workspace } from "../workspaces";
 
 // What the request context says of the tenancy and of a request's scope, in
 // plain types. The context cannot name `typeof tenancy` (src/config/tenancy.ts):
