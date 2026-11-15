@@ -110,6 +110,17 @@ An admin invites an address into the request's workspace; the invitee accepts wi
 - A team of another workspace is 404 `teams.errors.not-found`: the request's workspace database is the only one a resolver reaches.
 - A member who is removed or leaves is taken out of every team: the kernel cannot import a business module, so `src/core/members` exposes `onMemberRemoved` and `teams` registers itself when its manifest loads; `removeMember` and `leaveWorkspace` call the listeners once the membership has ended. A listener that fails is logged and never undoes the removal; the `Team` view only ever lists current members, so a missed clean-up stays invisible.
 
+## Files storage (`/media`)
+
+`src/core/storage` mounts `@alxia/media` at `/media` after the auth middleware (`src/app.ts`), over one private bucket (`S3_BUCKET`, bound with `@softistx/s3`; SeaweedFS locally, `bun run services:up`). Without `S3_BUCKET`, `S3_ACCESS_KEY` and `S3_SECRET_KEY` every route answers 503 `storage.errors.unavailable`.
+
+- `PUT /media/<kind>` stores the raw body (send `Content-Length`) and answers `{ key, contentType, size }`; `GET /media/<kind>/<key>` streams it with `Range`, `ETag` and `If-None-Match` (206, 304, 416).
+- Kinds (`storage.kinds.ts`): `files` takes any type up to 95 MiB (known signatures sniffed; a type outside the inline-safe list is served as a download) and `avatars` takes JPEG, PNG and WebP up to 10 MiB, stores only its `64` and `256` px squares (EXIF dropped, `keepOriginal: false`). Both use `Cache-Control: private, no-cache`, so a reader who lost access is refused on the next use.
+- Every object is stored at `workspaces/<workspaceId>/<kind>/<key>` (`keyPrefix`): the `x-storix-workspace` header picks the prefix, so a key of another workspace is a 404. Any member of the workspace may upload and read; the node-level check comes with the `files` slice. A personal API key is refused until keys are bound to workspaces.
+- Uploads are limited per account and workspace, 30 a minute with a burst of 60 (`@softistx/redis`, `storage.limit.ts`); unlike the sign-in limits it fails closed when Redis does not answer. Unset `REDIS_URL` limits nothing.
+- Every refusal is `/graphql`'s error shape with a `storage.errors.*` code (CONTEXT.md, docs/troubleshooting.md).
+- The specs go through `app.fetch` on a real SeaweedFS (`@softistx/s3/testing`, downloaded once, no Docker) and a real Redis.
+
 ## Folders
 
 `src/modules/nodes` keeps the workspace's tree in its own database: one `nodes` collection for folders (files join it with the files module). The fields: `roots`, `folders(parentId)`, `nodePath(id)`, `createFolder`, `renameNode`, `moveNodes`.

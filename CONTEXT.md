@@ -69,6 +69,16 @@ when a code lacks a message in English or French.
 | `nodes.errors.not-a-folder` | The parent or destination is not a folder (400, field `parentId`). |
 | `nodes.errors.move-too-large` | The moved folder holds more than 5,000 nodes (409). |
 | `nodes.errors.root-locked` | A root was renamed or moved (409). |
+| `storage.errors.too-large` | An upload is larger than its kind allows (413); `params.limitMib` is the limit. |
+| `storage.errors.unsupported-type` | The content type is not one the kind accepts (`avatars`: JPEG, PNG, WebP), or the first bytes are not the declared type's (415). |
+| `storage.errors.empty` | The upload has no bytes (400). |
+| `storage.errors.rate-limited` | Too many uploads for this account in this workspace (429); `params.seconds` and `extensions.retryAfter` say when to retry, and the `Retry-After` header too. |
+| `storage.errors.unavailable` | The object store did not answer, or is not configured (503). |
+| `storage.errors.unprocessable` | A picture could not be decoded or made into its sizes (422). |
+| `storage.errors.stalled` | The client sent nothing for 60 seconds during an upload (408). |
+| `storage.errors.not-found` | No such file in the request's workspace; a key of another workspace and a refused reader are the same answer (404). |
+| `storage.errors.range-not-satisfiable` | The `Range` starts past the end of the file (416). |
+| `storage.errors.interrupted` | The body ended short of its `Content-Length`, or ran past it (400). |
 | `validation.errors.invalid-input` | An input was refused as a whole; `extensions.fields` lists each field (400). |
 | `validation.errors.invalid` | A field's value is not valid. |
 | `validation.errors.out-of-range` | A number is outside its bounds. |
