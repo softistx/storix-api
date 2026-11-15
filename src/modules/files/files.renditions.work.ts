@@ -7,7 +7,8 @@ import { makeRenditions } from "./files.renditions.make";
 import type { FilesMongo } from "./files.service";
 
 // What the worker runs for each job of the `renditions` queue (plan §3.14):
-// read the original, make `thumb` and `preview`, store them where
+// read the original, make `thumb` and `preview` and the four crops (centred
+// on the node's focal point; a `crops` job redoes the crops only), store them where
 // `GET /media/files/<key>/<size>` serves them (`mediaPlace`), and move the
 // node from `PROCESSING` to `READY`. Everything the job writes is safe to
 // repeat, so a retry starts over.
@@ -68,7 +69,7 @@ export function renditionsHandler(
   deps: RenditionsWorkDeps,
 ): Handler<typeof renditionJob> {
   return async ({ data, attempt, attempts, signal }) => {
-    const { workspaceId, key } = data;
+    const { workspaceId, key, crops } = data;
     const mongo = await deps.mongoOf(workspaceId);
     const node = await mongo.db.nodes.findFirst({ blobKey: key });
     const kind = node?.mimeType ? renditionKindOf(node.mimeType) : null;
@@ -80,9 +81,14 @@ export function renditionsHandler(
     try {
       const bytes = await readOriginal(deps.bucket, workspaceId, key);
       const place = mediaPlace("files", `workspaces/${workspaceId}`);
-      for (const made of await makeRenditions(bytes, kind, signal)) {
-        await deps.bucket.put({ key: place(key, made.size) }, made.bytes, {
-          type: made.contentType,
+      const made = await makeRenditions(bytes, kind, {
+        signal,
+        focal: node.focalPoint,
+        cropsOnly: crops === true,
+      });
+      for (const one of made) {
+        await deps.bucket.put({ key: place(key, one.size) }, one.bytes, {
+          type: one.contentType,
         });
       }
     } catch (error) {

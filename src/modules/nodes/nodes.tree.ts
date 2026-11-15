@@ -45,6 +45,13 @@ export async function pathTo(
   return [...path, node];
 }
 
+// A `File` as `nodeView` makes it, without the fields the files module
+// resolves (`renditions`, `rendition`): the parent of its resolvers.
+export type FileNode = Extract<
+  ReturnType<typeof nodeView>,
+  { __typename: "File" }
+>;
+
 // The node as the API says it: a `Folder`, or a `File` with what the storage
 // reported (`__typename` picks the type of the `Node` interface).
 export const nodeView = (node: NodeDoc) => {
@@ -71,5 +78,6 @@ export const nodeView = (node: NodeDoc) => {
     tags: node.tags,
     meta: node.meta,
     status: node.status ?? "READY",
+    focalPoint: node.focalPoint,
   };
 };

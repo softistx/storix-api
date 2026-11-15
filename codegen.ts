@@ -31,6 +31,9 @@ const config: CodegenConfig = {
         enumsAsTypes: true,
         mappers: {
           ErrorCatalogue: "@/core/translations/translations.load#CatalogueView",
+          // `renditions` is the files module's field: the parent is the view
+          // `nodeView` makes, which holds what it reads.
+          File: "@/modules/nodes/public#FileNode",
         },
       },
     },

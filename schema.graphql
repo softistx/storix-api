@@ -132,7 +132,7 @@ One thing that happened in the workspace. Never holds an address, a code, a pass
 """
 type AuditEvent {
   """
-  `<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete, node.folder-create, node.rename, node.move, node.copy, file.add, file.update, quota.exceeded.
+  `<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete, node.folder-create, node.rename, node.move, node.copy, file.add, file.update, file.focal, quota.exceeded.
   """
   action: String!
   actor: AuditActor!

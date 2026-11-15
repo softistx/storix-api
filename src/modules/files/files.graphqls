@@ -15,6 +15,58 @@ input AddFileInput {
   onConflict: OnConflict! = REFUSE
 }
 
+"A point of a picture, as fractions of it from its top left corner."
+type FocalPoint {
+  x: Float!
+  y: Float!
+}
+
+"Both coordinates are numbers from 0 to 1 (`files.errors.invalid-focal`)."
+input FocalPointInput {
+  x: Float!
+  y: Float!
+}
+
+"""
+The sizes a picture or a PDF has: `GET /media/files/<key>/<size>` serves them.
+The crops keep their ratio and are centred on the focal point.
+"""
+enum RenditionPreset {
+  "320 px on the longest side, WebP; pictures and PDFs."
+  THUMB
+  "1600 px on the longest side, WebP; pictures and PDFs."
+  PREVIEW
+  "1:1, up to 1080 x 1080, JPEG; pictures."
+  SQUARE
+  "4:5, up to 1080 x 1350, JPEG; pictures."
+  PORTRAIT
+  "9:16, up to 1080 x 1920, JPEG; pictures."
+  STORY
+  "16:9, up to 1920 x 1080, JPEG; pictures."
+  LANDSCAPE
+}
+
+"A size of a file that is stored and served."
+type Rendition {
+  preset: RenditionPreset!
+  "The name `GET /media/files/<key>/<size>` takes: the preset in lower case."
+  size: String!
+  mimeType: String!
+}
+
+extend type File {
+  "Where the crops are centred; null is the centre of the picture."
+  focalPoint: FocalPoint
+  """
+  The sizes available now: every one of a `READY` picture, `THUMB` and
+  `PREVIEW` of a `READY` PDF. Empty while the file is `PROCESSING` or `FAILED`
+  and for any other type.
+  """
+  renditions: [Rendition!]!
+  "One of the renditions, or null when the file does not have it (yet)."
+  rendition(preset: RenditionPreset!): Rendition
+}
+
 input UpdateFileInput {
   "Replaces the tags; leave it out to keep them. At most 20, each at most 50 characters."
   tags: [String!] @constraint(maxItems: 20)
@@ -86,6 +138,18 @@ extend type Mutation {
   `input.meta`).
   """
   updateFile(id: ID!, input: UpdateFileInput!): File!
+  """
+  Moves the focal point of a JPEG, PNG or WebP picture (`null` puts it back at
+  the centre) and has the worker redo its four crops from the stored original:
+  the file is `PROCESSING`, then `READY` (or `FAILED` when only the crops
+  failed, the original stays readable), and the `ETag` of each crop changes
+  with its pixels. A copy shares the blob and so the point. Needs
+  `nodes:manage`. 404 `nodes.errors.not-found`; 400 `files.errors.not-a-file`
+  (field `id`) for a folder; 400 `files.errors.not-renderable` (field `id`)
+  for any other type; 400 `files.errors.invalid-focal` (field `focalPoint`) for
+  a coordinate outside 0 to 1.
+  """
+  setFocalPoint(id: ID!, focalPoint: FocalPointInput): File!
   """
   Stars (`starred: true`) or unstars a node of the caller's tree; repeating it
   changes nothing. Answers the node. Needs `nodes:read`: a favourite is the

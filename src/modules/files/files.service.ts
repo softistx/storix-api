@@ -10,7 +10,7 @@ import {
   named,
   type OnConflict,
 } from "@/modules/nodes/public";
-import { renditionJobId } from "@/queues/renditions";
+import { type RenditionJob, renditionJobId } from "@/queues/renditions";
 import { keyUnknown } from "./files.errors";
 import { discardObject, storedObject } from "./files.object";
 import { type RenditionsQueue, renditionKindOf } from "./files.renditions";
@@ -80,7 +80,14 @@ export async function addFile(
           });
         }),
       );
-      return rendered ? await enqueue(mongo, renditions, input, node) : node;
+      return rendered
+        ? await enqueue(
+            mongo,
+            renditions,
+            { workspaceId: input.workspaceId, key: input.key },
+            node,
+          )
+        : node;
     } catch (error) {
       if (error instanceof KeyRecorded) throw keyUnknown();
       if (isQuotaExceeded(error)) {
@@ -100,17 +107,19 @@ export async function addFile(
   }
 }
 
-// Adds the node's `renditions` job. When Redis refuses it, the previews are
-// given up: the node is `FAILED` (logged), never left `PROCESSING` for ever.
-async function enqueue(
+// Adds the node's `renditions` job (`redo` names a repeat of the same blob's
+// job, see `renditionJobId`). When Redis refuses it, the previews are given
+// up: the node is `FAILED` (logged), never left `PROCESSING` for ever.
+export async function enqueue(
   mongo: FilesMongo,
   queue: RenditionsQueue,
-  input: { workspaceId: string; key: string },
+  job: RenditionJob,
   node: NodeDoc,
+  redo?: string,
 ): Promise<NodeDoc> {
-  const job = { workspaceId: input.workspaceId, key: input.key };
+  const input = job;
   try {
-    await queue.add(job, { id: renditionJobId(job) });
+    await queue.add(job, { id: renditionJobId(job, redo) });
     return node;
   } catch (error) {
     console.error(

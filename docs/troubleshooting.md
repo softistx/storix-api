@@ -313,6 +313,23 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 
 **Fix:** page with the `pageInfo.endCursor` of the same list, or start again without `after`.
 
+## `files.errors.not-renderable` (400) on `setFocalPoint`
+
+**When:** `setFocalPoint` named a file that is not a JPEG, PNG or WebP picture (field `id`).
+
+**Why:** only these have crops. A PDF has previews only, and any other type has no rendition.
+
+**Fix:** send the id of a picture. A folder is `files.errors.not-a-file`.
+
+## `files.errors.invalid-focal` (400) on `setFocalPoint`
+
+**When:** `x` or `y` is not a number from 0 to 1 (field `focalPoint`).
+
+**Why:** the point is a fraction of the picture from its top left corner, not a pixel position.
+
+**Fix:** divide the pixel position by the picture's width and height, or send `focalPoint: null` to put the point back at
+the centre.
+
 ## `files.errors.copy-too-large` (409) on `copyNodes`
 
 **When:** the folders to copy, with everything under them, hold more than 5,000 nodes in one call.
