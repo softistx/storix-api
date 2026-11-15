@@ -8,8 +8,11 @@ import { world } from "./workspaces.harness";
 
 export const BUCKET = "storix-files-spec";
 
-export const FILE = `${NODE} key mimeType size family tags status`;
+export const FILE = `${NODE} key mimeType size family tags meta status`;
 export const ADD = `mutation($input: AddFileInput!) { addFile(input: $input) { ${FILE} } }`;
+
+export const COPY = `mutation($ids: [ID!]!, $parentId: ID!) { copyNodes(ids: $ids, parentId: $parentId) { ${NODE} } }`;
+export const UPDATE = `mutation($id: ID!, $input: UpdateFileInput!) { updateFile(id: $id, input: $input) { ${FILE} } }`;
 
 export interface FileView {
   id: string;
@@ -21,6 +24,8 @@ export interface FileView {
   size: number;
   family: string;
   tags: string[];
+  meta: Record<string, unknown>;
+  version: number;
   status: string;
 }
 

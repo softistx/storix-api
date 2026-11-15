@@ -38,7 +38,7 @@ export function copyName(name: string, n: number): string {
 
 // The first of `name`, `name (1)`, `name (2)`… that no live sibling holds,
 // ignoring case. Two writers racing for it are settled by the unique index.
-async function freeName(tx: NodesMongo, parent: NodeDoc, name: string) {
+export async function freeName(tx: NodesMongo, parent: NodeDoc, name: string) {
   const taken = async (candidate: string) =>
     Boolean(
       await tx.db.nodes.findFirst(

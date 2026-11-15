@@ -15,6 +15,15 @@ input AddFileInput {
   onConflict: OnConflict! = REFUSE
 }
 
+input UpdateFileInput {
+  "Replaces the tags; leave it out to keep them. At most 20, each at most 50 characters."
+  tags: [String!] @constraint(maxItems: 20)
+  "Replaces the metadata, a JSON object of at most 16 KiB; leave it out to keep it."
+  meta: JSONObject
+  "The version the file is expected to be at (`File.version`)."
+  version: Int
+}
+
 extend type Mutation {
   """
   Records an uploaded object as a file. Its type and size are the storage's,
@@ -28,4 +37,30 @@ extend type Mutation {
   name; 503 `storage.errors.unavailable` when no bucket is configured.
   """
   addFile(input: AddFileInput!): File!
+  """
+  Copies nodes under a folder, all or nothing, at most 100 at a time; answers
+  the copies. A copy of a file shares its blob: the bucket gets no new object.
+  A copied folder takes what is under it, tags and metadata included. A copy
+  never clashes: a taken name becomes `name (1)`, `name (2)`... A selected node
+  under another selected one is copied with it. Needs `nodes:manage`. 404
+  `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`; 409
+  `nodes.errors.cycle` (a folder into its own subtree); 409
+  `nodes.errors.too-deep`; 409 `files.errors.copy-too-large` (more than 5,000
+  nodes); 409 `nodes.errors.root-locked`.
+  """
+  copyNodes(
+    ids: [ID!]! @constraint(minItems: 1, maxItems: 100)
+    parentId: ID!
+  ): [Node!]!
+  """
+  Sets the tags and the metadata of a file; one left out stays as it is. Tags
+  are trimmed and lower case, without repeats, at most 20 of at most 50
+  characters; the metadata is a JSON object of at most 16 KiB. With a
+  `version`, the write holds only if the file is still at it. Needs
+  `nodes:manage`. 404 `nodes.errors.not-found`; 400 `files.errors.not-a-file`
+  (field `id`) for a folder; 409 `nodes.errors.conflict`; 400
+  `validation.errors.invalid-input` for bad tags or metadata (`input.tags`,
+  `input.meta`).
+  """
+  updateFile(id: ID!, input: UpdateFileInput!): File!
 }

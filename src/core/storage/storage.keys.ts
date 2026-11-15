@@ -13,9 +13,14 @@ export type FileReader = (mongo: unknown, read: FileRead) => Promise<boolean>;
 
 let reader: FileReader | undefined;
 
-// Sets the check (one module owns it; a second call replaces the first).
-export function onFileRead(check: FileReader): void {
+// Sets the check (one module owns it; a second call replaces the first) and
+// answers the one it replaced, so a spec can put it back.
+export function onFileRead(
+  check: FileReader | undefined,
+): FileReader | undefined {
+  const previous = reader;
   reader = check;
+  return previous;
 }
 
 // Without a check registered nothing is readable: a `files` object is served

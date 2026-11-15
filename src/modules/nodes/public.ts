@@ -5,12 +5,14 @@ export type { FileFamily } from "./nodes.family";
 export { familyOf } from "./nodes.family";
 export {
   copyName,
+  freeName,
   insertFile,
   type NewFile,
   type OnConflict,
 } from "./nodes.file";
 export { checkName } from "./nodes.rules";
 export {
+  cycle,
   depthOf,
   lockTree,
   type NodeDoc,
@@ -18,6 +20,8 @@ export {
   named,
   nameTaken,
   ownedFolder,
+  ownedNode,
+  rootLocked,
   tooDeep,
 } from "./nodes.service";
 export { nodeView } from "./nodes.tree";
