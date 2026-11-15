@@ -63,6 +63,32 @@ export interface SecondFactorStatus {
   recoveryCodesLeft: number | null;
 }
 
+// What the application decides about invitations (src/core/invitations): who
+// may do what in a scope (a workspace id) and what a scope is called. `C` is
+// the request's context. A thrown GraphQLError (a step-up) is answered as it
+// is; `false` is 404 `invitations.errors.not-found`.
+export type InvitationAction = "issue" | "resend" | "revoke" | "list";
+
+export interface InvitationHooks<C> {
+  authorize(
+    action: InvitationAction,
+    subject: {
+      scope: string;
+      input?: { email: string; role: string };
+      invitation?: { email: string; role: string };
+    },
+    ctx: C,
+  ): boolean | Promise<boolean>;
+  describeScope(scope: string, ctx: C): Promise<{ name: string } | null>;
+}
+
+// The resolvers of the invitation fields, opaque to the rest of the API: the
+// module hands each field's arguments and the request's context to them.
+export type InvitationResolverMap = Record<
+  string,
+  Record<string, (...args: unknown[]) => unknown>
+>;
+
 export interface Identity {
   // The principal of a request, or null when anonymous. A key-shaped bearer
   // is read as a key only with `apiKey: true`; without it, it is anonymous.
@@ -134,6 +160,16 @@ export interface Identity {
     code: string,
   ): Promise<true>;
   secondFactorStatus(principal: Principal): Promise<SecondFactorStatus>;
+
+  // The resolvers of the invitation fields (`invitations`, `issueInvitation`,
+  // `resendInvitation`, `revokeInvitation`, `invitationPreview`,
+  // `acceptInvitation`; their SDL is `invitationTypeDefs`) over `hooks`. An accepted invitation calls the `onAccepted`
+  // the identity was built with.
+  invitations: {
+    resolvers<C extends { viewer: Principal | null }>(
+      hooks: InvitationHooks<C>,
+    ): InvitationResolverMap;
+  };
 
   // Creates the collections, validators and indexes the identity stores keep
   // (a deployment step, `bun run db:sync`; at boot outside production). Says

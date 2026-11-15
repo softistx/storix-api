@@ -118,6 +118,8 @@ describe("createWorkspace", () => {
         signUp: async () => undefined,
         signIn: async () => undefined,
         passwordReset: async () => undefined,
+        invitationSend: async () => undefined,
+        invitationCode: async () => undefined,
         workspaceCreate: async (ip) => {
           calls.push(ip);
         },

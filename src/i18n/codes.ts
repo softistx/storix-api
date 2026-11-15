@@ -55,6 +55,27 @@ export const workspaces = defineCodes("workspaces", [
 // The memberships of a workspace (src/core/members).
 export const members = defineCodes("members", ["not-found"]);
 
+// The invitations to a workspace (src/core/invitations). The code of an
+// invitation that is unknown, already used, revoked or past its lifetime is one
+// `invalid`: the reasons are never told apart.
+export const invitations = defineCodes("invitations", [
+  // 404: no invitation with this id in the workspace (or the caller may not
+  // see it).
+  "not-found",
+  // 400: the code names no pending invitation.
+  "invalid",
+  // 409: the invitation was accepted or revoked, so it cannot be sent again or
+  // revoked.
+  "not-pending",
+  // 409: the workspace already has the most pending invitations it may have.
+  "limit",
+  // 409: the address already belongs to a member of the workspace.
+  "already-member",
+  // 400: the invitee has no account yet and gave no password (field
+  // `password`).
+  "password-required",
+]);
+
 // Every code the API answers with, in module order: the inventory. tsc refuses
 // a code that is not in it (`fail`, `FieldIssue`), the coverage spec requires
 // a message for each in every shipped language and a row in CONTEXT.md, and
@@ -66,6 +87,7 @@ export const errorCodes = [
   ...identity,
   ...workspaces,
   ...members,
+  ...invitations,
 ] as const;
 
 export type ErrorCode = (typeof errorCodes)[number];

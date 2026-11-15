@@ -1,7 +1,11 @@
 import { graphqlClient } from "@alxia/graphql/testing";
 import { fixedClock, scryptHasher } from "@softistx/janus";
 import { totpCode } from "@softistx/janus/testing";
-import { createMongoAdapter, createMongoApiKeys } from "@softistx/janus-mongo";
+import {
+  createMongoAdapter,
+  createMongoApiKeys,
+  createMongoInvitations,
+} from "@softistx/janus-mongo";
 import { createMemoryMailer } from "@softistx/mail";
 import { createApp } from "@/app";
 import { connection } from "@/config/db";
@@ -34,6 +38,7 @@ export async function harness(
       { id: "spec", key: "c3RvcmF4LXNwZWMtdG90cC1rZXktMzItYnl0ZXMhISE" },
     ],
     mail: { throttle: false },
+    onAcceptedInvitation: async () => undefined,
     ...identityOptions,
   });
   if (!options.db) await identity.syncStores();
@@ -57,6 +62,14 @@ export async function harness(
     const token = /[?&]token=([^\s&"'<>)]+)/.exec(mail?.text ?? "")?.[1];
     if (!token) throw new Error(`no link token in a mail to ${address}`);
     return decodeURIComponent(token);
+  };
+  // The code of the invitation link in the newest mail to an address.
+  const invitationCodeFor = (address: string) => {
+    const code = /\/invitations\/accept#([A-Za-z0-9_-]{43})/.exec(
+      mailsTo(address).at(-1)?.text ?? "",
+    )?.[1];
+    if (!code) throw new Error(`no invitation code in a mail to ${address}`);
+    return code;
   };
   // The six-digit code in the newest mail to an address.
   const codeFor = (address: string) => {
@@ -106,6 +119,10 @@ export async function harness(
         { id: "spec", key: "c3RvcmF4LXNwZWMtdG90cC1rZXktMzItYnl0ZXMhISE" },
       ],
       events: async () => undefined,
+      invitations: {
+        store: createMongoInvitations(db),
+        onAccepted: async () => undefined,
+      },
     });
   }
 
@@ -147,6 +164,7 @@ export async function harness(
     mailsTo,
     tokenFor,
     codeFor,
+    invitationCodeFor,
     account,
     enableSecondFactor,
     apiKey,

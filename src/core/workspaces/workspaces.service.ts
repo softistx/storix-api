@@ -55,6 +55,16 @@ export async function createWorkspace(
   return workspaceOf(await mongo.db.workspaces.getById(created.id));
 }
 
+// The name of an open workspace, for the pages that say which one an invitee
+// joins; null for an unknown id or a workspace not open yet.
+export async function activeWorkspaceName(
+  mongo: WorkspacesMongo,
+  id: string,
+): Promise<string | null> {
+  const doc = await mongo.db.workspaces.findById(id);
+  return doc?.status === "active" ? doc.name : null;
+}
+
 // Removes what a failed creation left, best effort: the database it may have
 // built stays (empty) and is dropped with the workspaces' cleanup script.
 async function takeBack(mongo: WorkspacesMongo, id: string) {
