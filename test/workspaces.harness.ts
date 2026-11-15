@@ -11,6 +11,8 @@ import type { Limits } from "@/http/rate-limits";
 
 export { WORKSPACE_HEADER };
 
+type HarnessOptions = NonNullable<Parameters<typeof harness>[0]>;
+
 type User = Awaited<ReturnType<Awaited<ReturnType<typeof harness>>["account"]>>;
 
 export interface Gql {
@@ -21,9 +23,12 @@ export interface Gql {
 
 // The identity harness plus workspaces: accounts that own or join workspaces,
 // and a `send` that speaks as one of them to one workspace (or none).
-export async function world(options: { limits?: Limits } = {}) {
+export async function world(
+  options: { limits?: Limits; media?: HarnessOptions["media"] } = {},
+) {
   const h = await harness({
     ...(options.limits && { limits: options.limits }),
+    ...(options.media && { media: options.media }),
     onAcceptedInvitation: (accepted) =>
       joinWorkspace(tenancy.core as MembersMongo, accepted),
   });
