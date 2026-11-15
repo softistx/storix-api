@@ -8,6 +8,7 @@ import { storageModule } from "../core/storage";
 import { system } from "../core/system/module";
 import { translationsModule } from "../core/translations/module";
 import { workspacesModule } from "../core/workspaces";
+import { filesModule } from "./files/public";
 import { nodesModule } from "./nodes/public";
 import { teamsModule } from "./teams/public";
 
@@ -24,6 +25,7 @@ const registered = [
   invitationsModule,
   teamsModule,
   nodesModule,
+  filesModule,
   storageModule,
 ] as const;
 

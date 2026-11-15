@@ -5,6 +5,7 @@ import { invitationsErrors } from "./2026-11-15-invitations-errors.migration";
 import { teamsErrors } from "./2026-11-15-teams-errors.migration";
 import { nodesErrors } from "./2026-11-16-nodes-errors.migration";
 import { storageErrors } from "./2026-11-16-storage-errors.migration";
+import { filesErrors } from "./2026-11-17-files-errors.migration";
 
 // The core database's migrations, in order. The list only grows at its end; an
 // id is permanent. `db:migrate` applies them (src/scripts/db-migrate.ts).
@@ -16,4 +17,5 @@ export const translationMigrations = [
   teamsErrors,
   nodesErrors,
   storageErrors,
+  filesErrors,
 ];

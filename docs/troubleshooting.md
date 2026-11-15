@@ -218,7 +218,7 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 **When:** `PUT /media/<kind>` or `GET /media/<kind>/<key>` is refused. The body is `/graphql`'s shape, `{ "errors": [{ "message", "extensions": { "code", "params" } }] }`, with the refusal's status.
 
 **Why and fix, by code:**
-- `not-found` (404): the key is not in the workspace named by `x-storix-workspace`. A key of another workspace, an unknown one and a caller who may not read are the same answer. Send the header of the workspace that stored the file.
+- `not-found` (404; a `files` object is also 404 until `addFile` records its key, and for any member but its owner): the key is not in the workspace named by `x-storix-workspace`. A key of another workspace, an unknown one and a caller who may not read are the same answer. Send the header of the workspace that stored the file.
 - `too-large` (413, `params.limitMib`): the `Content-Length` is over the kind's limit (`files` 95 MiB, `avatars` 10 MiB); nothing was read or stored.
 - `unsupported-type` (415): `avatars` takes JPEG, PNG and WebP only, and the first bytes must match the declared `Content-Type`. `files` takes any type.
 - `empty` (400): a zero-length body. `interrupted` (400): the body ended short of, or ran past, its `Content-Length`; send it again.
@@ -237,9 +237,9 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 
 **Fix:** set `AUDIT_IP_KEY` to a random secret of 32 characters or more (for example `openssl rand -hex 32`). Changing it later only breaks the correlation of old and new `ipHash` values.
 
-## `validation.errors.invalid-cursor` (400) on `auditEvents`
+## `validation.errors.invalid-cursor` (400) on `auditEvents` and `nodes`
 
-**When:** `auditEvents` is called with an `after` that is malformed, or that came from a page read with another `filter`.
+**When:** `auditEvents` or `nodes` is called with an `after` that is malformed, or that came from a page read with another `filter` (for `nodes`, another folder, filter or sort too).
 
 **Fix:** start again without `after`, then send each page's `endCursor` with the same `filter`.
 
@@ -264,6 +264,14 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 **When:** a sibling holds the name in any case (`name-taken`, field `name`); the folder would pass 16 levels (`too-deep`); a folder is moved into itself or its own subtree (`cycle`); the moved folder holds more than 5,000 nodes (`move-too-large`); a root is renamed or moved (`root-locked`).
 
 **Fix:** pick another name or destination. `too-deep`: flatten the destination. `move-too-large`: move the folder's sub-folders in turn (a batched move is planned).
+
+## `files.errors.key-unknown` (400) on `addFile`
+
+**When:** `addFile` named a `key` (field `key`) that is not a recordable upload.
+
+**Why:** the object is looked up under this workspace's `files` prefix, so a key of another workspace or of another kind (an avatar), a malformed key and a key never uploaded all fail alike; so does an empty object and a key a file already holds (a key is recorded once).
+
+**Fix:** upload again with `PUT /media/files` in the same workspace (`x-storix-workspace`) and record the key it answers, once. For a second file, upload again.
 
 ## `nodes.errors.not-a-folder` (400)
 

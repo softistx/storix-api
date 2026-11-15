@@ -3,13 +3,20 @@ import type { MediaDenial } from "@alxia/media";
 import { GraphQLError } from "graphql";
 import { apiRefusal } from "@/core/access/refusals";
 import type { MediaRequires } from "./storage.context";
+import { mayReadFile } from "./storage.keys";
 
 // Who may touch /media: a member of the request's workspace (the
 // `x-storix-workspace` header), through a session. A personal API key is
 // refused until keys are bound to workspaces. The refusals are denials the
 // routes' `refusal` hook words as catalogue codes (storage.refusal.ts).
 export type Access =
-  | { ok: true; workspaceId: string; accountId: string }
+  | {
+      ok: true;
+      workspaceId: string;
+      accountId: string;
+      // The workspace's scope: its database, for the module that knows keys.
+      scope: { readonly mongo: unknown };
+    }
   | { ok: false; denial: MediaDenial };
 
 export async function accessOf(ctx: MediaRequires): Promise<Access> {
@@ -27,6 +34,7 @@ export async function accessOf(ctx: MediaRequires): Promise<Access> {
       ok: true,
       workspaceId: scope.tenant.id,
       accountId: viewer.accountId,
+      scope,
     };
   } catch (error) {
     const mapped = apiRefusal(error);
@@ -46,12 +54,25 @@ export async function authorizeWrite(ctx: MediaRequires) {
   return access.ok ? true : access.denial;
 }
 
-// Reads: a member of the workspace; the key's own workspace is the prefix, so
-// another workspace's key is a missing object. Slice A9 narrows it to the
-// nodes the caller may read.
+// Reads of a kind that is not recorded as files (avatars): a member of the
+// workspace; the key's own workspace is the prefix, so another workspace's key
+// is a missing object.
 export async function authorizeRead(ctx: MediaRequires) {
   const access = await accessOf(ctx);
   return access.ok ? true : access.denial;
+}
+
+// Reads of `files`: a member of the workspace, and a key some node of the
+// caller's tree holds (`files` registers the check, storage.keys.ts). An
+// object nobody recorded, another member's file and a missing key are one 404.
+export async function authorizeFileRead(ctx: MediaRequires, key: string) {
+  const access = await accessOf(ctx);
+  if (!access.ok) return access.denial;
+  const allowed = await mayReadFile(access.scope.mongo, {
+    key,
+    accountId: access.accountId,
+  });
+  return allowed ? true : { code: "not_found", status: 404 };
 }
 
 // `workspaces/<id>`, so a request reaches only its own workspace's objects

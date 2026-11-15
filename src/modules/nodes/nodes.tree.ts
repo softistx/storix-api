@@ -45,15 +45,31 @@ export async function pathTo(
   return [...path, node];
 }
 
-// The node as the API says it.
-export const nodeView = (node: NodeDoc) => ({
-  id: node.id,
-  type: node.type,
-  name: node.name,
-  parentId: node.parentId?.toHexString() ?? null,
-  ancestors: node.ancestors.map((a) => a.toHexString()),
-  depth: node.ancestors.length + 1,
-  version: node.version,
-  createdAt: node.createdAt,
-  updatedAt: node.updatedAt,
-});
+// The node as the API says it: a `Folder`, or a `File` with what the storage
+// reported (`__typename` picks the type of the `Node` interface).
+export const nodeView = (node: NodeDoc) => {
+  const common = {
+    id: node.id,
+    type: node.type,
+    name: node.name,
+    parentId: node.parentId?.toHexString() ?? null,
+    ancestors: node.ancestors.map((a) => a.toHexString()),
+    depth: node.ancestors.length + 1,
+    version: node.version,
+    createdAt: node.createdAt,
+    updatedAt: node.updatedAt,
+  };
+  if (node.type === "FOLDER")
+    return { __typename: "Folder" as const, ...common };
+  return {
+    __typename: "File" as const,
+    ...common,
+    key: node.blobKey ?? "",
+    mimeType: node.mimeType ?? "application/octet-stream",
+    size: node.size ?? 0,
+    family: node.family ?? "OTHER",
+    tags: node.tags,
+    meta: node.meta,
+    status: node.status ?? "READY",
+  };
+};
