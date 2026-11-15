@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { world } from "../workspaces/workspaces.harness";
+import { world } from "../../../test/workspaces.harness";
 import type { WorkspaceRole } from "./roles";
 
 type Outcome = "ok" | "forbidden";

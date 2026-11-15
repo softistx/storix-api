@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { tenancy } from "@/config/tenancy";
+import { world } from "../../../test/workspaces.harness";
 import { addMember, type MembersMongo } from "../members";
-import { world } from "./workspaces.harness";
 
 const MEMBERS = "{ members { totalCount nodes { id accountId role } } }";
 const WORKSPACE = "{ workspace { id slug myRole } }";

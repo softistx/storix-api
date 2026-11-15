@@ -1,6 +1,10 @@
 import { tenancy, WORKSPACE_HEADER } from "@/config/tenancy";
-import { harness } from "../identity/identity.harness";
-import { addMember, type MembersMongo, type WorkspaceRole } from "../members";
+import { harness } from "@/core/identity/identity.harness";
+import {
+  addMember,
+  type MembersMongo,
+  type WorkspaceRole,
+} from "@/core/members";
 
 export { WORKSPACE_HEADER };
 

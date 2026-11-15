@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { world } from "./workspaces.harness";
+import { world } from "../../../test/workspaces.harness";
 
 const CREATE = `mutation($input: CreateWorkspaceInput!) {
   createWorkspace(input: $input) { id slug name myRole createdAt }
@@ -112,7 +112,7 @@ describe("createWorkspace", () => {
 
   test("is rate limited per address", async () => {
     const calls: (string | undefined)[] = [];
-    const { harness } = await import("../identity/identity.harness");
+    const { harness } = await import("@/core/identity/identity.harness");
     const h = await harness({
       limits: {
         signUp: async () => undefined,
