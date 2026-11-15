@@ -1,7 +1,7 @@
 import { isMediaKey, type MediaBucket, mediaPlace } from "@alxia/media";
 import { ImageError } from "@softistx/image";
 import { type Handler, JobError } from "@softistx/redis";
-import type { renditionJob } from "@/queues/renditions";
+import { parseRenditionJobId, type renditionJob } from "@/queues/renditions";
 import { renditionKindOf } from "./files.renditions";
 import { makeRenditions } from "./files.renditions.make";
 import type { FilesMongo } from "./files.service";
@@ -50,6 +50,18 @@ async function readOriginal(
   const opened = await bucket.open({ key: place(key) });
   if (!opened) throw new OriginalMissing(`the original of ${key} is gone`);
   return new Uint8Array(await new Response(opened.stream).arrayBuffer());
+}
+
+// A job that failed for good without its handler reaching its own `FAILED`
+// (the process died on the last attempt, the lease ran out): the worker's
+// `failed` event calls it so that the node is never left `PROCESSING`.
+export async function markRenditionsFailed(
+  deps: Pick<RenditionsWorkDeps, "mongoOf">,
+  jobId: string,
+) {
+  const job = parseRenditionJobId(jobId);
+  if (job)
+    await setStatus(await deps.mongoOf(job.workspaceId), job.key, "FAILED");
 }
 
 export function renditionsHandler(

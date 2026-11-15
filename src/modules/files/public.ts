@@ -7,7 +7,10 @@ export {
   type RenditionsQueue,
   renditionKindOf,
 } from "./files.renditions";
-export { renditionsHandler } from "./files.renditions.work";
+export {
+  markRenditionsFailed,
+  renditionsHandler,
+} from "./files.renditions.work";
 export type { FilesMongo } from "./files.service";
 export { sweepAll, sweepWorkspace } from "./files.sweep";
 export type {

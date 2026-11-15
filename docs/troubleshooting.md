@@ -340,7 +340,7 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 **When:** a JPEG, PNG, WebP or PDF recorded by `addFile` has no `thumb` or `preview` (`GET /media/files/<key>/thumb` is 404), and `status` is `PROCESSING` or `FAILED`.
 
 **Why and fix:**
-- `PROCESSING` for long: no worker consumes the `renditions` queue. Run `bun run worker` (dev) or `bun --no-install dist/worker.js` (production) with the API's `REDIS_URL`, `S3_*` and `MONGO_*` settings. The job waits in Redis and runs once a worker starts.
+- `PROCESSING` for long: no worker consumes the `renditions` queue. Run `bun run worker` (dev) or `bun --no-install dist/worker.js` (production) with the API's `REDIS_URL`, `S3_*` and `MONGO_URI` setting. The job waits in Redis and runs once a worker starts.
 - The worker exits 1 at boot: `REDIS_URL` or the `S3_*` settings are missing. Set them like the API's.
 - `FAILED`: the previews could not be made. A picture that is corrupt or has too many pixels (over 50 million) fails at once; a transient error (bucket or database down) is retried 4 times with backoff first. The original is untouched and downloadable at `/media/files/<key>`. Fix the cause, then upload the file again.
 - `FAILED` right after `addFile`: Redis refused the job, so no preview will come; the file itself is recorded and downloadable.

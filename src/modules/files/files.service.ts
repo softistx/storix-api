@@ -116,11 +116,18 @@ async function enqueue(
     console.error(
       `storix-api: could not queue the renditions of ${input.key} in workspace ${input.workspaceId}: ${error instanceof Error ? error.message : error}`,
     );
-    await mongo.db.nodes.updateMany(
-      { blobKey: input.key, status: "PROCESSING" },
-      { status: "FAILED" },
-      { audit: false },
-    );
+    // The file is recorded either way: a second failure is logged, not thrown.
+    await mongo.db.nodes
+      .updateMany(
+        { blobKey: input.key, status: "PROCESSING" },
+        { status: "FAILED" },
+        { audit: false },
+      )
+      .catch((cause) =>
+        console.error(
+          `storix-api: could not mark ${input.key} FAILED: ${cause}`,
+        ),
+      );
     return { ...node, status: "FAILED" };
   }
 }

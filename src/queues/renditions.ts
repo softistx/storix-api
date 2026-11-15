@@ -20,6 +20,14 @@ export type RenditionJob = z.output<typeof renditionJob>;
 export const renditionJobId = (job: RenditionJob) =>
   `${job.workspaceId}:${job.key}`;
 
+// The job a job id names (a workspace id has no colon).
+export const parseRenditionJobId = (id: string): RenditionJob | null => {
+  const at = id.indexOf(":");
+  return at > 0 && at < id.length - 1
+    ? { workspaceId: id.slice(0, at), key: id.slice(at + 1) }
+    : null;
+};
+
 /** What a spec changes to wait milliseconds, not seconds. */
 export type RenditionsQueueOptions = {
   attempts?: number;

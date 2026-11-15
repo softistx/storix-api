@@ -20,7 +20,7 @@ curl localhost:3000/health
 | Script                 | Does                                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------------------ |
 | `bun run dev`          | the Docker services (MongoDB replica set, Redis, Mailpit, SeaweedFS), then the API in watch mode       |
-| `bun run worker`       | the queue worker in watch mode (renditions: thumbnails and previews); needs `REDIS_URL`, `S3_*` and MongoDB |
+| `bun run worker`       | the queue worker in watch mode (renditions: thumbnails and previews); needs `REDIS_URL`, `S3_*` and `MONGO_URI`; `bun run dev` does not start it |
 | `bun run verify`       | the green bar: generate, schema check, Biome, context and dependency checks, `bun check`, tests, build |
 | `bun run verify:pr`    | the same with only the specs a diff against `origin/develop` affects                                   |
 | `bun run generate`     | scalars and validation SDL, then resolver types and Zod schemas into `src/generated/`                  |
@@ -220,7 +220,7 @@ bun run storage:sweep                  # remove released blobs and unrecorded ob
 
 Details: [docs/development.md](docs/development.md#orphan-sweep-storagesweep), failures: [docs/troubleshooting.md](docs/troubleshooting.md). Run one sweep at a time (for example `flock -n /tmp/storix-sweep.lock bun run storage:sweep` hourly from cron).
 
-Storage that nothing references is removed by `bun run storage:sweep` (the `sweep` job; schedule it hourly from the host until the worker exists). Per active workspace it removes the blobs whose `refs` is 0 with their object and sizes, and the objects of an upload that `addFile` never recorded once they are 75 minutes old. A recorded object is never removed, and usage is not touched (it counts only blobs with `refs` above 0, as `quota:reconcile` recounts). It needs the bucket (`S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`) and exits 1 when a workspace failed or an object could not be removed (the next run retries).
+Storage that nothing references is removed by `bun run storage:sweep` (the `sweep` job; the worker does not run it yet: schedule it hourly from the host). Per active workspace it removes the blobs whose `refs` is 0 with their object and sizes, and the objects of an upload that `addFile` never recorded once they are 75 minutes old. A recorded object is never removed, and usage is not touched (it counts only blobs with `refs` above 0, as `quota:reconcile` recounts). It needs the bucket (`S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`) and exits 1 when a workspace failed or an object could not be removed (the next run retries).
 
 ### Rename, move, copy, tags and metadata
 

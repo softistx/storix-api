@@ -10,7 +10,11 @@ import {
 } from "../../../test/files.harness";
 import { setup } from "../nodes/nodes.harness";
 import type { RenditionsQueue } from "./public";
-import { type FilesMongo, renditionsHandler } from "./public";
+import {
+  type FilesMongo,
+  markRenditionsFailed,
+  renditionsHandler,
+} from "./public";
 
 // What fails: Redis refusing a job, and the store failing under a job. The
 // queue the app gets is a switch over the real one, so a spec picks.
@@ -116,5 +120,24 @@ describe("renditions that fail", () => {
     );
     // Three attempts, spent on the store, not one.
     expect(opens).toBe(3);
+  });
+
+  test("a job that failed for good without its handler marks the file FAILED", async () => {
+    const saved = real;
+    real = { add: async () => ({}) };
+    try {
+      const { file, workspace } = await record("c.png");
+      expect(file.status).toBe("PROCESSING");
+      await markRenditionsFailed(
+        { mongoOf: databaseOf },
+        `${workspace.id}:${file.key}`,
+      );
+      const db = await databaseOf(workspace.id);
+      expect((await db.db.nodes.findFirst({ blobKey: file.key }))?.status).toBe(
+        "FAILED",
+      );
+    } finally {
+      real = saved;
+    }
   });
 });
