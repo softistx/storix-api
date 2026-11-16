@@ -20,4 +20,10 @@ export type {
   SweepOptions,
   SweepReport,
 } from "./files.sweep.run";
+export {
+  type RetentionOptions,
+  type RetentionReport,
+  retainAll,
+  retainVersions,
+} from "./files.versions.retention";
 export { filesModule } from "./module";

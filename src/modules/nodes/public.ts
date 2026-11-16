@@ -10,6 +10,7 @@ export {
   insertFile,
   type NewFile,
   type OnConflict,
+  sameNameSibling,
 } from "./nodes.file";
 export { nodesMongo } from "./nodes.handle";
 export { checkName, MAX_DEPTH } from "./nodes.rules";

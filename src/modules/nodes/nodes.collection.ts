@@ -59,6 +59,10 @@ export const nodes = defineCollection({
       .object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })
       .nullable()
       .default(null),
+    // The version row (`versions`, the files module) whose blob the node
+    // holds; null on a file recorded before versions existed or copied, until
+    // its first version is made (`files.versions.first.ts`).
+    currentVersionId: objectId().nullable().default(null),
   }),
   timestamps: true,
   optimisticLock: true,

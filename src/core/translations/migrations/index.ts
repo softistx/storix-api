@@ -9,6 +9,7 @@ import { filesErrors } from "./2026-11-17-files-errors.migration";
 import { filesCopyErrors } from "./2026-11-18-files-copy-errors.migration";
 import { quotasErrors } from "./2026-11-19-quotas-errors.migration";
 import { filesFocalErrors } from "./2026-11-20-files-focal-errors.migration";
+import { versionsErrors } from "./2026-11-20-versions-errors.migration";
 
 // The core database's migrations, in order. The list only grows at its end; an
 // id is permanent. `db:migrate` applies them (src/scripts/db-migrate.ts).
@@ -24,4 +25,5 @@ export const translationMigrations = [
   filesCopyErrors,
   quotasErrors,
   filesFocalErrors,
+  versionsErrors,
 ];

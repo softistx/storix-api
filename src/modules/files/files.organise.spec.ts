@@ -111,7 +111,7 @@ describe("copyNodes", () => {
     expect(await objects(files)).toBe(before);
     const db = await databaseOf(workspace.id);
     expect(await db.db.blobs.findFirst({ key: original.key })).toMatchObject({
-      refs: 3,
+      refs: 4,
     });
     const doc = await db.db.nodes.getById(same?.id ?? "");
     expect(doc.blobKey).toBe(original.key);
@@ -177,7 +177,7 @@ describe("copyNodes", () => {
     expect(await objects(files)).toBe(before);
     for (const f of [leaf, top]) {
       expect(await db.db.blobs.findFirst({ key: f.key })).toMatchObject({
-        refs: 2,
+        refs: 3,
       });
     }
   });
@@ -203,7 +203,7 @@ describe("copyNodes", () => {
     expect(code(unknown)).toBe("nodes.errors.not-found");
     expect(await count()).toBe(nodesBefore);
     expect(await db.db.blobs.findFirst({ key: a.key })).toMatchObject({
-      refs: 1,
+      refs: 2,
     });
   });
 

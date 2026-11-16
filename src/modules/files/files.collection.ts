@@ -62,3 +62,30 @@ export const recents = defineCollection({
     { key: { nodeId: 1 }, name: "recents_node" },
   ],
 });
+
+// One version of a file (plan §3.3): the blob the file held from this `number`
+// on. Numbers count from 1 per file with no gap (they are taken in the
+// transaction that records the version, under the tree lock) and are never
+// reused after a delete. The row holds one `blobs.refs` of its blob, as the
+// node holds one of the current blob. `restoredFrom` is the number of the
+// version a restore copied; `createdBy` the account that made it.
+export const versions = defineCollection({
+  name: "versions",
+  schema: z.object({
+    _id: id(),
+    fileId: objectId(),
+    number: z.number().int().positive(),
+    blobKey: z.string().min(1),
+    size: z.number().int().nonnegative(),
+    mimeType: z.string().min(1),
+    createdBy: z.string().min(1),
+    note: z.string().nullable().default(null),
+    restoredFrom: z.number().int().positive().nullable().default(null),
+  }),
+  timestamps: true,
+  indexes: [
+    { key: { fileId: 1, number: 1 }, unique: true, name: "versions_number" },
+    { key: { blobKey: 1 }, name: "versions_blob" },
+    { key: { createdAt: 1 }, name: "versions_created" },
+  ],
+});

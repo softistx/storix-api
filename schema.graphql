@@ -285,6 +285,11 @@ type File implements Node {
   type: NodeType!
   updatedAt: DateTime!
   version: Int!
+  """
+  The versions of the file, newest first. A file made before versions existed
+  gets its version 1 the first time they are read. Needs `nodes:read`.
+  """
+  versions: [FileVersion!]!
 }
 
 enum FileFamily {
@@ -312,6 +317,28 @@ enum FileStatus {
   FAILED
   PROCESSING
   READY
+}
+
+"""One version of a file: the blob it held from this number on."""
+type FileVersion {
+  createdAt: DateTime!
+  """The account id of whoever made the version."""
+  createdBy: String!
+  """The version the file shows now; it is never deleted."""
+  current: Boolean!
+  id: ID!
+  """
+  The media key of this version's object: `GET /media/files/<key>` reads it while the file is in the caller's tree.
+  """
+  key: String!
+  mimeType: String!
+  note: String
+  """1 for the first, then up by one with each version made; never reused."""
+  number: Int!
+  """The number of the version a restore copied; null for an upload."""
+  restoredFrom: Int
+  """The size in bytes, as the storage reported it."""
+  size: Float!
 }
 
 """A point of a picture, as fractions of it from its top left corner."""
@@ -656,6 +683,17 @@ type Mutation {
   """
   addFile(input: AddFileInput!): File!
   """
+  Puts an uploaded object (the key `PUT /media/files` answered) into a file as
+  its new current version and answers the file. The file's name, tags and
+  metadata stay; its type, size and previews follow the new object (`PROCESSING`
+  for a picture or a PDF until the worker is done, and a picture's focal point
+  goes back to the centre). Needs `nodes:manage`. 404 `nodes.errors.not-found`;
+  400 `files.errors.not-a-file` (field `id`) for a folder; 400
+  `files.errors.key-unknown` (field `key`) as `addFile`; 413
+  `quotas.errors.exceeded`; 503 `storage.errors.unavailable`.
+  """
+  addFileVersion(fileId: ID!, key: String! @constraint(minLength: 1, maxLength: 100), note: String @constraint(maxLength: 500)): File!
+  """
   Changes a member's role. Needs `members:manage` (OWNER, ADMIN) AND a fresh
   session (403 `auth.errors.step-up-required`: `requestStepUp` then
   `confirmStepUp`); only an OWNER may make or change an owner (403
@@ -714,6 +752,13 @@ type Mutation {
   empty name); 429 `auth.errors.rate-limited`.
   """
   createWorkspace(input: CreateWorkspaceInput!): Workspace!
+  """
+  Deletes a version that is not the current one; an object nothing else holds
+  is removed by the next sweep. Answers the file. Needs `nodes:manage`. 404
+  `nodes.errors.not-found`; 404 `versions.errors.not-found` (field
+  `versionId`); 409 `versions.errors.is-current` (field `versionId`).
+  """
+  deleteFileVersion(fileId: ID!, versionId: ID!): File!
   """Deletes a team. Needs `teams:manage`. 404 `teams.errors.not-found`."""
   deleteTeam(id: ID!): Boolean!
   """
@@ -809,6 +854,14 @@ type Mutation {
   Sets a new password with the token of the reset mail and signs the account out everywhere. 400 `identity.errors.token-invalid`; 400 `validation.errors.invalid-input`.
   """
   resetPassword(password: String! @constraint(maxLength: 1024), token: String! @constraint(maxLength: 200)): Boolean!
+  """
+  Makes a new current version that holds the object of an older one: no object
+  is stored and the quota does not move; the older version stays in the list.
+  Needs `nodes:manage`. 404 `nodes.errors.not-found`; 404
+  `versions.errors.not-found` (field `versionId`); 409
+  `versions.errors.is-current` (field `versionId`) for the current version.
+  """
+  restoreFileVersion(fileId: ID!, note: String @constraint(maxLength: 500), versionId: ID!): File!
   """
   Takes a pending invitation back. NOT_FOUND as `resendInvitation`,
   INVITATION_NOT_PENDING (409) when it is accepted or already revoked.
@@ -958,6 +1011,12 @@ enum OnConflict {
   Keep the existing node and name the new file `name (1).ext`, `name (2).ext`…
   """
   KEEP_BOTH
+  """
+  Put the upload into the file of that name as its new current version (a
+  folder of that name is a `name-taken`; with no file of that name, a new file
+  is made).
+  """
+  NEW_VERSION
   """Refuse a name a sibling already holds (409 `nodes.errors.name-taken`)."""
   REFUSE
 }

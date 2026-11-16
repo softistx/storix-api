@@ -1,20 +1,23 @@
 import type { MediaBucket } from "@alxia/media";
 import type { CollectionsOf, ModuleHandle } from "@alxia/modules";
-import { ConflictError, type Mongo } from "@softistx/mongo";
+import type { Mongo } from "@softistx/mongo";
 import { addUsage, type WorkspacesMongo } from "@/core/workspaces";
 import {
   insertFile,
   lockTree,
   type NodeDoc,
-  type NodesMongo,
   named,
   nodesMongo,
   type OnConflict,
+  sameNameSibling,
 } from "@/modules/nodes/public";
 import { type RenditionJob, renditionJobId } from "@/queues/renditions";
+import { KeyRecorded, recordBlob } from "./files.blob";
 import { keyUnknown } from "./files.errors";
 import { discardObject, storedObject } from "./files.object";
 import { type RenditionsQueue, renditionKindOf } from "./files.renditions";
+import { makeFirstVersion } from "./files.versions.first";
+import { pushVersion } from "./files.versions.push";
 
 // The module's handle on a workspace's database: its own collection, and the
 // nodes it records files in.
@@ -23,12 +26,26 @@ export type FilesMongo = ModuleHandle<
   Mongo<{ collections: CollectionsOf }>
 >;
 
-// A key that a blob already holds, raised inside the transaction so that the
-// node's own `ConflictError` (`name-taken`) is not mistaken for it.
-class KeyRecorded extends Error {}
-
 // Tries `KEEP_BOTH` again when a writer took the free name first.
 const ATTEMPTS = 3;
+
+// What `addFile` answers: the file, and the number of the version it made
+// when the upload went into an existing file (`NEW_VERSION`), else null.
+export interface Added {
+  node: NodeDoc;
+  appended: number | null;
+}
+
+// What `addFile` is given; `NEW_VERSION` is the one conflict rule of the
+// files module (the nodes module knows `REFUSE` and `KEEP_BOTH`).
+export interface AddInput {
+  workspaceId: string;
+  accountId: string;
+  key: string;
+  name: string;
+  parentId: string;
+  onConflict: OnConflict | "NEW_VERSION";
+}
 
 // Records an uploaded object as a file under a folder of the caller's tree
 // (plan §3.5): the object must lie under this workspace's `files` prefix and
@@ -36,6 +53,9 @@ const ATTEMPTS = 3;
 // and the node are one transaction, so a key is never half recorded.
 // `key-unknown` for a key that is not recordable, `name-taken` (REFUSE) for a
 // name a sibling holds, `not-found` / `not-a-folder` for the folder.
+// `NEW_VERSION` puts the upload into the file of that name as a new current
+// version (a folder of that name is `name-taken`; no file of that name makes a
+// new file). A new file is recorded with its version 1.
 // A picture or a PDF is recorded `PROCESSING` and a `renditions` job is added
 // once the transaction commits (the worker makes `thumb` and `preview`, plan
 // §3.14); any other type, or no queue, is `READY` at once. A job that cannot be
@@ -48,47 +68,26 @@ export async function addFile(
   core: WorkspacesMongo,
   bucket: MediaBucket | undefined,
   renditions: RenditionsQueue | undefined,
-  input: {
-    workspaceId: string;
-    accountId: string;
-    key: string;
-    name: string;
-    parentId: string;
-    onConflict: OnConflict;
-  },
-): Promise<NodeDoc> {
+  input: AddInput,
+): Promise<Added> {
   const object = await storedObject(bucket, input.workspaceId, input.key);
   const rendered = renditions && renditionKindOf(object.mimeType) !== null;
   for (let attempt = 1; ; attempt++) {
     try {
-      const node = await named(() =>
-        mongo.transaction(async (tx) => {
-          await lockTree(nodesMongo(tx), input.accountId);
-          await recordBlob(tx, input.key, object);
-          await addUsage(core.withSession(tx.session), input.workspaceId, {
-            bytes: object.size,
-            files: 1,
-          });
-          return insertFile(nodesMongo(tx), {
-            parentId: input.parentId,
-            accountId: input.accountId,
-            name: input.name,
-            onConflict: input.onConflict,
-            blobKey: input.key,
-            mimeType: object.mimeType,
-            size: object.size,
-            status: rendered ? "PROCESSING" : "READY",
-          });
-        }),
+      const done = await named(() =>
+        mongo.transaction((tx) =>
+          record(tx, core, input, object, rendered ? "PROCESSING" : "READY"),
+        ),
       );
-      return rendered
+      const node = rendered
         ? await enqueue(
             mongo,
             renditions,
             { workspaceId: input.workspaceId, key: input.key },
-            node,
+            done.node,
           )
-        : node;
+        : done.node;
+      return { ...done, node };
     } catch (error) {
       if (error instanceof KeyRecorded) throw keyUnknown();
       if (isQuotaExceeded(error)) {
@@ -106,6 +105,52 @@ export async function addFile(
       throw error;
     }
   }
+}
+
+// The transaction of `addFile`: the tree lock first, then a new file with its
+// version 1, or the new version of the file the name already holds.
+async function record(
+  tx: FilesMongo,
+  core: WorkspacesMongo,
+  input: AddInput,
+  object: { size: number; mimeType: string },
+  status: "READY" | "PROCESSING",
+): Promise<Added> {
+  await lockTree(nodesMongo(tx), input.accountId);
+  if (input.onConflict === "NEW_VERSION") {
+    const same = await sameNameSibling(nodesMongo(tx), input);
+    if (same?.type === "FILE") {
+      const { node, number } = await pushVersion(tx, core, same, {
+        workspaceId: input.workspaceId,
+        accountId: input.accountId,
+        blob: { key: input.key, ...object },
+        fresh: true,
+        status,
+        note: null,
+        restoredFrom: null,
+      });
+      return { node, appended: number };
+    }
+  }
+  await recordBlob(tx, input.key, object, 2);
+  await addUsage(core.withSession(tx.session), input.workspaceId, {
+    bytes: object.size,
+    files: 1,
+  });
+  const file = await insertFile(nodesMongo(tx), {
+    parentId: input.parentId,
+    accountId: input.accountId,
+    name: input.name,
+    onConflict: input.onConflict === "KEEP_BOTH" ? "KEEP_BOTH" : "REFUSE",
+    blobKey: input.key,
+    mimeType: object.mimeType,
+    size: object.size,
+    status,
+  });
+  return {
+    node: await makeFirstVersion(tx, file, input.accountId),
+    appended: null,
+  };
 }
 
 // Adds the node's `renditions` job (`redo` names a repeat of the same blob's
@@ -147,31 +192,24 @@ export const isQuotaExceeded = hasCode("quotas.errors.exceeded");
 
 const isNameTaken = hasCode("nodes.errors.name-taken");
 
-async function recordBlob(
-  tx: FilesMongo,
-  key: string,
-  object: { size: number; mimeType: string },
-) {
-  if (await tx.db.blobs.findFirst({ key })) throw new KeyRecorded();
-  try {
-    await tx.db.blobs.create({ key, ...object, refs: 1 });
-  } catch (error) {
-    // Two recorders of one key at once: the unique index settles it.
-    if (error instanceof ConflictError) throw new KeyRecorded();
-    throw error;
-  }
-}
-
 // Whether the account may read a `files` object: a live node of their own
-// tree holds the key (sharing widens this one question later).
+// tree holds the key, as its blob or as one of its versions' (sharing widens
+// this one question later).
 export async function mayRead(
-  mongo: NodesMongo,
+  mongo: FilesMongo,
   read: { key: string; accountId: string },
 ): Promise<boolean> {
-  const node = await mongo.db.nodes.findFirst({
+  const own = { ownerId: read.accountId, trashedAt: null };
+  if (await mongo.db.nodes.findFirst({ blobKey: read.key, ...own })) {
+    return true;
+  }
+  const fileIds = await mongo.db.versions.raw.distinct("fileId", {
     blobKey: read.key,
-    ownerId: read.accountId,
-    trashedAt: null,
+  });
+  if (fileIds.length === 0) return false;
+  const node = await mongo.db.nodes.findFirst({
+    _id: { $in: fileIds },
+    ...own,
   });
   return node !== undefined;
 }
