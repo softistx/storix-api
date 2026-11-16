@@ -27,7 +27,8 @@ describe("the core migrations", () => {
   // The ids a database may already have applied (what `develop` shipped before
   // E3), in order. A new migration is listed after them, never among them: the
   // runner throws "pending and listed before one that is already applied".
-  // This list is frozen; add a new id to `ADDED`, not here.
+  // Append each id here once it ships on develop; a new migration's id must
+  // sort after the last shipped one.
   const SHIPPED_CORE = [
     "2026-11-13-auth-validation-errors",
     "2026-11-14-identity-errors",
@@ -41,8 +42,15 @@ describe("the core migrations", () => {
     "2026-11-19-quotas-errors",
     "2026-11-20-files-focal-errors",
     "2026-11-20-workspaces-quota",
+    "2026-11-21-versions-errors",
+    "2026-11-21-versions-trash-errors",
+    "2026-11-21-workspaces-settings",
   ];
-  const SHIPPED_WORKSPACE = ["2026-11-15-nodes-listing-collation"];
+  const SHIPPED_WORKSPACE = [
+    "2026-11-15-nodes-listing-collation",
+    "2026-11-21-nodes-trash-indexes",
+    "2026-11-21-versions-indexes",
+  ];
 
   test("the core ids a database already ran are a frozen prefix of the list", () => {
     const ids = migrations.map((m) => m.id);
@@ -54,6 +62,23 @@ describe("the core migrations", () => {
     expect(ids.slice(0, SHIPPED_WORKSPACE.length)).toEqual(SHIPPED_WORKSPACE);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toEqual([...ids].sort());
+  });
+
+  test("every migration not yet shipped sorts after the last shipped id", () => {
+    const after = (all: string[], shipped: string[]) =>
+      all.slice(shipped.length).every((id) => id > (shipped.at(-1) ?? ""));
+    expect(
+      after(
+        migrations.map((m) => m.id),
+        SHIPPED_CORE,
+      ),
+    ).toBe(true);
+    expect(
+      after(
+        migrationsOf(modules).map((m) => m.id),
+        SHIPPED_WORKSPACE,
+      ),
+    ).toBe(true);
   });
 
   test("assertMigrated refuses a pending migration, then passes once applied", async () => {

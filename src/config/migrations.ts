@@ -9,7 +9,7 @@ import { modules } from "../modules/registry";
 // the ones a database already ran: grouping by module would put it mid-list.
 export const migrations: readonly Migration[] = coreMigrationsOf(
   modules,
-).toSorted((a, b) => a.id.localeCompare(b.id));
+).toSorted((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
 // The database has migrations this build lists that were not applied
 // (`bun run db:migrate` applies them).
