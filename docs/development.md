@@ -27,6 +27,15 @@ The services keep running when the API stops: `bun run services:down` stops them
 
 Each port is overridable in `.env` (see `.env.example`).
 
+### The worker
+
+`bun run worker` (`src/worker.ts`) starts the queue worker beside the API: it consumes the `renditions` queue that
+`addFile` fills. It needs the same `REDIS_URL`, `S3_*` and `MONGO_URI` settings as the API (it exits 1 without Redis or the
+bucket) and shares the dev services (`bun run services:up`). Without it, a JPEG, PNG, WebP or PDF recorded by `addFile`
+stays `PROCESSING`. In production run `bun --no-install dist/worker.js` (`bun run build` writes it with `dist/server.js`)
+in a second container; SIGTERM waits up to 20 seconds for running jobs. The specs start their own worker over the spec
+Redis (`filesWorld({ renditions: true })`). The PDF renderer needs `pdfjs-dist` and `@napi-rs/canvas`, both prebuilt.
+
 ## The green bar
 
 `bun run verify` runs, in order: `generate`, `schema:print --check` (`schema.graphql` is
@@ -36,6 +45,7 @@ replica set.
 - `context:check`: every error code declared with `defineCodes` has a row in `CONTEXT.md`.
 - `deps:check`: no file outside `src/core/identity/**` and `src/config/auth.ts` imports a
   `@softistx/janus*` package (the identity seam, plan §3.11).
+- `workspace:quota <slug> <bytes|20GiB|default>` sets a quota; `quota:reconcile` recounts every workspace's usage and fixes any drift; `storage:sweep` removes unreferenced storage (see the orphan sweep below).
 - `verify:pr` selects the specs that are, or import, a changed file (`src/scripts/affected-tests.ts`);
   a change to shared infrastructure runs them all.
 
@@ -110,11 +120,50 @@ An admin invites an address into the request's workspace; the invitee accepts wi
 - A team of another workspace is 404 `teams.errors.not-found`: the request's workspace database is the only one a resolver reaches.
 - A member who is removed or leaves is taken out of every team: the kernel cannot import a business module, so `src/core/members` exposes `onMemberRemoved` and `teams` registers itself when its manifest loads; `removeMember` and `leaveWorkspace` call the listeners once the membership has ended. A listener that fails is logged and never undoes the removal; the `Team` view only ever lists current members, so a missed clean-up stays invisible.
 
+## Files storage (`/media`)
+
+`src/core/storage` mounts `@alxia/media` at `/media` after the auth middleware (`src/app.ts`), over one private bucket (`S3_BUCKET`, bound with `@softistx/s3`; SeaweedFS locally, `bun run services:up`). Without `S3_BUCKET`, `S3_ACCESS_KEY` and `S3_SECRET_KEY` every route answers 503 `storage.errors.unavailable`.
+
+- `PUT /media/<kind>` stores the raw body (send `Content-Length`) and answers `{ key, contentType, size }`; `GET /media/<kind>/<key>` streams it with `Range`, `ETag` and `If-None-Match` (206, 304, 416).
+- Kinds (`storage.kinds.ts`): `files` takes any type up to 95 MiB (known signatures sniffed; a type outside the inline-safe list is served as a download) and `avatars` takes JPEG, PNG and WebP up to 10 MiB, stores only its `64` and `256` px squares (EXIF dropped, `keepOriginal: false`). Both use `Cache-Control: private, no-cache`, so a reader who lost access is refused on the next use.
+- Every object is stored at `workspaces/<workspaceId>/<kind>/<key>` (`keyPrefix`): the `x-storix-workspace` header picks the prefix, so a key of another workspace is a 404. Any member may upload; a `files` object is read only while a live node of the caller's own tree holds its key (the app hands the routes the `files` module's `fileReader`, so the kernel stays free of business modules and holds no global state; `avatars` stay readable by members). A personal API key is refused until keys are bound to workspaces.
+- Uploads are limited per account and workspace, 30 a minute with a burst of 60 (`@softistx/redis`, `storage.limit.ts`); unlike the sign-in limits it fails closed when Redis does not answer. Unset `REDIS_URL` limits nothing.
+- Every refusal is `/graphql`'s error shape with a `storage.errors.*` code (CONTEXT.md, docs/troubleshooting.md).
+- The specs go through `app.fetch` on a real SeaweedFS (`@softistx/s3/testing`, downloaded once, no Docker) and a real Redis.
+
+## Folders
+
+`src/modules/nodes` keeps the workspace's tree in its own database: one `nodes` collection for folders and files. The fields: `roots`, `folders(parentId)`, `nodePath(id)`, `node(id)`, `nodes(parentId, …)`, `createFolder`, `renameNode`, `moveNodes` (and `addFile`, below).
+
+- **A private root per member.** Each member owns one root folder, "My files" (`parentId` null, `ancestors` empty). Nothing in another member's tree is readable: an owner and an admin included, it is 404 `nodes.errors.not-found`, like an unknown or malformed id (sharing, a later slice, widens that one rule). `nodes:read` and `nodes:manage` are held by `ADMIN` and `MEMBER` (and `OWNER`, who holds all). A personal API key is refused.
+- **Made at joining.** `src/core/members` exposes `onMemberJoined`; `nodes` registers itself when its manifest loads, and `memberJoined` runs the listeners once the membership is written (the workspace's creator, an accepted invitation). It is also made on the first `roots`, `createFolder` or `moveNodes`, for a member who joined before the module existed or whose set-up failed; two makers at once leave one (a unique index per owner).
+- **Names** are trimmed, 1 to 255 characters, with no `/`, `\` or control character, and not `.` or `..` (400 `validation.errors.invalid-input`, field `name`). They are unique among the live siblings of a parent ignoring case (collation `en`, strength 2): 409 `nodes.errors.name-taken`.
+- **Depth** is at most 16, a root being 1: 409 `nodes.errors.too-deep` for a create or a move that would pass it (a move counts the deepest node of the subtree).
+- **`ancestors`** lists the ids from the root to the parent, so a subtree is one index read. A move rewrites the `ancestors` of the whole subtree in one transaction, up to 5,000 nodes (409 `nodes.errors.move-too-large`). A folder moved into itself or its own subtree is 409 `nodes.errors.cycle`. A root is never renamed nor moved (409 `nodes.errors.root-locked`). A parent that is not a folder is 400 `nodes.errors.not-a-folder`.
+- **Concurrency.** `renameNode` carries the `version` read with the node and refuses a stale one (409 `nodes.errors.conflict`: a rename or a move came first). Every write that changes the shape of a tree (create, move) first raises the root's `treeRev` in its transaction, so two of them at once conflict and the later one runs again on the result of the earlier one: no cycle, no stale `ancestors`. `moveNodes` is all or nothing (1 to 100 ids; a node selected with its own parent moves with it, once; a node already in the folder is left as it is).
+
+## Files (`addFile`, `node`, `nodes`)
+
+`src/modules/files` records an upload; `src/modules/nodes` lists. `addFile(input: { key, name, parentId, onConflict })` needs `nodes:manage`. It opens the object under `workspaces/<workspaceId>/files/<key>` (`storedObject`: type and size come from there; a missing, empty or foreign object is 400 `files.errors.key-unknown`, an unreachable bucket 503), then in one transaction raises the tree's `treeRev`, writes the `blobs` row (unique `key`: a second recorder loses with `key-unknown`) and the `FILE` node. `REFUSE` is `nodes.errors.name-taken`; `KEEP_BOTH` picks `stem (n).ext` and tries again up to 3 times if a writer took the name first. The audit event is `file.add` (parent, type, size; never the key).
+
+- **`nodes(parentId, filter, sort, first, after)`**: folders first, then the sort keys (`NAME`; `DATE` is `updatedAt`; `SIZE` then name; `KIND` is the family then name), then `_id`, in the direction asked, so the order is total. `families` is any of, `tags` all of, `name` a case-insensitive contains. The cursor is a keyset of the last row's sort values, bound to the folder, filter and sort by a hash: another listing's cursor is 400 `validation.errors.invalid-cursor`. A row added meanwhile never repeats or skips a row of the walk.
+- **`family`** comes from the MIME type (`nodes.family.ts`); unknown types are `OTHER`. `tags` and `meta` are stored, set by a later slice. `status` is `PROCESSING` for a JPEG, PNG, WebP or PDF until the renditions worker has rendered its `thumb` and `preview` and, for a picture, its four crops; `setFocalPoint` puts it back to `PROCESSING` while the crops are redone (then `READY`, or `FAILED` when only the previews or crops failed; the original stays downloadable), and `READY` for any other type or when `REDIS_URL` is unset.
+- **The bucket** reaches the resolvers through the GraphQL context (`ctx.media`), the same one `/media` uses.
+- **Favourites and recents** (`files.favourites.ts`, `files.recents.ts`, `files.personal.ts`): the `stars` and `recents` collections hold one row per account and node. Both lists page the rows newest first by a keyset cursor `[date, _id]` bound to the list and the member, look up the nodes in batches of 100 and skip rows whose node is trashed, gone or not the member's, so a restore brings them back and a trash writes nothing. `recents` keeps 200 per member (the oldest are removed when one is noted). `addFile` notes the upload after its commit; if noting fails it is logged and the upload stands. `setStarred` and `openFile` record no audit event: they are a member's own preferences.
+
+## Orphan sweep (`storage:sweep`)
+
+`bun run storage:sweep` runs `sweepAll` (`src/modules/files/files.sweep.ts`, exported by the module's `public.ts`; the worker does not schedule it yet, run it hourly from the host): per active workspace, `sweepWorkspace` removes first the blobs with `refs` 0, then the unrecorded objects. A released blob is deleted with a filter that matches only while `refs` is 0, then its object (`workspaces/<id>/files/<key>`) and every key under `<key>/` (its sizes) are deleted through the bucket. An unrecorded object (no blob holds its key) last written more than 75 minutes ago is removed with its sizes; each key is first claimed with a `refs` 0 blob, so a concurrent `addFile` of it either committed first (the claim conflicts and the object stays) or finds the claim and is refused `key-unknown`: an object recorded within the margin is never swept.
+
+Known limit: an `addFile` that opened the object, then sat until a sweep claimed and removed it (more than 75 minutes after the upload), can still record a blob whose object is gone.
+
+Run one sweep at a time (a host lock such as `flock`): a second run sees the first run's claims as released blobs. A claim a crash leaves is a released blob the next run removes. Usage is not touched: `recountStorage` counts only `refs` above 0. A run removes at most 1,000 objects per workspace; a delete that fails is logged and counted, and the next run retries. A page of 10 or more old keys in a workspace with no blob at all is not swept (a wrong database against the real bucket). The bucket is `openBucket`'s, which now also exposes `list`. The `files` kind now declares its sizes (`thumb`, `preview`), and the sweep still removes them by listing the object's prefix, so a size written after its file was deleted is removed too.
+
 ## Audit log
 
 `src/core/audit` keeps an append-only log of the workspace's writes in the workspace's own database (`auditEvents`). The kernel's `audit.record(event)` port is called by a resolver after the write committed; a failure to record is logged (`console.error`) and never undoes the write. Modules reach it through `@/core/audit` and declare `dependsOn: ["audit"]`.
 
-- **Events**: `workspace.create`; `member.role-change` (`from`, `to`), `member.remove`, `member.leave` (`accountId`, `role`); `invitation.issue`, `invitation.resend`, `invitation.revoke`, `invitation.accept` (`role`; the target's name is the invitee's email); `team.create`, `team.rename` (`from`, `to`), `team.set-members` (`count`, `added`, `removed`), `team.delete`. A role change to the same role and a refused write record nothing. There is no workspace-update mutation in this effort, so no event for one.
+- **Events**: `workspace.create`; `quota.exceeded` (`addFile` refused by the quota); `member.role-change` (`from`, `to`), `member.remove`, `member.leave` (`accountId`, `role`); `invitation.issue`, `invitation.resend`, `invitation.revoke`, `invitation.accept` (`role`; the target's name is the invitee's email); `team.create`, `team.rename` (`from`, `to`), `team.set-members` (`count`, `added`, `removed`), `team.delete`; `node.folder-create` (`parentId`), `node.rename` (`from`, `to`), `node.move` (`from`, `to`), `node.copy` (`from` the source id, `parentId`), `file.add` (`parentId`, `mimeType`, `size`), `file.update` (`changed`: `tags`, `meta`, or both; never the values), `file.focal` (a move of a picture's focal point; the target only, never the coordinates). A role change to the same role and a refused write record nothing. There is no workspace-update mutation in this effort, so no event for one.
 - **Shape**: `at`, `actor` (`type` MEMBER, API_KEY, TOKEN or LINK; `id`; `label`), `action`, `target` (`type`, `id`, `name`), `ipHash`, `meta` (strings, numbers and booleans). `meta` never holds a secret: an invitation code, a password or a token is not recorded, and a key whose name looks like one is dropped.
 - **`ipHash`** is the HMAC-SHA256 (hex) of the client address under `AUDIT_IP_KEY`, never the address. The same address gives the same hash, so events can be correlated; rotating the key breaks the correlation with older events. `AUDIT_IP_KEY` is required in production (32 characters or more) and has a development default.
 - **Retention**: a TTL index removes an event after 365 days. Indexes: `at`, `target.id` + `at`, `actor.id` + `at`.

@@ -199,6 +199,16 @@ mutation { requestStepUp { method challenge } }
 mutation { confirmStepUp(challenge: "...", code: "123456") }
 ```
 
+## `auth.errors.forbidden` (403)
+
+Any operation can answer 403 with this code.
+
+**When:** the signed-in member lacks the permission the operation needs (for example a MEMBER calling `auditEvents`, which needs `audit:read`, or managing members).
+
+**Why:** the permission check runs before the operation, and the role's grants (OWNER holds all, ADMIN has `defaultGrants`) do not include it.
+
+**Fix:** ask an OWNER or an ADMIN with the permission to do it, or to change your role. Retrying the same call does not help.
+
 ## `teams.errors.name-taken` (409) and `member-unknown` (400)
 
 **When:** `createTeam` or `renameTeam` with a name another team of the workspace already has (`name-taken`, field `name`); `setTeamMembers` with an id that is not a current member of the request's workspace (`member-unknown`, field `memberIds`).
@@ -213,6 +223,22 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 
 **Fix:** send the `x-storix-workspace` header of the workspace that owns the team, and an id from its `teams`.
 
+## `storage.errors.*` on `/media`
+
+**When:** `PUT /media/<kind>` or `GET /media/<kind>/<key>` is refused. The body is `/graphql`'s shape, `{ "errors": [{ "message", "extensions": { "code", "params" } }] }`, with the refusal's status.
+
+**Why and fix, by code:**
+- `not-found` (404; a `files` object is also 404 until `addFile` records its key, and for any member but its owner): the key is not in the workspace named by `x-storix-workspace`. A key of another workspace, an unknown one and a caller who may not read are the same answer. Send the header of the workspace that stored the file.
+- `too-large` (413, `params.limitMib`): the `Content-Length` is over the kind's limit (`files` 95 MiB, `avatars` 10 MiB); nothing was read or stored.
+- `unsupported-type` (415): `avatars` takes JPEG, PNG and WebP only, and the first bytes must match the declared `Content-Type`. `files` takes any type.
+- `empty` (400): a zero-length body. `interrupted` (400): the body ended short of, or ran past, its `Content-Length`; send it again.
+- `rate-limited` (429): 30 uploads a minute per account and workspace (burst 60). Wait `params.seconds` (also the `Retry-After` header). Uploads fail closed: with Redis down the answer is the same 429 with `params.seconds` 5.
+- `unavailable` (503): `S3_BUCKET`, `S3_ACCESS_KEY` and `S3_SECRET_KEY` are not all set, or the store did not answer. Locally run `bun run services:up` and copy the `S3_*` lines of `.env.example`.
+- `unprocessable` (422): an avatar could not be decoded or is smaller than 64 px on its short side; nothing stays stored. Send a valid JPEG, PNG or WebP.
+- `stalled` (408): the client sent nothing for 60 seconds during the upload; send it again and keep the connection moving.
+- `range-not-satisfiable` (416): the `Range` starts past the end; `Content-Range: bytes */<size>` carries the size.
+- A request with no session is 401 `auth.errors.unauthenticated`, with no workspace header 400 `workspaces.errors.workspace-required`, and a personal API key 401 `auth.errors.api-key-not-accepted` (keys are bound to workspaces in a later slice).
+
 ## `AUDIT_IP_KEY` must be at least 32 characters (boot error in production)
 
 **When:** the API refuses to start in production with an environment error naming `AUDIT_IP_KEY`.
@@ -221,8 +247,137 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 
 **Fix:** set `AUDIT_IP_KEY` to a random secret of 32 characters or more (for example `openssl rand -hex 32`). Changing it later only breaks the correlation of old and new `ipHash` values.
 
-## `validation.errors.invalid-cursor` (400) on `auditEvents`
+## `validation.errors.invalid-cursor` (400) on `auditEvents` and `nodes`
 
-**When:** `auditEvents` is called with an `after` that is malformed, or that came from a page read with another `filter`.
+**When:** `auditEvents` or `nodes` is called with an `after` that is malformed, or that came from a page read with another `filter` (for `nodes`, another folder, filter or sort too).
 
 **Fix:** start again without `after`, then send each page's `endCursor` with the same `filter`.
+
+## `nodes.errors.not-found` (404) for a folder that exists
+
+**When:** `createFolder`, `renameNode`, `moveNodes`, `folders` or `nodePath` named an id that is not in the caller's own tree: malformed, unknown, of another workspace, or in another member's tree (an owner's or an admin's included).
+
+**Why:** the four answer alike so that an id tells nothing, and a member's files are private until they are shared.
+
+**Fix:** send the `x-storix-workspace` header of the workspace and an id from the caller's own `roots` or `folders`.
+
+## `nodes.errors.conflict` (409) on `renameNode`
+
+**When:** the `version` sent is not the folder's current one.
+
+**Why:** the folder was renamed or moved since the client read it; the rename is refused instead of overwriting.
+
+**Fix:** read the node again (`nodePath`, `folders`), then rename with its new `version`.
+
+## `nodes.errors.name-taken`, `too-deep`, `cycle`, `move-too-large`, `root-locked` (409)
+
+**When:** a sibling holds the name in any case (`name-taken`, field `name`); the folder would pass 16 levels (`too-deep`); a folder is moved or copied into itself or its own subtree (`cycle`); the moved folder holds more than 5,000 nodes (`move-too-large`); a root is renamed or moved (`root-locked`).
+
+**Fix:** pick another name or destination. `too-deep`: flatten the destination. `move-too-large`: move the folder's sub-folders in turn (`moveNodes` takes up to 100 ids and applies all or nothing).
+
+## `files.errors.key-unknown` (400) on `addFile`
+
+**When:** `addFile` named a `key` (field `key`) that is not a recordable upload.
+
+**Why:** the object is looked up under this workspace's `files` prefix, so a key of another workspace or of another kind (an avatar), a malformed key and a key never uploaded all fail alike; so does an empty object and a key a file already holds (a key is recorded once).
+
+**Fix:** upload again with `PUT /media/files` in the same workspace (`x-storix-workspace`) and record the key it answers, once. For a second file, upload again.
+
+## `bun run storage:sweep` exits 1
+
+**When:** the script printed `no bucket`, `workspace <id>: not swept` or a count of objects `not removed`.
+
+**Why:** without `S3_BUCKET`, `S3_ACCESS_KEY` and `S3_SECRET_KEY` there is nothing to sweep. A workspace whose database could not be opened or listed fails alone, the others are swept. An object the storage refused to delete (`storage sweep <id>: <key> not removed` on stderr) stays and is retried by the next run; a run also stops at 1,000 deletes per workspace. A page of 10 or more old unrecorded keys in a workspace with no blob is skipped on purpose (`storage sweep <id> stopped`): check that `MONGO_URI` and `S3_BUCKET` belong together.
+
+**Fix:** set the bucket variables, or run the script again once the storage answers. Usage never needs the sweep: `bun run quota:reconcile` recounts it.
+
+## `files.errors.not-a-file` (400) on `updateFile`
+
+**When:** `updateFile` named a folder (field `id`).
+
+**Why:** tags and metadata belong to files; a folder has neither.
+
+**Fix:** send the id of a file. Folders are renamed with `renameNode`.
+
+## `files.errors.not-a-file` (400) on `openFile`
+
+**When:** `openFile` named a folder (field `id`).
+
+**Why:** only a file is opened and noted among the recent files.
+
+**Fix:** send the id of a file; list a folder with `nodes`.
+
+## `nodes.errors.not-found` (404) on `setStarred` or `openFile`
+
+**When:** the id is unknown, another member's, or (to star, or to open) a trashed node.
+
+**Why:** favourites and recents belong to your own tree. A trashed node is treated as gone: it cannot be starred or opened, and its existing star or recent entry is hidden from `starred` and `recentFiles` until it is restored.
+
+**Fix:** restore the node, or send the id of a node of your own tree. Unstarring a trashed node of your own works.
+
+## `validation.errors.invalid-cursor` (400) on `starred` and `recentFiles`
+
+**When:** `after` is not a cursor this list gave you.
+
+**Why:** a cursor is bound to its list and to the member: `starred`'s cursor does not fit `recentFiles`, and another member's does not fit yours.
+
+**Fix:** page with the `pageInfo.endCursor` of the same list, or start again without `after`.
+
+## A picture is `PROCESSING` or `FAILED` after `setFocalPoint`
+
+**When:** the file was `READY`, and a move of its focal point leaves it `PROCESSING`, or `FAILED`.
+
+**Why:** a `crops` job redoes the four crops; without a running worker it stays `PROCESSING`, and if only it failed the file is `FAILED` (the original and the previews stay readable). Two quick moves queue two jobs: the file can read `READY` for a moment while the second still runs, and the crops follow the last point.
+
+**Fix:** start the worker (`bun run worker`), or call `setFocalPoint` again with the same point to redo the crops.
+
+## `files.errors.not-renderable` (400) on `setFocalPoint`
+
+**When:** `setFocalPoint` named a file that is not a JPEG, PNG or WebP picture (field `id`).
+
+**Why:** only these have crops. A PDF has previews only, and any other type has no rendition.
+
+**Fix:** send the id of a picture. A folder is `files.errors.not-a-file`.
+
+## `files.errors.invalid-focal` (400) on `setFocalPoint`
+
+**When:** `x` or `y` is not a number from 0 to 1 (field `focalPoint`).
+
+**Why:** the point is a fraction of the picture from its top left corner, not a pixel position.
+
+**Fix:** divide the pixel position by the picture's width and height, or send `focalPoint: null` to put the point back at
+the centre.
+
+## `files.errors.copy-too-large` (409) on `copyNodes`
+
+**When:** the folders to copy, with everything under them, hold more than 5,000 nodes in one call.
+
+**Why:** a copy makes one node per source node in one transaction, so its size is bounded like a move's.
+
+**Fix:** copy the folder's sub-folders in turn. Nothing was copied.
+
+## `quotas.errors.exceeded` (413)
+
+**When:** `PUT /media/files` or `addFile` would take the workspace past its `quotaBytes`.
+
+**Why:** the `PUT` compares the declared `Content-Length` (95 MiB when the body is chunked) with what is left, before reading the body, so no object is stored. `addFile` checks again atomically when it records the file, discards the object and writes a `quota.exceeded` audit event. Bytes shared by copies count once.
+
+**Fix:** free space or raise the quota with `bun run workspace:quota <slug> <bytes|20GiB|default>`. After a crash, `bun run quota:reconcile` recounts every workspace.
+
+## `nodes.errors.not-a-folder` (400)
+
+**When:** the `parentId` of `createFolder` or `moveNodes` names a node that is not a folder (field `parentId`).
+
+**Fix:** send the id of a folder of the caller's own tree.
+
+## A file stays `PROCESSING`, or ends `FAILED`, after `addFile`
+
+**When:** a JPEG, PNG, WebP or PDF recorded by `addFile` has no `thumb` or `preview` (`GET /media/files/<key>/thumb` is 404), and `status` is `PROCESSING` or `FAILED`.
+
+**Why and fix:**
+- `PROCESSING` for long: no worker consumes the `renditions` queue. Run `bun run worker` (dev) or `bun --no-install dist/worker.js` (production) with the API's `REDIS_URL`, `S3_*` and `MONGO_URI` setting. The job waits in Redis and runs once a worker starts.
+- The worker exits 1 at boot: `REDIS_URL` or the `S3_*` settings are missing. Set them like the API's.
+- `FAILED`: the previews could not be made. A size stored before the failure (the store failed midway, or the crops of an earlier focal point) is still served at `/media/files/<key>/<size>`: it is a valid rendition of the same original, kept on purpose, while `renditions` lists nothing until the file is `READY`. A picture that is corrupt or has too many pixels (over 50 million) fails at once; a transient error (bucket or database down) is retried 4 times with backoff first. The original is untouched and downloadable at `/media/files/<key>`. Fix the cause, then upload the file again.
+- `FAILED` right after `addFile`: Redis refused the job, so no preview will come; the file itself is recorded and downloadable.
+- Without `REDIS_URL` a file stays `READY` with no previews: that is the setting, not a fault.
+

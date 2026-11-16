@@ -88,6 +88,79 @@ export const teams = defineCodes("teams", [
   "member-unknown",
 ]);
 
+// The tree of folders (src/modules/nodes).
+export const nodes = defineCodes("nodes", [
+  // 404: no node with this id in the caller's tree (an unknown id, another
+  // workspace's and another member's node are one answer).
+  "not-found",
+  // 409: a sibling already has this name, in any case (field `name`).
+  "name-taken",
+  // 409: the folder would sit deeper than 16 levels.
+  "too-deep",
+  // 409: a folder moved into itself or its own subtree.
+  "cycle",
+  // 409: the node changed since the version the caller read.
+  "conflict",
+  // 400: the parent is not a folder (field `parentId`).
+  "not-a-folder",
+  // 409: the subtree has more than 5,000 nodes.
+  "move-too-large",
+  // 409: a root is never renamed nor moved.
+  "root-locked",
+]);
+
+// Recording uploaded files (src/modules/files).
+export const files = defineCodes("files", [
+  // 400 (field `key`): the key names no object that can be recorded: it is not
+  // a media key, no object of the `files` kind lies under it in this workspace
+  // (another workspace's key and another kind's are the same), or a file
+  // already holds it.
+  "key-unknown",
+  // 400 (field `id`): `updateFile` or `setFocalPoint` named a folder.
+  "not-a-file",
+  // 409: the copied folder, with what it holds, has more than 5,000 nodes.
+  "copy-too-large",
+  // 400 (field `id`): `setFocalPoint` named a file that is not a JPEG, PNG or
+  // WebP picture: only these have crops.
+  "not-renderable",
+  // 400 (field `focalPoint`): a coordinate that is not a number from 0 to 1.
+  "invalid-focal",
+]);
+
+// The workspace's storage quota (src/core/workspaces, src/modules/quotas).
+export const quotas = defineCodes("quotas", [
+  // 413: the file does not fit in what the workspace has left. Raised by the
+  // `/media` PUT from the declared length, before the body is read, and by
+  // `addFile`, which decides.
+  "exceeded",
+]);
+
+// The object store behind /media (src/core/storage). The refusals of the media
+// routes, in the GraphQL error shape.
+export const storage = defineCodes("storage", [
+  // 413: the upload is larger than its kind allows (`params.limitMib`).
+  "too-large",
+  // 415: the content type is not one the kind accepts, or its first bytes are
+  // not the declared type's.
+  "unsupported-type",
+  // 400: the upload has no bytes.
+  "empty",
+  // 429: too many uploads (`params.seconds`, and `extensions.retryAfter`).
+  "rate-limited",
+  // 503: the store did not answer, or is not configured.
+  "unavailable",
+  // 422: a picture could not be decoded or made into its sizes.
+  "unprocessable",
+  // 408: the client sent nothing for too long.
+  "stalled",
+  // 404: no such file in the workspace (also the answer for a refused reader).
+  "not-found",
+  // 416: the Range starts past the end of the file.
+  "range-not-satisfiable",
+  // 400: the body ended short of its declared length, or was cut.
+  "interrupted",
+]);
+
 // Every code the API answers with, in module order: the inventory. tsc refuses
 // a code that is not in it (`fail`, `FieldIssue`), the coverage spec requires
 // a message for each in every shipped language and a row in CONTEXT.md, and
@@ -101,6 +174,10 @@ export const errorCodes = [
   ...members,
   ...invitations,
   ...teams,
+  ...nodes,
+  ...files,
+  ...quotas,
+  ...storage,
 ] as const;
 
 export type ErrorCode = (typeof errorCodes)[number];

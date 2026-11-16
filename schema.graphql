@@ -93,6 +93,20 @@ every one. Repeated, every one must hold, in the order written.
 """
 directive @permission(id: String, name: String!, onDeny: JanusPermissionDenial! = NOT_FOUND, type: String!) repeatable on FIELD_DEFINITION | INTERFACE | OBJECT
 
+input AddFileInput {
+  """
+  The key `PUT /media/files` answered: the object must be in this workspace, of the `files` kind, and not recorded yet.
+  """
+  key: String! @constraint(minLength: 1, maxLength: 100)
+  """
+  The file's name: trimmed, at most 255 characters, no `/`, `\` or control character.
+  """
+  name: String! @constraint(minLength: 1, maxLength: 255)
+  onConflict: OnConflict! = REFUSE
+  """The folder of the caller's tree to put the file in."""
+  parentId: ID!
+}
+
 type AuditActor {
   """The account id (or key, token or link id)."""
   id: ID!
@@ -118,7 +132,7 @@ One thing that happened in the workspace. Never holds an address, a code, a pass
 """
 type AuditEvent {
   """
-  `<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete.
+  `<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete, node.folder-create, node.rename, node.move, node.copy, file.add, file.update, file.focal, quota.exceeded.
   """
   action: String!
   actor: AuditActor!
@@ -236,6 +250,94 @@ type ErrorMessage {
   code: String!
   """The ICU message, uninterpolated, that `extensions.params` fill."""
   message: String!
+}
+
+"""A file: a node that holds a stored object (`addFile` records it)."""
+type File implements Node {
+  ancestors: [ID!]!
+  createdAt: DateTime!
+  depth: Int!
+  family: FileFamily!
+  """Where the crops are centred; null is the centre of the picture."""
+  focalPoint: FocalPoint
+  id: ID!
+  """
+  The media key of the object: `GET /media/files/<key>` reads it. Never a URL.
+  """
+  key: String!
+  meta: JSONObject!
+  """The content type the storage reported when the file was uploaded."""
+  mimeType: String!
+  name: String!
+  parentId: ID
+  """One of the renditions, or null when the file does not have it (yet)."""
+  rendition(preset: RenditionPreset!): Rendition
+  """
+  The sizes available now: every one of a `READY` picture, `THUMB` and
+  `PREVIEW` of a `READY` PDF. Empty while the file is `PROCESSING` or `FAILED`
+  and for any other type.
+  """
+  renditions: [Rendition!]!
+  """The size in bytes, as the storage reported it."""
+  size: Float!
+  status: FileStatus!
+  tags: [String!]!
+  type: NodeType!
+  updatedAt: DateTime!
+  version: Int!
+}
+
+enum FileFamily {
+  ARCHIVE
+  AUDIO
+  """Source and data text: JSON, XML, scripts, other text types."""
+  CODE
+  """Word-processing documents and plain text."""
+  DOCUMENT
+  IMAGE
+  OTHER
+  PDF
+  PRESENTATION
+  SPREADSHEET
+  VIDEO
+}
+
+"""
+Where a file stands in its renditions. READY: nothing is pending (also the
+status of every file when no worker runs). PROCESSING: a worker is making the
+thumbnail and crops. FAILED: only the previews failed; the original stays
+downloadable, and a size stored before the failure may still be served.
+"""
+enum FileStatus {
+  FAILED
+  PROCESSING
+  READY
+}
+
+"""A point of a picture, as fractions of it from its top left corner."""
+type FocalPoint {
+  x: Float!
+  y: Float!
+}
+
+"""
+Both coordinates are numbers from 0 to 1 (`files.errors.invalid-focal`).
+"""
+input FocalPointInput {
+  x: Float!
+  y: Float!
+}
+
+type Folder implements Node {
+  ancestors: [ID!]!
+  createdAt: DateTime!
+  depth: Int!
+  id: ID!
+  name: String!
+  parentId: ID
+  type: NodeType!
+  updatedAt: DateTime!
+  version: Int!
 }
 
 """A GUID: 8-4-4-4-12 hexadecimal digits, with no version check."""
@@ -541,6 +643,19 @@ type Mutation {
   """
   activateSecondFactor(code: String! @constraint(maxLength: 40)): RecoveryCodes!
   """
+  Records an uploaded object as a file. Its type and size are the storage's,
+  never the input's; the answer is the new file (its `name` may differ from
+  the input's under `KEEP_BOTH`). Needs `nodes:manage`. 400
+  `files.errors.key-unknown` (field `key`) for a key of another workspace or
+  kind, a malformed or never uploaded key, and one a file already holds; 404
+  `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`; 409
+  `nodes.errors.name-taken` (field `name`, REFUSE only); 413 `quotas.errors.exceeded` when the
+  workspace quota would be passed; 409
+  `nodes.errors.too-deep`; 400 `validation.errors.invalid-input` for a bad
+  name; 503 `storage.errors.unavailable` when no bucket is configured.
+  """
+  addFile(input: AddFileInput!): File!
+  """
   Changes a member's role. Needs `members:manage` (OWNER, ADMIN) AND a fresh
   session (403 `auth.errors.step-up-required`: `requestStepUp` then
   `confirmStepUp`); only an OWNER may make or change an owner (403
@@ -565,6 +680,27 @@ type Mutation {
   Confirms a step-up and answers until when the session is fresh. 400 `identity.errors.second-factor-invalid`.
   """
   confirmStepUp(challenge: String! @constraint(maxLength: 200), code: String! @constraint(maxLength: 40)): DateTime!
+  """
+  Copies nodes under a folder, all or nothing, at most 100 at a time; answers
+  the copies. A copy of a file shares its blob: the bucket gets no new object.
+  A copied folder takes what is under it, tags and metadata included. A copy
+  never clashes: a taken name becomes `name (1)`, `name (2)`... A selected node
+  under another selected one is copied with it. Needs `nodes:manage`. 404
+  `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`; 409
+  `nodes.errors.cycle` (a folder into its own subtree); 409
+  `nodes.errors.too-deep`; 409 `files.errors.copy-too-large` (more than 5,000
+  nodes); 409 `nodes.errors.root-locked`.
+  """
+  copyNodes(ids: [ID!]! @constraint(minItems: 1, maxItems: 100), parentId: ID!): [Node!]!
+  """
+  Creates a folder under a folder of the caller's tree. Needs `nodes:manage`.
+  The name is trimmed; it may not be blank, hold `/`, `\` or a control
+  character, or be `.` or `..` (400 `validation.errors.invalid-input`).
+  404 `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`; 409
+  `nodes.errors.name-taken` (field `name`) when a sibling has the name, in any
+  case; 409 `nodes.errors.too-deep` past 16 levels.
+  """
+  createFolder(name: String! @constraint(minLength: 1, maxLength: 255), parentId: ID!): Node!
   """
   Creates an empty team. Needs `teams:manage` (OWNER, ADMIN). 409
   `teams.errors.name-taken` (field `name`) when a team has that name, in any
@@ -610,6 +746,23 @@ type Mutation {
   """
   leaveWorkspace: Boolean!
   """
+  Moves nodes under a folder, all or nothing; answers the nodes moved (one
+  that sits under another selected node moves with it and is not listed). A
+  node already in that folder is left as it is. Needs `nodes:manage`. 404
+  `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`; 409
+  `nodes.errors.cycle` (a folder into itself or its own subtree); 409
+  `nodes.errors.too-deep`; 409 `nodes.errors.move-too-large` (a subtree of
+  more than 5,000 nodes); 409 `nodes.errors.name-taken`; 409
+  `nodes.errors.root-locked`.
+  """
+  moveNodes(ids: [ID!]! @constraint(minItems: 1, maxItems: 100), parentId: ID!): [Node!]!
+  """
+  Opens a file: notes it among the caller's recent files and answers it. Needs
+  `nodes:read`. 404 `nodes.errors.not-found`; 400 `files.errors.not-a-file`
+  (field `id`) for a folder.
+  """
+  openFile(id: ID!): File!
+  """
   A recovery code instead of the app's; each works once. Refused as confirmSecondFactor.
   """
   recoverSecondFactor(challenge: String! @constraint(maxLength: 200), recoveryCode: String! @constraint(maxLength: 40)): SignInPayload!
@@ -625,6 +778,13 @@ type Mutation {
   409 `workspaces.errors.last-owner`.
   """
   removeMember(memberId: ID!): Boolean!
+  """
+  Renames a node that is still at `version` (read it with the node). Needs
+  `nodes:manage`. 404 `nodes.errors.not-found`; 409 `nodes.errors.conflict` when
+  the node changed since; 409 `nodes.errors.name-taken`; 409
+  `nodes.errors.root-locked` for a root.
+  """
+  renameNode(id: ID!, name: String! @constraint(minLength: 1, maxLength: 255), version: Int!): Node!
   """
   Renames a team. Needs `teams:manage`. 404 `teams.errors.not-found`; 409
   `teams.errors.name-taken` (field `name`) for another team's name, in any
@@ -655,6 +815,25 @@ type Mutation {
   """
   revokeInvitation(id: ID!, scope: String!): JanusInvitation! @authenticated
   """
+  Moves the focal point of a JPEG, PNG or WebP picture (`null` puts it back at
+  the centre) and has the worker redo its four crops from the stored original:
+  the file is `PROCESSING`, then `READY` (or `FAILED` when only the crops
+  failed, the original stays readable), and the `ETag` of each crop changes
+  with its pixels. A copy shares the blob and so the point. Needs
+  `nodes:manage`. 404 `nodes.errors.not-found`; 400 `files.errors.not-a-file`
+  (field `id`) for a folder; 400 `files.errors.not-renderable` (field `id`)
+  for any other type; 400 `files.errors.invalid-focal` (field `focalPoint`) for
+  a coordinate outside 0 to 1.
+  """
+  setFocalPoint(focalPoint: FocalPointInput, id: ID!): File!
+  """
+  Stars (`starred: true`) or unstars a node of the caller's tree; repeating it
+  changes nothing. Answers the node. Needs `nodes:read`: a favourite is the
+  member's own and touches nothing shared. 404 `nodes.errors.not-found` for an
+  unknown, another member's or (when starring) a trashed node.
+  """
+  setStarred(id: ID!, starred: Boolean!): Node!
+  """
   Replaces the team's members with these members (`Member.id`, repeats
   ignored; an empty list empties it). Needs `teams:manage`. 404
   `teams.errors.not-found`; 400 `teams.errors.member-unknown` (field
@@ -677,6 +856,17 @@ type Mutation {
   is mailed a notice), so the answer never tells whether an address is taken.
   """
   signUp(input: SignUpInput!): SignInPayload!
+  """
+  Sets the tags and the metadata of a file; one left out stays as it is. Tags
+  are trimmed and lower case, without repeats, at most 20 of at most 50
+  characters; the metadata is a JSON object of at most 16 KiB. With a
+  `version`, the write holds only if the file is still at it. Needs
+  `nodes:manage`. 404 `nodes.errors.not-found`; 400 `files.errors.not-a-file`
+  (field `id`) for a folder; 409 `nodes.errors.conflict`; 400
+  `validation.errors.invalid-input` for bad tags or metadata (`input.tags`,
+  `input.meta`).
+  """
+  updateFile(id: ID!, input: UpdateFileInput!): File!
 }
 
 """A Nano ID: 21 characters of A-Z, a-z, 0-9, _ and -."""
@@ -687,6 +877,63 @@ scalar NegativeFloat
 
 """An integer from -2147483648 to -1."""
 scalar NegativeInt
+
+"""
+A folder or a file of the workspace's tree. Only the caller's own tree is
+readable until sharing lands: another member's node is a 404, like an unknown
+one.
+"""
+interface Node {
+  """The ids from the root down to the parent; empty for a root."""
+  ancestors: [ID!]!
+  createdAt: DateTime!
+  """1 for a root, at most 16."""
+  depth: Int!
+  id: ID!
+  name: String!
+  """Null for a root (a member's "My files")."""
+  parentId: ID
+  type: NodeType!
+  updatedAt: DateTime!
+  """The version a rename must carry (`renameNode`)."""
+  version: Int!
+}
+
+input NodeFilter {
+  """Files of any of these families. Leaves the folders out."""
+  families: [FileFamily!] @constraint(maxItems: 20)
+  """Nodes whose name contains this text, case ignored."""
+  name: String @constraint(maxLength: 255)
+  """Files that carry all of these tags. Leaves the folders out."""
+  tags: [String!] @constraint(maxItems: 20)
+}
+
+"""A page of a folder's nodes."""
+type NodePage {
+  nodes: [Node!]!
+  pageInfo: PageInfo!
+}
+
+input NodeSort {
+  by: NodeSortField! = NAME
+  direction: SortDirection! = ASC
+}
+
+enum NodeSortField {
+  """By the date of the last change."""
+  DATE
+  """By family, then name; folders, which have none, by name."""
+  KIND
+  """By name, case ignored."""
+  NAME
+  """By size; folders, which have none, by name."""
+  SIZE
+}
+
+enum NodeType {
+  FILE
+  FOLDER
+}
 
 """A string that is not empty and not only white space."""
 scalar NonEmptyString
@@ -705,6 +952,15 @@ scalar NonPositiveInt
 
 """A MongoDB ObjectId: 24 hexadecimal digits."""
 scalar ObjectID @specifiedBy(url: "https://www.mongodb.com/docs/manual/reference/method/ObjectId/")
+
+enum OnConflict {
+  """
+  Keep the existing node and name the new file `name (1).ext`, `name (2).ext`…
+  """
+  KEEP_BOTH
+  """Refuse a name a sibling already holds (409 `nodes.errors.name-taken`)."""
+  REFUSE
+}
 
 """
 Where a page of a list ends. Paging is forward only: `endCursor` is the
@@ -749,6 +1005,12 @@ type Query {
   """
   errorCatalogue(language: Language): ErrorCatalogue!
   """
+  The folders directly under a folder, by name (case ignored); with no
+  `parentId`, the roots. Needs `nodes:read`. 404 `nodes.errors.not-found`; 400
+  `nodes.errors.not-a-folder`.
+  """
+  folders(parentId: ID): [Node!]!
+  """
   What `code` names, without spending it. INVITATION_INVALID (400) for
   any code that names no pending, unlapsed invitation. Open to anybody: the
   code is a secret (send it in the variables of a POST, never in a URL), and
@@ -781,9 +1043,54 @@ type Query {
   """
   myWorkspaces: [Workspace!]!
   """
+  One node of the caller's tree. Needs `nodes:read`. 404 `nodes.errors.not-found`.
+  """
+  node(id: ID!): Node!
+  """
+  The way to a node, root first and the node last. Needs `nodes:read`. 404
+  `nodes.errors.not-found`.
+  """
+  nodePath(id: ID!): [Node!]!
+  """
+  The nodes directly under a folder, one page, folders first. `filter` keeps
+  the files of a family or with tags, and the nodes whose name contains a text;
+  `sort` is by name (the default), date, size or kind, ascending or descending,
+  folders always first; the cursor of `pageInfo.endCursor` gives the next page
+  and is stable under every sort (the position ends in the id). Needs
+  `nodes:read`. 404 `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`;
+  400 `validation.errors.invalid-cursor` (field `after`) for a cursor of
+  another folder, filter or sort.
+  """
+  nodes(after: String @constraint(maxLength: 500), filter: NodeFilter, first: Int! = 50 @constraint(min: 1, max: 100), parentId: ID!, sort: NodeSort): NodePage!
+  """
+  The files the caller opened or uploaded lately, the latest first, one page:
+  at most 200 are kept per member, one entry per file, and a trashed file
+  leaves the list. Needs `nodes:read`. 400 `validation.errors.invalid-cursor`
+  (field `after`) for a cursor of another list.
+  """
+  recentFiles(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): NodePage!
+  """
+  The caller's roots: their private "My files", made when they joined (or here,
+  for a member who joined before). Needs `nodes:read`.
+  """
+  roots: [Node!]!
+  """
   Whether the caller's second factor is on and how many recovery codes are left. 401 `auth.errors.unauthenticated`.
   """
   secondFactorStatus: SecondFactorStatus!
+  """
+  The caller's favourites, the most recently starred first, one page: nodes of
+  their tree that are still live (a trashed node leaves the list and returns
+  with its restore). Needs `nodes:read`. 400 `validation.errors.invalid-cursor`
+  (field `after`) for a cursor of another list.
+  """
+  starred(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): NodePage!
+  """
+  The workspace's storage: its quota, what is used and the split. Needs the
+  `workspace:read` permission, which every member holds. 400
+  `workspaces.errors.workspace-required`, 404 `workspaces.errors.not-found`; 401 `auth.errors.api-key-not-accepted`.
+  """
+  storage: Storage!
   """
   One team of the request's workspace. 404 `teams.errors.not-found` for an
   unknown id AND for a team of another workspace.
@@ -820,6 +1127,35 @@ The recovery codes of a second factor: ten single-use codes, shown once.
 """
 type RecoveryCodes {
   recoveryCodes: [String!]!
+}
+
+"""A size of a file that is stored and served."""
+type Rendition {
+  mimeType: String!
+  preset: RenditionPreset!
+  """
+  The name `GET /media/files/<key>/<size>` takes: the preset in lower case.
+  """
+  size: String!
+}
+
+"""
+The sizes a picture or a PDF has: `GET /media/files/<key>/<size>` serves them.
+The crops keep their ratio and are centred on the focal point.
+"""
+enum RenditionPreset {
+  """16:9, up to 1920 x 1080, JPEG; pictures."""
+  LANDSCAPE
+  """4:5, up to 1080 x 1350, JPEG; pictures."""
+  PORTRAIT
+  """1600 px on the longest side, WebP; pictures and PDFs."""
+  PREVIEW
+  """1:1, up to 1080 x 1080, JPEG; pictures."""
+  SQUARE
+  """9:16, up to 1080 x 1920, JPEG; pictures."""
+  STORY
+  """320 px on the longest side, WebP; pictures and PDFs."""
+  THUMB
 }
 
 """A SHA-256 digest: 64 hexadecimal digits."""
@@ -929,6 +1265,27 @@ enum StepUpMethod {
 }
 
 """
+What a workspace stores against its quota. Sizes are bytes. A blob that several
+files share (a copy) counts once, and versions and the trash count too.
+"""
+type Storage {
+  """Of `usedBytes`, what live files hold."""
+  currentBytes: Float!
+  """The files of the workspace, copies and trashed ones included."""
+  files: Int!
+  """
+  The bytes the workspace may store; 10 GiB unless a platform administrator changed it.
+  """
+  quotaBytes: Float!
+  """Of `usedBytes`, what only the trash holds."""
+  trashBytes: Float!
+  """The bytes stored: `currentBytes` + `versionBytes` + `trashBytes`."""
+  usedBytes: Float!
+  """Of `usedBytes`, what only older versions hold."""
+  versionBytes: Float!
+}
+
+"""
 A group of the workspace's members, which a folder or a file is shared with as one.
 """
 type Team {
@@ -969,6 +1326,19 @@ scalar UUIDv4 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc9562")
 
 """A version 7 (time-ordered) UUID."""
 scalar UUIDv7 @specifiedBy(url: "https://www.rfc-editor.org/rfc/rfc9562")
+
+input UpdateFileInput {
+  """
+  Replaces the metadata, a JSON object of at most 16 KiB; leave it out to keep it.
+  """
+  meta: JSONObject
+  """
+  Replaces the tags; leave it out to keep them. At most 20, each at most 50 characters.
+  """
+  tags: [String!] @constraint(maxItems: 20)
+  """The version the file is expected to be at (`File.version`)."""
+  version: Int
+}
 
 """A UTC offset from -12:00 to +14:00, such as +05:30."""
 scalar UtcOffset

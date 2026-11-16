@@ -1,0 +1,167 @@
+enum OnConflict {
+  "Refuse a name a sibling already holds (409 `nodes.errors.name-taken`)."
+  REFUSE
+  "Keep the existing node and name the new file `name (1).ext`, `name (2).ext`…"
+  KEEP_BOTH
+}
+
+input AddFileInput {
+  "The key `PUT /media/files` answered: the object must be in this workspace, of the `files` kind, and not recorded yet."
+  key: String! @constraint(minLength: 1, maxLength: 100)
+  "The file's name: trimmed, at most 255 characters, no `/`, `\\` or control character."
+  name: String! @constraint(minLength: 1, maxLength: 255)
+  "The folder of the caller's tree to put the file in."
+  parentId: ID!
+  onConflict: OnConflict! = REFUSE
+}
+
+"A point of a picture, as fractions of it from its top left corner."
+type FocalPoint {
+  x: Float!
+  y: Float!
+}
+
+"Both coordinates are numbers from 0 to 1 (`files.errors.invalid-focal`)."
+input FocalPointInput {
+  x: Float!
+  y: Float!
+}
+
+"""
+The sizes a picture or a PDF has: `GET /media/files/<key>/<size>` serves them.
+The crops keep their ratio and are centred on the focal point.
+"""
+enum RenditionPreset {
+  "320 px on the longest side, WebP; pictures and PDFs."
+  THUMB
+  "1600 px on the longest side, WebP; pictures and PDFs."
+  PREVIEW
+  "1:1, up to 1080 x 1080, JPEG; pictures."
+  SQUARE
+  "4:5, up to 1080 x 1350, JPEG; pictures."
+  PORTRAIT
+  "9:16, up to 1080 x 1920, JPEG; pictures."
+  STORY
+  "16:9, up to 1920 x 1080, JPEG; pictures."
+  LANDSCAPE
+}
+
+"A size of a file that is stored and served."
+type Rendition {
+  preset: RenditionPreset!
+  "The name `GET /media/files/<key>/<size>` takes: the preset in lower case."
+  size: String!
+  mimeType: String!
+}
+
+extend type File {
+  "Where the crops are centred; null is the centre of the picture."
+  focalPoint: FocalPoint
+  """
+  The sizes available now: every one of a `READY` picture, `THUMB` and
+  `PREVIEW` of a `READY` PDF. Empty while the file is `PROCESSING` or `FAILED`
+  and for any other type.
+  """
+  renditions: [Rendition!]!
+  "One of the renditions, or null when the file does not have it (yet)."
+  rendition(preset: RenditionPreset!): Rendition
+}
+
+input UpdateFileInput {
+  "Replaces the tags; leave it out to keep them. At most 20, each at most 50 characters."
+  tags: [String!] @constraint(maxItems: 20)
+  "Replaces the metadata, a JSON object of at most 16 KiB; leave it out to keep it."
+  meta: JSONObject
+  "The version the file is expected to be at (`File.version`)."
+  version: Int
+}
+
+extend type Query {
+  """
+  The caller's favourites, the most recently starred first, one page: nodes of
+  their tree that are still live (a trashed node leaves the list and returns
+  with its restore). Needs `nodes:read`. 400 `validation.errors.invalid-cursor`
+  (field `after`) for a cursor of another list.
+  """
+  starred(
+    first: Int! = 50 @constraint(min: 1, max: 100)
+    after: String @constraint(maxLength: 500)
+  ): NodePage!
+  """
+  The files the caller opened or uploaded lately, the latest first, one page:
+  at most 200 are kept per member, one entry per file, and a trashed file
+  leaves the list. Needs `nodes:read`. 400 `validation.errors.invalid-cursor`
+  (field `after`) for a cursor of another list.
+  """
+  recentFiles(
+    first: Int! = 50 @constraint(min: 1, max: 100)
+    after: String @constraint(maxLength: 500)
+  ): NodePage!
+}
+
+extend type Mutation {
+  """
+  Records an uploaded object as a file. Its type and size are the storage's,
+  never the input's; the answer is the new file (its `name` may differ from
+  the input's under `KEEP_BOTH`). Needs `nodes:manage`. 400
+  `files.errors.key-unknown` (field `key`) for a key of another workspace or
+  kind, a malformed or never uploaded key, and one a file already holds; 404
+  `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`; 409
+  `nodes.errors.name-taken` (field `name`, REFUSE only); 413 `quotas.errors.exceeded` when the
+  workspace quota would be passed; 409
+  `nodes.errors.too-deep`; 400 `validation.errors.invalid-input` for a bad
+  name; 503 `storage.errors.unavailable` when no bucket is configured.
+  """
+  addFile(input: AddFileInput!): File!
+  """
+  Copies nodes under a folder, all or nothing, at most 100 at a time; answers
+  the copies. A copy of a file shares its blob: the bucket gets no new object.
+  A copied folder takes what is under it, tags and metadata included. A copy
+  never clashes: a taken name becomes `name (1)`, `name (2)`... A selected node
+  under another selected one is copied with it. Needs `nodes:manage`. 404
+  `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`; 409
+  `nodes.errors.cycle` (a folder into its own subtree); 409
+  `nodes.errors.too-deep`; 409 `files.errors.copy-too-large` (more than 5,000
+  nodes); 409 `nodes.errors.root-locked`.
+  """
+  copyNodes(
+    ids: [ID!]! @constraint(minItems: 1, maxItems: 100)
+    parentId: ID!
+  ): [Node!]!
+  """
+  Sets the tags and the metadata of a file; one left out stays as it is. Tags
+  are trimmed and lower case, without repeats, at most 20 of at most 50
+  characters; the metadata is a JSON object of at most 16 KiB. With a
+  `version`, the write holds only if the file is still at it. Needs
+  `nodes:manage`. 404 `nodes.errors.not-found`; 400 `files.errors.not-a-file`
+  (field `id`) for a folder; 409 `nodes.errors.conflict`; 400
+  `validation.errors.invalid-input` for bad tags or metadata (`input.tags`,
+  `input.meta`).
+  """
+  updateFile(id: ID!, input: UpdateFileInput!): File!
+  """
+  Moves the focal point of a JPEG, PNG or WebP picture (`null` puts it back at
+  the centre) and has the worker redo its four crops from the stored original:
+  the file is `PROCESSING`, then `READY` (or `FAILED` when only the crops
+  failed, the original stays readable), and the `ETag` of each crop changes
+  with its pixels. A copy shares the blob and so the point. Needs
+  `nodes:manage`. 404 `nodes.errors.not-found`; 400 `files.errors.not-a-file`
+  (field `id`) for a folder; 400 `files.errors.not-renderable` (field `id`)
+  for any other type; 400 `files.errors.invalid-focal` (field `focalPoint`) for
+  a coordinate outside 0 to 1.
+  """
+  setFocalPoint(id: ID!, focalPoint: FocalPointInput): File!
+  """
+  Stars (`starred: true`) or unstars a node of the caller's tree; repeating it
+  changes nothing. Answers the node. Needs `nodes:read`: a favourite is the
+  member's own and touches nothing shared. 404 `nodes.errors.not-found` for an
+  unknown, another member's or (when starring) a trashed node.
+  """
+  setStarred(id: ID!, starred: Boolean!): Node!
+  """
+  Opens a file: notes it among the caller's recent files and answers it. Needs
+  `nodes:read`. 404 `nodes.errors.not-found`; 400 `files.errors.not-a-file`
+  (field `id`) for a folder.
+  """
+  openFile(id: ID!): File!
+}

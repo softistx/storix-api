@@ -1,0 +1,203 @@
+enum NodeType {
+  FOLDER
+  FILE
+}
+
+enum FileFamily {
+  IMAGE
+  VIDEO
+  AUDIO
+  PDF
+  "Word-processing documents and plain text."
+  DOCUMENT
+  SPREADSHEET
+  PRESENTATION
+  ARCHIVE
+  "Source and data text: JSON, XML, scripts, other text types."
+  CODE
+  OTHER
+}
+
+"""
+Where a file stands in its renditions. READY: nothing is pending (also the
+status of every file when no worker runs). PROCESSING: a worker is making the
+thumbnail and crops. FAILED: only the previews failed; the original stays
+downloadable, and a size stored before the failure may still be served.
+"""
+enum FileStatus {
+  READY
+  PROCESSING
+  FAILED
+}
+
+"""
+A folder or a file of the workspace's tree. Only the caller's own tree is
+readable until sharing lands: another member's node is a 404, like an unknown
+one.
+"""
+interface Node {
+  id: ID!
+  type: NodeType!
+  name: String!
+  "Null for a root (a member's \"My files\")."
+  parentId: ID
+  "The ids from the root down to the parent; empty for a root."
+  ancestors: [ID!]!
+  "1 for a root, at most 16."
+  depth: Int!
+  "The version a rename must carry (`renameNode`)."
+  version: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Folder implements Node {
+  id: ID!
+  type: NodeType!
+  name: String!
+  parentId: ID
+  ancestors: [ID!]!
+  depth: Int!
+  version: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+"A file: a node that holds a stored object (`addFile` records it)."
+type File implements Node {
+  id: ID!
+  type: NodeType!
+  name: String!
+  parentId: ID
+  ancestors: [ID!]!
+  depth: Int!
+  version: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  "The media key of the object: `GET /media/files/<key>` reads it. Never a URL."
+  key: String!
+  "The content type the storage reported when the file was uploaded."
+  mimeType: String!
+  "The size in bytes, as the storage reported it."
+  size: Float!
+  family: FileFamily!
+  tags: [String!]!
+  meta: JSONObject!
+  status: FileStatus!
+}
+
+enum NodeSortField {
+  "By name, case ignored."
+  NAME
+  "By the date of the last change."
+  DATE
+  "By size; folders, which have none, by name."
+  SIZE
+  "By family, then name; folders, which have none, by name."
+  KIND
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+input NodeFilter {
+  "Files of any of these families. Leaves the folders out."
+  families: [FileFamily!] @constraint(maxItems: 20)
+  "Files that carry all of these tags. Leaves the folders out."
+  tags: [String!] @constraint(maxItems: 20)
+  "Nodes whose name contains this text, case ignored."
+  name: String @constraint(maxLength: 255)
+}
+
+input NodeSort {
+  by: NodeSortField! = NAME
+  direction: SortDirection! = ASC
+}
+
+"A page of a folder's nodes."
+type NodePage {
+  nodes: [Node!]!
+  pageInfo: PageInfo!
+}
+
+extend type Query {
+  """
+  The caller's roots: their private "My files", made when they joined (or here,
+  for a member who joined before). Needs `nodes:read`.
+  """
+  roots: [Node!]!
+  """
+  The folders directly under a folder, by name (case ignored); with no
+  `parentId`, the roots. Needs `nodes:read`. 404 `nodes.errors.not-found`; 400
+  `nodes.errors.not-a-folder`.
+  """
+  folders(parentId: ID): [Node!]!
+  """
+  The way to a node, root first and the node last. Needs `nodes:read`. 404
+  `nodes.errors.not-found`.
+  """
+  nodePath(id: ID!): [Node!]!
+  """
+  One node of the caller's tree. Needs `nodes:read`. 404 `nodes.errors.not-found`.
+  """
+  node(id: ID!): Node!
+  """
+  The nodes directly under a folder, one page, folders first. `filter` keeps
+  the files of a family or with tags, and the nodes whose name contains a text;
+  `sort` is by name (the default), date, size or kind, ascending or descending,
+  folders always first; the cursor of `pageInfo.endCursor` gives the next page
+  and is stable under every sort (the position ends in the id). Needs
+  `nodes:read`. 404 `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`;
+  400 `validation.errors.invalid-cursor` (field `after`) for a cursor of
+  another folder, filter or sort.
+  """
+  nodes(
+    parentId: ID!
+    filter: NodeFilter
+    sort: NodeSort
+    first: Int! = 50 @constraint(min: 1, max: 100)
+    after: String @constraint(maxLength: 500)
+  ): NodePage!
+}
+
+extend type Mutation {
+  """
+  Creates a folder under a folder of the caller's tree. Needs `nodes:manage`.
+  The name is trimmed; it may not be blank, hold `/`, `\` or a control
+  character, or be `.` or `..` (400 `validation.errors.invalid-input`).
+  404 `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`; 409
+  `nodes.errors.name-taken` (field `name`) when a sibling has the name, in any
+  case; 409 `nodes.errors.too-deep` past 16 levels.
+  """
+  createFolder(
+    parentId: ID!
+    name: String! @constraint(minLength: 1, maxLength: 255)
+  ): Node!
+  """
+  Renames a node that is still at `version` (read it with the node). Needs
+  `nodes:manage`. 404 `nodes.errors.not-found`; 409 `nodes.errors.conflict` when
+  the node changed since; 409 `nodes.errors.name-taken`; 409
+  `nodes.errors.root-locked` for a root.
+  """
+  renameNode(
+    id: ID!
+    name: String! @constraint(minLength: 1, maxLength: 255)
+    version: Int!
+  ): Node!
+  """
+  Moves nodes under a folder, all or nothing; answers the nodes moved (one
+  that sits under another selected node moves with it and is not listed). A
+  node already in that folder is left as it is. Needs `nodes:manage`. 404
+  `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`; 409
+  `nodes.errors.cycle` (a folder into itself or its own subtree); 409
+  `nodes.errors.too-deep`; 409 `nodes.errors.move-too-large` (a subtree of
+  more than 5,000 nodes); 409 `nodes.errors.name-taken`; 409
+  `nodes.errors.root-locked`.
+  """
+  moveNodes(
+    ids: [ID!]! @constraint(minItems: 1, maxItems: 100)
+    parentId: ID!
+  ): [Node!]!
+}

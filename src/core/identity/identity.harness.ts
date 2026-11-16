@@ -21,9 +21,13 @@ export const PASSWORD = "correct horse battery staple";
 // of the identity flows share. Every call gets a database of its own, so specs
 // never see each other's accounts.
 export async function harness(
-  options: Partial<IdentityOptions> & { limits?: Limits } = {},
+  options: Partial<IdentityOptions> & {
+    limits?: Limits;
+    media?: NonNullable<Parameters<typeof createApp>[0]>["media"];
+    renditions?: NonNullable<Parameters<typeof createApp>[0]>["renditions"];
+  } = {},
 ) {
-  const { limits, ...identityOptions } = options;
+  const { limits, media, renditions, ...identityOptions } = options;
   const mailer = createMemoryMailer();
   const clock = fixedClock(new Date("2026-11-14T12:00:00Z"));
   const db = connection.client.db(`identity_spec_${crypto.randomUUID()}`);
@@ -42,7 +46,12 @@ export async function harness(
     ...identityOptions,
   });
   if (!options.db) await identity.syncStores();
-  const app = createApp({ identity, ...(limits && { limits }) });
+  const app = createApp({
+    identity,
+    ...(limits && { limits }),
+    ...(media && { media }),
+    ...(renditions && { renditions }),
+  });
   const client = graphqlClient(app, { headers: { [clientHeader]: "spec" } });
 
   let sequence = 0;

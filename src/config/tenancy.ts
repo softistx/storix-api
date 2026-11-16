@@ -3,7 +3,7 @@ import { perOrganization } from "@alxia/tenancy";
 import { defineMongo } from "@softistx/mongo";
 import type { TenancyPort } from "../core/access";
 import { bindAudit } from "../core/audit";
-import { membershipOf } from "../core/members";
+import { bindMemberDatabases, membershipOf } from "../core/members";
 import { workspaceRegistry } from "../core/workspaces";
 import { modules } from "../modules/registry";
 import { autoSyncOf } from "./auto-sync";
@@ -43,6 +43,10 @@ bindAudit({
   databaseOf: (workspaceId) => store.databaseOf(workspaceId),
   ipKey: env.AUDIT_IP_KEY,
 });
+
+// A member who joins gets what each module keeps per member (their root
+// folder) in the workspace's database.
+bindMemberDatabases((workspaceId) => store.databaseOf(workspaceId));
 
 // The same store, as the plain port the request context carries
 // (src/core/access/ports.ts explains why it is not `typeof store`).

@@ -1,21 +1,32 @@
 import { health } from "@alxia/core";
 import { graphql } from "@alxia/graphql";
+import type { MediaBucket } from "@alxia/media";
 import { identity as serverIdentity } from "./config/auth";
 import { closeDatabases, mongoAnswers } from "./config/db";
-import { redis, limits as serverLimits } from "./config/redis";
+import { appRedis, closeQueues, limits as serverLimits } from "./config/redis";
+import {
+  bucket as serverBucket,
+  uploadLimit as serverUploadLimit,
+} from "./config/storage";
 import type { Identity } from "./core/identity";
+import {
+  type FileReader,
+  storageRoutes,
+  type UploadLimit,
+} from "./core/storage";
 import { createBase } from "./http/context";
 import { clientHeader } from "./http/csrf";
 import { graphqlPlugins } from "./http/graphql-plugins";
 import { keyPathsOnly } from "./http/key-paths";
 import type { Limits } from "./http/rate-limits";
 import { schema } from "./http/schema";
+import { fileReader, type RenditionsQueue } from "./modules/files/public";
 
 // The largest body /graphql reads.
 export const BODY_LIMIT = 100 * 1024;
 
-// The probes (GET /health, GET /ready), then POST and GET /graphql, the one
-// entry point, behind the base's middlewares. /graphql refuses a request
+// The probes (GET /health, GET /ready), POST and GET /graphql, and /media
+// (src/core/storage), behind the base's middlewares. /graphql refuses a request
 // without `x-storix-client` (src/http/csrf.ts), which Apollo Sandbox is given.
 // /ready answers 503 while MongoDB does not (a ping).
 export function createApp(
@@ -27,8 +38,23 @@ export function createApp(
     identity?: Identity;
     // The per-address limits; specs inject ones over their own Redis.
     limits?: Limits;
+    // The files' bucket (`undefined`: /media answers 503) and the upload
+    // limit; specs inject ones over their own SeaweedFS and Redis.
+    // `fileReader` decides who may read a `files` key (default: the `files`
+    // module's, a node of the caller's tree holds it).
+    media?: {
+      bucket: MediaBucket | undefined;
+      limit?: UploadLimit;
+      fileReader?: FileReader;
+    };
+    // The `renditions` queue `addFile` adds to (`undefined`: a file has no
+    // previews and is `READY` at once); specs inject one over their own Redis.
+    renditions?: RenditionsQueue | undefined;
   } = {},
 ) {
+  const bucket = options.media ? options.media.bucket : serverBucket;
+  const renditions =
+    "renditions" in options ? options.renditions : appRedis?.queues.renditions;
   return (
     createBase(
       options.identity ?? serverIdentity,
@@ -42,15 +68,24 @@ export function createApp(
       .plugin((app) =>
         graphql(app, {
           schema: options.schema ?? schema,
-          context: () => ({}),
+          context: () => ({ media: bucket, renditions }),
           plugins: graphqlPlugins,
           ide: "apollo-sandbox",
           sandbox: { initialHeaders: { [clientHeader]: "apollo-sandbox" } },
         }),
       )
+      // /media after the auth middleware: the kinds read the viewer and the
+      // guard it adds, and every object lives under the workspace's prefix.
+      .plugin(
+        storageRoutes({
+          bucket,
+          limit: options.media?.limit ?? serverUploadLimit,
+          fileReader: options.media?.fileReader ?? fileReader,
+        }),
+      )
       .onStop(async () => {
         await closeDatabases();
-        redis?.close();
+        await closeQueues();
       })
   );
 }

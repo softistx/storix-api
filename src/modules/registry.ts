@@ -4,9 +4,13 @@ import { auditModule } from "../core/audit";
 import { identityModule } from "../core/identity/module";
 import { invitationsModule } from "../core/invitations";
 import { membersModule } from "../core/members";
+import { storageModule } from "../core/storage";
 import { system } from "../core/system/module";
 import { translationsModule } from "../core/translations/module";
 import { workspacesModule } from "../core/workspaces";
+import { filesModule } from "./files/public";
+import { nodesModule } from "./nodes/public";
+import { quotasModule } from "./quotas/public";
 import { teamsModule } from "./teams/public";
 
 // THE list of modules: adding one is one line here. Dependency order is
@@ -21,6 +25,10 @@ const registered = [
   workspacesModule,
   invitationsModule,
   teamsModule,
+  nodesModule,
+  filesModule,
+  quotasModule,
+  storageModule,
 ] as const;
 
 export const modules: readonly Module[] = resolveModules(registered);

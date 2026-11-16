@@ -4,12 +4,15 @@ import { joinWorkspace } from "@/core/invitations";
 import {
   addMember,
   type MembersMongo,
+  memberJoined,
   type WorkspaceRole,
 } from "@/core/members";
 import type { WorkspacesMongo } from "@/core/workspaces";
 import type { Limits } from "@/http/rate-limits";
 
 export { WORKSPACE_HEADER };
+
+type HarnessOptions = NonNullable<Parameters<typeof harness>[0]>;
 
 type User = Awaited<ReturnType<Awaited<ReturnType<typeof harness>>["account"]>>;
 
@@ -21,9 +24,17 @@ export interface Gql {
 
 // The identity harness plus workspaces: accounts that own or join workspaces,
 // and a `send` that speaks as one of them to one workspace (or none).
-export async function world(options: { limits?: Limits } = {}) {
+export async function world(
+  options: {
+    limits?: Limits;
+    media?: HarnessOptions["media"];
+    renditions?: HarnessOptions["renditions"];
+  } = {},
+) {
   const h = await harness({
     ...(options.limits && { limits: options.limits }),
+    ...(options.media && { media: options.media }),
+    ...(options.renditions && { renditions: options.renditions }),
     onAcceptedInvitation: (accepted) =>
       joinWorkspace(tenancy.core as MembersMongo, accepted),
   });
@@ -77,6 +88,7 @@ export async function world(options: { limits?: Limits } = {}) {
       role,
       actorId: workspace.owner.principal.accountId,
     });
+    await memberJoined(row);
     return { user, memberId: row.id };
   }
 

@@ -1,6 +1,7 @@
 import {
   addMember,
   type MembersMongo,
+  memberJoined,
   type WorkspaceRole,
   workspaceRoles,
 } from "../members";
@@ -25,12 +26,13 @@ export async function joinWorkspace(
     // Unreachable: `authorize` only lets a workspace role be issued.
     throw new Error(`invitation to ${accepted.scope}: unknown role`);
   }
-  await addMember(mongo, {
+  const member = await addMember(mongo, {
     workspaceId: accepted.scope,
     accountId: accepted.accountId,
     role: accepted.role,
     actorId: accepted.invitedBy ?? accepted.accountId,
   });
+  await memberJoined(member);
 }
 
 export const isRole = (role: string): role is WorkspaceRole =>
