@@ -17,6 +17,7 @@ import {
 } from "@softistx/janus-mongo";
 import type { Mailer } from "@softistx/mail";
 import type { Db } from "mongodb";
+import { invitationStateReader } from "./identity.invitation-state";
 import { createInvitationResolvers } from "./identity.invitations";
 import type { Account, Identity } from "./identity.port";
 import { type Accepted, createAccounts } from "./janus.accounts";
@@ -78,6 +79,7 @@ export function createJanusIdentity(options: IdentityOptions): Identity {
   const runner = options.background ?? background();
   const notices = securityNotices(mail, () => accounts);
   const hasher = options.hasher ?? scryptHasher();
+  const invitationStore = createMongoInvitations(options.db);
   const accounts = createAccounts({
     store,
     apiKeys: createMongoApiKeys(options.db),
@@ -87,7 +89,7 @@ export function createJanusIdentity(options: IdentityOptions): Identity {
     events: notices,
     ...(options.mail && { mail: options.mail }),
     invitations: {
-      store: createMongoInvitations(options.db),
+      store: invitationStore,
       onAccepted: options.onAcceptedInvitation,
     },
   });
@@ -133,6 +135,7 @@ export function createJanusIdentity(options: IdentityOptions): Identity {
     invitations: {
       resolvers: (hooks) =>
         createInvitationResolvers(accounts, mail, options.uiOrigin, hooks),
+      stateOf: invitationStateReader(invitationStore, () => clock.now()),
     },
 
     // The keys and the invitations are opt-in ports: not part of

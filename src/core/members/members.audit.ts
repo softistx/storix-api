@@ -32,14 +32,20 @@ export const recordRoleChange = (
     meta: { accountId: done.member.accountId, from: done.from, to: done.to },
   });
 
-export const recordRemoval = (done: Done) =>
+export const recordRemoval = (
+  done: Done & { transferredTo?: string | undefined },
+) =>
   audit.record({
     workspaceId: done.workspaceId,
     actor: done.actor,
     action: "member.remove",
     target: targetOf(done),
     ip: done.ip,
-    meta: { accountId: done.member.accountId, role: done.member.role },
+    meta: {
+      accountId: done.member.accountId,
+      role: done.member.role,
+      ...(done.transferredTo && { transferredTo: done.transferredTo }),
+    },
   });
 
 export const recordLeave = (done: Done) =>

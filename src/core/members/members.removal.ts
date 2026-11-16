@@ -8,6 +8,11 @@ export interface MemberRemoval {
   workspaceId: string;
   memberId: string;
   accountId: string;
+  // The account's name, null when it no longer exists.
+  name: string | null;
+  // The member who receives what the leaver owns (`removeMember(transferTo:)`);
+  // null when nobody does.
+  transferTo: { memberId: string; accountId: string } | null;
 }
 
 type Listener = (
@@ -37,11 +42,16 @@ export function onMemberRemoved(listener: Listener): () => void {
 export async function memberRemoved(
   scope: WorkspaceScope,
   member: MemberDoc,
+  extra: Pick<MemberRemoval, "name" | "transferTo"> = {
+    name: null,
+    transferTo: null,
+  },
 ): Promise<void> {
   const removal: MemberRemoval = {
     workspaceId: scope.tenant.id,
     memberId: member.id,
     accountId: member.accountId,
+    ...extra,
   };
   for (const listener of listeners) {
     try {

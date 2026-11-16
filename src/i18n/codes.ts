@@ -56,14 +56,22 @@ export const workspaces = defineCodes("workspaces", [
 export const members = defineCodes("members", ["not-found"]);
 
 // The invitations to a workspace (src/core/invitations). The code of an
-// invitation that is unknown, already used, revoked or past its lifetime is one
-// `invalid`: the reasons are never told apart.
+// invitation that is unknown or malformed is `invalid`; one that names a real
+// invitation says why it cannot be used: `expired`, `already-accepted` or
+// `revoked` (the code is the invitee's secret, so it tells nothing to others).
 export const invitations = defineCodes("invitations", [
   // 404: no invitation with this id in the workspace (or the caller may not
   // see it).
   "not-found",
-  // 400: the code names no pending invitation.
+  // 400: the code names no invitation (unknown or malformed), or one of a
+  // workspace that is not open.
   "invalid",
+  // 400: the invitation's 7 days have passed.
+  "expired",
+  // 400: the invitation was already accepted.
+  "already-accepted",
+  // 400: the invitation was withdrawn (revoked) by an admin.
+  "revoked",
   // 409: the invitation was accepted or revoked, so it cannot be sent again or
   // revoked.
   "not-pending",

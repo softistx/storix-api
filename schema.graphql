@@ -132,7 +132,7 @@ One thing that happened in the workspace. Never holds an address, a code, a pass
 """
 type AuditEvent {
   """
-  `<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete, node.folder-create, node.rename, node.move, node.copy, file.add, file.update, file.focal, node.trash, node.restore, node.purge, trash.empty, workspace.settings, quota.exceeded.
+  `<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete, node.folder-create, node.rename, node.move, node.copy, file.add, file.update, file.focal, node.trash, node.restore, node.purge, trash.empty, workspace.settings, workspace.rename, quota.exceeded.
   """
   action: String!
   actor: AuditActor!
@@ -453,7 +453,7 @@ type InvitationSignedIn {
   expiresAt: String!
   invitationId: ID!
   newDevice: Boolean!
-  role: String!
+  role: WorkspaceRole!
   scope: String!
   """
   The session token, only with `answerToken`; otherwise the session
@@ -501,7 +501,7 @@ type JanusInvitation {
   revokedAt: String
   """The id of the user who revoked it, or null."""
   revokedBy: ID
-  role: String!
+  role: WorkspaceRole!
   """The organization (or any grouping) the invitation is into."""
   scope: String!
   """
@@ -571,7 +571,7 @@ type JanusInvitationPreview {
   given.
   """
   organization: String
-  role: String!
+  role: WorkspaceRole!
   scope: String!
   """
   The user type the invitation is for, so the page can adapt its wording or
@@ -792,7 +792,7 @@ type Mutation {
   instance's single type), INVITATION_INVALID
   (`field: 'type'`) when absent then, or when it names none of them.
   """
-  issueInvitation(email: String!, locale: String, name: String!, ref: String, role: String!, scope: String!, type: String): JanusIssuedInvitation! @authenticated
+  issueInvitation(email: String!, locale: String, name: String!, ref: String, role: WorkspaceRole!, scope: String!, type: String): JanusIssuedInvitation! @authenticated
   """
   Leaves the request's workspace. Any member; 409
   `workspaces.errors.last-owner` for the last owner, who promotes another
@@ -838,8 +838,15 @@ type Mutation {
   `confirmStepUp`); removing an owner needs `owners:manage` (OWNER). To leave
   yourself, use `leaveWorkspace` (no step-up). 404 `members.errors.not-found`;
   409 `workspaces.errors.last-owner`.
+  
+  `transferTo` is the id of another current member who receives what the
+  removed member owned: their whole file tree, which becomes a folder
+  `Files of <name>` in the receiver's "My files". Without it the files stay
+  with the removed account, out of everyone's reach. A `transferTo` that is
+  the removed member, unknown, of another workspace or already gone is 400
+  `validation.errors.invalid-input` (field `transferTo`), and nothing changes.
   """
-  removeMember(memberId: ID!): Boolean!
+  removeMember(memberId: ID!, transferTo: ID): Boolean!
   """
   Renames a node that is still at `version` (read it with the node). Needs
   `nodes:manage`. 404 `nodes.errors.not-found`; 409 `nodes.errors.conflict` when
@@ -853,6 +860,15 @@ type Mutation {
   case; the team's own name in another case is allowed.
   """
   renameTeam(id: ID!, name: String! @constraint(minLength: 1, maxLength: 100)): Team!
+  """
+  Renames the request's workspace: its display name only, the slug and the id
+  stay. Needs `workspace:manage` (OWNER and ADMIN; 403 `auth.errors.forbidden`
+  for a MEMBER). Audited as `workspace.rename`. 400
+  `validation.errors.invalid-input` for a blank name or one over 100
+  characters; 400 `workspaces.errors.workspace-required`; 404
+  `workspaces.errors.not-found`.
+  """
+  renameWorkspace(name: String! @constraint(minLength: 1, maxLength: 100)): Workspace!
   """
   Sends a password-reset link. True once accepted, whether or not the e-mail holds an account; 429 `auth.errors.rate-limited` past five per ten minutes for an address.
   """
@@ -1139,7 +1155,7 @@ type Query {
   INVALID_CURSOR) names the argument in `extensions.field`.
   NOT_FOUND when the application's `authorize` refuses the scope.
   """
-  invitations(after: String, lapsed: JanusInvitationLapsed, limit: Int, order: JanusInvitationOrder, ref: String, role: String, scope: String!, status: String): JanusInvitationPage! @authenticated
+  invitations(after: String, lapsed: JanusInvitationLapsed, limit: Int, order: JanusInvitationOrder, ref: String, role: WorkspaceRole, scope: String!, status: String): JanusInvitationPage! @authenticated
   """
   The current members of the request's workspace (the `x-storix-workspace`
   header), oldest first. Needs `members:read`, which every role holds. 400

@@ -181,6 +181,24 @@ export async function endMembership(
   });
 }
 
+// The current member of this workspace with this id, or undefined (malformed,
+// unknown, of another workspace, or who left).
+export async function findActiveMember(
+  mongo: MembersMongo,
+  workspaceId: string,
+  id: string,
+): Promise<MemberDoc | undefined> {
+  const memberId = tryObjectId(id);
+  if (!memberId) return undefined;
+  return (
+    (await mongo.db.members.findFirst({
+      _id: memberId,
+      workspaceId: toObjectId(workspaceId),
+      removedAt: null,
+    })) ?? undefined
+  );
+}
+
 // A page of a workspace's current members, oldest first.
 export async function listMembers(
   mongo: MembersMongo,

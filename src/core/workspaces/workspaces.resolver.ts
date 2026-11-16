@@ -5,6 +5,7 @@ import { audit, memberActor } from "../audit";
 import { membershipsOfAccount, type WorkspaceRole } from "../members";
 import { isObjectIdLike } from "./workspaces.collection";
 import { type Workspace, workspaceOf } from "./workspaces.registry";
+import { renameWorkspace } from "./workspaces.rename";
 import { createWorkspace, type WorkspacesMongo } from "./workspaces.service";
 import { settingsOf, updateSettings } from "./workspaces.settings";
 
@@ -91,6 +92,35 @@ export const workspacesResolvers: Resolvers = {
         meta: { slug: workspace.slug },
       });
       return view(workspace, "OWNER");
+    },
+    renameWorkspace: async (_, { name: raw }, ctx) => {
+      const { principal, scope } = await requireWorkspacePermission(
+        ctx,
+        "workspace:manage",
+      );
+      const name = raw.trim();
+      if (name === "") {
+        throw invalidInput([
+          {
+            path: "name",
+            code: "validation.errors.too-short",
+            params: { min: 1 },
+          },
+        ]);
+      }
+      const core = ctx.tenancy.core as WorkspacesMongo;
+      if (!(await renameWorkspace(core, scope.tenant.id, name))) {
+        throw notFound();
+      }
+      await audit.record({
+        workspaceId: scope.tenant.id,
+        actor: memberActor(principal),
+        action: "workspace.rename",
+        target: { type: "WORKSPACE", id: scope.tenant.id, name },
+        ip: ctx.ip,
+        meta: { from: scope.tenant.name, to: name },
+      });
+      return view({ ...scope.tenant, name }, scope.member);
     },
     updateWorkspaceSettings: async (_, { input }, ctx) => {
       const { principal, scope } = await requireWorkspacePermission(

@@ -58,8 +58,15 @@ extend type Mutation {
   `confirmStepUp`); removing an owner needs `owners:manage` (OWNER). To leave
   yourself, use `leaveWorkspace` (no step-up). 404 `members.errors.not-found`;
   409 `workspaces.errors.last-owner`.
+
+  `transferTo` is the id of another current member who receives what the
+  removed member owned: their whole file tree, which becomes a folder
+  `Files of <name>` in the receiver's "My files". Without it the files stay
+  with the removed account, out of everyone's reach. A `transferTo` that is
+  the removed member, unknown, of another workspace or already gone is 400
+  `validation.errors.invalid-input` (field `transferTo`), and nothing changes.
   """
-  removeMember(memberId: ID!): Boolean!
+  removeMember(memberId: ID!, transferTo: ID): Boolean!
   """
   Leaves the request's workspace. Any member; 409
   `workspaces.errors.last-owner` for the last owner, who promotes another
