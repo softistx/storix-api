@@ -157,7 +157,13 @@ export async function changeRole(
 // member who left, for `memberRemoved` (members.removal.ts).
 export async function endMembership(
   mongo: MembersMongo,
-  input: Change & ({ memberId: string } | { accountId: string }),
+  input: Change &
+    ({ memberId: string } | { accountId: string }) & {
+      // Runs inside the transaction once the membership is marked ended: when it
+      // throws, the membership stays (`removeMember(transferTo:)` hands the files
+      // over here, so a failed handover removes nobody).
+      beforeCommit?: (target: MemberDoc) => Promise<unknown>;
+    },
 ): Promise<MemberDoc> {
   const workspaceId = toObjectId(input.workspaceId);
   return mongo.transaction(async (tx) => {
@@ -177,6 +183,7 @@ export async function endMembership(
     await tx.db.members
       .as(input.actorId)
       .update(target._id, { removedAt: new Date(), version: target.version });
+    await input.beforeCommit?.(target);
     return target;
   });
 }

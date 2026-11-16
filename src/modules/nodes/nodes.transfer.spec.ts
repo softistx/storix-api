@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { setup } from "../../modules/nodes/nodes.harness";
+import { store } from "@/config/tenancy";
+import { actionsOf, storedEvents } from "@/core/audit/audit.harness";
+import { onMemberHandover } from "@/core/members";
+import { nodesMongo } from "./nodes.handle";
+import { setup } from "./nodes.harness";
+import { transferLabel, transferTree } from "./nodes.transfer";
 
 const REMOVE = `mutation($memberId: ID!, $transferTo: ID) { removeMember(memberId: $memberId, transferTo: $transferTo) }`;
 const MEMBERS = "{ members(first: 50) { nodes { id } } }";
@@ -100,5 +105,84 @@ describe("removeMember with transferTo", () => {
     });
     expect(t.w.codeOf(refused)).toBe("auth.errors.forbidden");
     expect(await t.memberIds()).toContain(t.leaver.memberId);
+  });
+
+  test("a failed handover fails the call: nobody is removed and no transferredTo is audited", async () => {
+    const t = await scene();
+    const off = onMemberHandover(async () => {
+      throw new Error("files are down");
+    });
+    try {
+      const failed = await t.remove(t.admin.memberId);
+      expect(failed.errors).toBeDefined();
+    } finally {
+      off();
+    }
+    expect(await t.memberIds()).toContain(t.leaver.memberId);
+    const events = await storedEvents(t.workspace.id);
+    expect(actionsOf(events)).not.toContain("member.remove");
+    expect(JSON.stringify(events)).not.toContain("transferredTo");
+    // The same call goes through once the handover works again.
+    expect((await t.remove(t.admin.memberId)).errors).toBeUndefined();
+    expect(await t.memberIds()).not.toContain(t.leaver.memberId);
+  });
+
+  test("the audit names the receiver only when files moved", async () => {
+    const t = await scene();
+    await t.asLeaver.root();
+    expect((await t.remove(t.admin.memberId)).errors).toBeUndefined();
+    const events = await storedEvents(t.workspace.id);
+    expect(JSON.stringify(events.at(-1))).toContain("transferredTo");
+  });
+
+  test("an account with no tree hands nothing over", async () => {
+    const t = await scene();
+    const mine = await t.asAdmin.root();
+    const database = await store.databaseOf(t.workspace.id);
+    const moved = await transferTree(nodesMongo(database), {
+      fromAccountId: "no-such-account",
+      toAccountId: t.admin.user.principal.accountId,
+      name: "Ghost",
+    });
+    expect(moved).toBe(false);
+    expect(await t.asAdmin.names(mine.id)).toEqual([]);
+  });
+
+  test("trashed nodes of the leaver move with the tree and stay in the receiver's trash", async () => {
+    const t = await scene();
+    const root = await t.asLeaver.root();
+    const old = await t.asLeaver.folder(root.id, "Old");
+    const trashed = await t.asLeaver.send(
+      "mutation($ids: [ID!]!) { trashNodes(ids: $ids) { id } }",
+      { ids: [old.id] },
+    );
+    expect(trashed.errors).toBeUndefined();
+    expect((await t.remove(t.admin.memberId)).errors).toBeUndefined();
+    const listed = await t.asAdmin.send(
+      "{ trash(first: 50) { nodes { id } } }",
+    );
+    const ids = (
+      (listed.data ?? {})["trash"] as { nodes: { id: string }[] }
+    ).nodes.map((n) => n.id);
+    expect(ids).toContain(old.id);
+  });
+});
+
+describe("transferLabel", () => {
+  test("names the folder after the leaver", () => {
+    expect(transferLabel("Ada")).toBe("Files of Ada");
+  });
+
+  test("drops slashes and control characters and collapses spaces", () => {
+    expect(transferLabel("  a/b\\c\u0000 d\n e  ")).toBe("Files of a b c d e");
+  });
+
+  test("falls back to a former member when the name is missing or empty", () => {
+    expect(transferLabel(null)).toBe("Files of a former member");
+    expect(transferLabel(" / ")).toBe("Files of a former member");
+  });
+
+  test("truncates a long name to 200 characters", () => {
+    expect(transferLabel("x".repeat(500))).toBe(`Files of ${"x".repeat(200)}`);
   });
 });

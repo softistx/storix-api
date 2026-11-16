@@ -8,7 +8,10 @@ export {
   onMemberJoined,
 } from "./members.joined";
 export {
+  handOver,
+  type MemberHandover,
   type MemberRemoval,
+  onMemberHandover,
   onMemberRemoved,
 } from "./members.removal";
 export {

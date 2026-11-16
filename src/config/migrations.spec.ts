@@ -45,6 +45,7 @@ describe("the core migrations", () => {
     "2026-11-21-versions-errors",
     "2026-11-21-versions-trash-errors",
     "2026-11-21-workspaces-settings",
+    "2026-11-22-invitations-states-errors",
   ];
   const SHIPPED_WORKSPACE = [
     "2026-11-15-nodes-listing-collation",

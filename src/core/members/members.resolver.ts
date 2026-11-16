@@ -5,7 +5,7 @@ import { requireWorkspaceMember, requireWorkspacePermission } from "../access";
 import { memberActor } from "../audit";
 import type { Account } from "../identity";
 import { recordLeave, recordRemoval, recordRoleChange } from "./members.audit";
-import { memberRemoved } from "./members.removal";
+import { handOver, memberRemoved } from "./members.removal";
 import {
   changeRole,
   endMembership,
@@ -127,26 +127,41 @@ export const membersResolvers: Resolvers = {
           { path: "transferTo", code: "validation.errors.invalid" },
         ]);
       }
+      let name: string | null | undefined;
+      let handed = false;
       const removed = await endMembership(handleOf(scope), {
         workspaceId: scope.tenant.id,
         memberId,
         actorId: principal.accountId,
         canManageOwners: ctx.access.roleCan(scope.member, "owners:manage"),
+        // The files move before the removal commits: a failed handover fails
+        // the call and nobody is removed.
+        ...(receiver
+          ? {
+              beforeCommit: async (target: MemberDoc) => {
+                name = await nameOf(ctx, target);
+                handed = await handOver(scope, {
+                  workspaceId: scope.tenant.id,
+                  from: {
+                    memberId: target.id,
+                    accountId: target.accountId,
+                    name,
+                  },
+                  to: { memberId: receiver.id, accountId: receiver.accountId },
+                });
+              },
+            }
+          : {}),
       });
-      const name = await nameOf(ctx, removed);
-      await memberRemoved(scope, removed, {
-        name,
-        transferTo: receiver
-          ? { memberId: receiver.id, accountId: receiver.accountId }
-          : null,
-      });
+      name = name === undefined ? await nameOf(ctx, removed) : name;
+      await memberRemoved(scope, removed);
       await recordRemoval({
         workspaceId: scope.tenant.id,
         actor: memberActor(principal),
         ip: ctx.ip,
         member: removed,
         name,
-        transferredTo: receiver?.accountId,
+        transferredTo: handed ? receiver?.accountId : undefined,
       });
       return true;
     },

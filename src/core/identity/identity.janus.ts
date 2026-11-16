@@ -67,7 +67,8 @@ const accountOf = (user: AccountUser): Account => ({
 // The identity port over janus: the one place that imports it (with
 // `src/config/auth.ts`, which builds it). `deps:check` refuses a janus import
 // anywhere else.
-export function createJanusIdentity(options: IdentityOptions): Identity {
+// The janus parts one identity is made of, wired once from its options.
+function assemble(options: IdentityOptions) {
   const clock = options.clock ?? systemClock;
   const store = createMongoAdapter(options.db);
   const mail = createMail({
@@ -93,6 +94,12 @@ export function createJanusIdentity(options: IdentityOptions): Identity {
       onAccepted: options.onAcceptedInvitation,
     },
   });
+  return { accounts, mail, runner, hasher, invitationStore, clock };
+}
+
+export function createJanusIdentity(options: IdentityOptions): Identity {
+  const { accounts, mail, runner, hasher, invitationStore, clock } =
+    assemble(options);
   const deps = { accounts, mail, background: runner, clock };
 
   return {

@@ -364,7 +364,7 @@ the centre.
 
 ## `validation.errors.invalid-input` (400) on `removeMember` or `renameWorkspace`
 
-`removeMember` refuses with a field error on `transferTo` when the receiver is the member being removed, is unknown, belongs to another workspace, or already left. Nothing changes: the member stays and no file moves. Pass the member id of an active member, or omit `transferTo`.
+`removeMember` refuses with a field error on `transferTo` when the receiver is the member being removed, is unknown, belongs to another workspace, or already left. Nothing changes: the member stays and no file moves. A failure of the file transfer itself also fails the call and leaves the member in place: retry `removeMember`. Pass the member id of an active member, or omit `transferTo`.
 
 `renameWorkspace` refuses a blank name or one over 100 characters. Only OWNER and ADMIN may rename (`auth.errors.forbidden` otherwise).
 

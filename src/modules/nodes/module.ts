@@ -1,5 +1,5 @@
 import { defineModule } from "@alxia/modules";
-import { onMemberJoined, onMemberRemoved } from "@/core/members";
+import { onMemberHandover, onMemberJoined } from "@/core/members";
 import { nodes as codes } from "@/i18n/codes";
 import { nodesListingCollation } from "./migrations/2026-11-15-nodes-listing-collation.migration";
 import { nodesTrashIndexes } from "./migrations/2026-11-21-nodes-trash-indexes.migration";
@@ -36,11 +36,10 @@ onMemberJoined((database, joined) =>
 // A member removed with a receiver (`removeMember(transferTo:)`) hands their
 // whole tree to that member. Without one the files stay with the leaver's
 // account, out of everyone's reach until a rejoin.
-onMemberRemoved(async (scope, removal) => {
-  if (!removal.transferTo) return;
-  await transferTree(nodesMongo(scope.mongo), {
-    fromAccountId: removal.accountId,
-    toAccountId: removal.transferTo.accountId,
-    name: removal.name,
-  });
-});
+onMemberHandover((scope, handover) =>
+  transferTree(nodesMongo(scope.mongo), {
+    fromAccountId: handover.from.accountId,
+    toAccountId: handover.to.accountId,
+    name: handover.from.name,
+  }),
+);

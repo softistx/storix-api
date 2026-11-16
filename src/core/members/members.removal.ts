@@ -8,11 +8,44 @@ export interface MemberRemoval {
   workspaceId: string;
   memberId: string;
   accountId: string;
-  // The account's name, null when it no longer exists.
-  name: string | null;
-  // The member who receives what the leaver owns (`removeMember(transferTo:)`);
-  // null when nobody does.
-  transferTo: { memberId: string; accountId: string } | null;
+}
+
+// What a leaver hands over, for the modules that own their data
+// (`removeMember(transferTo:)`).
+export interface MemberHandover {
+  workspaceId: string;
+  from: { memberId: string; accountId: string; name: string | null };
+  to: { memberId: string; accountId: string };
+}
+
+// Answers whether it moved something.
+type HandoverListener = (
+  scope: WorkspaceScope,
+  handover: MemberHandover,
+) => Promise<boolean>;
+
+const handovers = new Set<HandoverListener>();
+
+// A business module that owns what a member made asks to receive it when
+// `removeMember` names a receiver. Unlike `onMemberRemoved`, it runs before the
+// removal commits and its failure fails the call: the membership stays.
+export function onMemberHandover(listener: HandoverListener): () => void {
+  handovers.add(listener);
+  return () => {
+    handovers.delete(listener);
+  };
+}
+
+// Runs the handovers; answers whether any moved something.
+export async function handOver(
+  scope: WorkspaceScope,
+  handover: MemberHandover,
+): Promise<boolean> {
+  let moved = false;
+  for (const listener of handovers) {
+    if (await listener(scope, handover)) moved = true;
+  }
+  return moved;
 }
 
 type Listener = (
@@ -42,16 +75,11 @@ export function onMemberRemoved(listener: Listener): () => void {
 export async function memberRemoved(
   scope: WorkspaceScope,
   member: MemberDoc,
-  extra: Pick<MemberRemoval, "name" | "transferTo"> = {
-    name: null,
-    transferTo: null,
-  },
 ): Promise<void> {
   const removal: MemberRemoval = {
     workspaceId: scope.tenant.id,
     memberId: member.id,
     accountId: member.accountId,
-    ...extra,
   };
   for (const listener of listeners) {
     try {
