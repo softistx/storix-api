@@ -83,7 +83,7 @@ describe("focal point and crops", () => {
     expect(centre.etag).toBe(before.etag);
   });
 
-  test("a move before the first job is done still ends READY with its previews", async () => {
+  test("a move before the first job is done still ends READY with its crops", async () => {
     const a = await area();
     const file = await a.record("early.png");
     const moved = await a.send(FOCAL, {
