@@ -5,7 +5,9 @@ import type { WorkspacesMongo } from "./workspaces.service";
 
 // A workspace's storage: its quota and what it holds (plan §3.9). `bytes`
 // counts each distinct blob once, so a copy that shares a blob adds nothing;
-// `files` counts file nodes, copies included. The counters are raised and
+// `files` counts live file nodes, copies included (a trashed file is not one);
+// `versionBytes` the blobs only versions hold (no node does), `trashBytes` the
+// blobs only trashed nodes hold (see `files.accounting.ts`). The counters are raised and
 // lowered in the transaction that changes a ref (`addUsage`), and `reconcile`
 // (src/modules/quotas) recounts them.
 export interface Usage {
@@ -72,7 +74,12 @@ export async function hasRoom(
 export async function addUsage(
   mongo: WorkspacesMongo,
   workspaceId: string,
-  delta: { bytes: number; files: number },
+  delta: {
+    bytes: number;
+    files: number;
+    versionBytes?: number;
+    trashBytes?: number;
+  },
 ): Promise<void> {
   const collection = mongo.db.workspaces;
   const _id = toObjectId(workspaceId);
@@ -90,6 +97,8 @@ export async function addUsage(
       $inc: {
         "usage.bytes": delta.bytes,
         "usage.files": delta.files,
+        ...(delta.versionBytes && { "usage.versionBytes": delta.versionBytes }),
+        ...(delta.trashBytes && { "usage.trashBytes": delta.trashBytes }),
       },
     },
     inSession(collection.session),
@@ -101,12 +110,26 @@ export async function addUsage(
 export async function setUsage(
   mongo: WorkspacesMongo,
   workspaceId: string,
-  usage: Pick<Usage, "bytes" | "files">,
+  usage: Pick<Usage, "bytes" | "files"> & {
+    versionBytes?: number;
+    trashBytes?: number;
+  },
 ): Promise<void> {
   const collection = mongo.db.workspaces;
   await collection.raw.updateOne(
     { _id: toObjectId(workspaceId) },
-    { $set: { "usage.bytes": usage.bytes, "usage.files": usage.files } },
+    {
+      $set: {
+        "usage.bytes": usage.bytes,
+        "usage.files": usage.files,
+        ...(usage.versionBytes !== undefined && {
+          "usage.versionBytes": usage.versionBytes,
+        }),
+        ...(usage.trashBytes !== undefined && {
+          "usage.trashBytes": usage.trashBytes,
+        }),
+      },
+    },
     inSession(collection.session),
   );
 }

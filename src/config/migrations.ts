@@ -3,9 +3,13 @@ import { type Migration, migrationStatus } from "@softistx/mongo/migrations";
 import type { Db } from "mongodb";
 import { modules } from "../modules/registry";
 
-// The core database's migrations, every module's in dependency order (the
-// registry's `coreMigrations`). E1 adds the workspaces' own list.
-export const migrations: readonly Migration[] = coreMigrationsOf(modules);
+// The core database's migrations: every module's `coreMigrations`, in id order
+// (ids start with their date). The runner refuses a pending migration listed
+// before an applied one, so a migration a later module adds must sort after
+// the ones a database already ran: grouping by module would put it mid-list.
+export const migrations: readonly Migration[] = coreMigrationsOf(
+  modules,
+).toSorted((a, b) => a.id.localeCompare(b.id));
 
 // The database has migrations this build lists that were not applied
 // (`bun run db:migrate` applies them).

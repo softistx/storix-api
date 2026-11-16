@@ -269,6 +269,12 @@ Any operation can answer 403 with this code.
 
 **Fix:** read the node again (`nodePath`, `folders`), then rename with its new `version`.
 
+## `trash.errors.not-trashed` (409)
+
+**When:** `restoreNodes` or `purgeNodes` got a node that is not in the trash (it was restored meanwhile). A node that went to the trash with a folder, not as an entry of its own, answers `nodes.errors.not-found` instead.
+
+**Fix:** list the trash (`trash`) and act on its entries; to get a node back that went with a folder, restore the folder.
+
 ## `nodes.errors.name-taken`, `too-deep`, `cycle`, `move-too-large`, `root-locked` (409)
 
 **When:** a sibling holds the name in any case (`name-taken`, field `name`); the folder would pass 16 levels (`too-deep`); a folder is moved or copied into itself or its own subtree (`cycle`); the moved folder holds more than 5,000 nodes (`move-too-large`); a root is renamed or moved (`root-locked`).

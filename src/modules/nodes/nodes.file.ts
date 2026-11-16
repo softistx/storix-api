@@ -56,6 +56,20 @@ export async function freeName(tx: NodesMongo, parent: NodeDoc, name: string) {
   return name;
 }
 
+// The live node of a folder of the caller's tree that has this name, ignoring
+// case (`NEW_VERSION` looks for the file a new upload replaces); the folder
+// must be the caller's (`not-found`, `not-a-folder`).
+export async function sameNameSibling(
+  tx: NodesMongo,
+  input: { parentId: string; accountId: string; name: string },
+): Promise<NodeDoc | undefined> {
+  const parent = await ownedFolder(tx, input.parentId, input.accountId);
+  return tx.db.nodes.findFirst(
+    { parentId: parent._id, name: input.name, trashedAt: null },
+    { collation: NAME_COLLATION },
+  );
+}
+
 // A file node under a folder of the caller's tree, in the caller's
 // transaction (which has locked the tree: `lockTree`). `REFUSE` leaves a name
 // clash to the unique index (`name-taken`); `KEEP_BOTH` renames the new file.

@@ -45,7 +45,12 @@ export const nodes = defineCollection({
     ownerId: z.string().nullable().default(null),
     spaceId: z.string().nullable().default(null),
     treeRev: z.number().int().default(0),
+    // In the trash since this date (the trash module, plan §3.9). A trashed
+    // folder trashes everything under it: the folder is the trash's entry
+    // (`trashRootId` null) and what was under it points back at it.
     trashedAt: z.date().nullable().default(null),
+    trashedBy: z.string().nullable().default(null),
+    trashRootId: objectId().nullable().default(null),
     blobKey: z.string().nullable().default(null),
     mimeType: z.string().nullable().default(null),
     size: z.number().int().nonnegative().nullable().default(null),
@@ -59,6 +64,10 @@ export const nodes = defineCollection({
       .object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })
       .nullable()
       .default(null),
+    // The version row (`versions`, the files module) whose blob the node
+    // holds; null on a file recorded before versions existed or copied, until
+    // its first version is made (`files.versions.first.ts`).
+    currentVersionId: objectId().nullable().default(null),
   }),
   timestamps: true,
   optimisticLock: true,
@@ -96,6 +105,24 @@ export const nodes = defineCollection({
       collation: NAME_COLLATION,
     },
     { key: { ancestors: 1 }, name: "nodes_ancestors" },
+    // The trash of a member: its entries, latest first.
+    {
+      key: { ownerId: 1, trashedAt: -1, _id: -1 },
+      name: "nodes_trash",
+      partialFilterExpression: { trashedAt: { $type: "date" } },
+    },
+    // The retention job's scan: the oldest trashed nodes of the workspace.
+    {
+      key: { trashedAt: 1 },
+      name: "nodes_trashed_at",
+      partialFilterExpression: { trashedAt: { $type: "date" } },
+    },
+    // What a trash entry took with it.
+    {
+      key: { trashRootId: 1 },
+      name: "nodes_trash_root",
+      partialFilterExpression: { trashRootId: { $type: "objectId" } },
+    },
     { key: { ownerId: 1, parentId: 1 }, name: "nodes_owner_parent" },
     // The date sort has no name in its key: no collation.
     {

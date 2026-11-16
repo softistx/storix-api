@@ -115,7 +115,12 @@ describe("the orphan sweep", () => {
     const after = await stored();
     expect(after).toEqual(before);
     const recount = await recountStorage(a.mongo);
-    expect({ bytes: after.bytes, files: after.files }).toEqual(recount);
+    expect({
+      bytes: after.bytes,
+      files: after.files,
+      versionBytes: after.versionBytes,
+      trashBytes: after.trashBytes,
+    }).toEqual(recount);
   });
 
   test("a failed delete is logged, counted and retried by the next run", async () => {
@@ -181,7 +186,7 @@ describe("the sweep against addFile", () => {
     expect(recorded?.errors).toBeUndefined();
     expect(await a.keys()).toEqual([a.place(up.key)]);
     expect(await a.mongo.db.blobs.findFirst({ key: up.key })).toMatchObject({
-      refs: 1,
+      refs: 2,
     });
   });
 

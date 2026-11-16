@@ -33,10 +33,17 @@ export async function storageView(
   };
 }
 
+interface Counted {
+  bytes: number;
+  files: number;
+  versionBytes: number;
+  trashBytes: number;
+}
+
 export interface Reconciled {
   workspaceId: string;
-  before: { bytes: number; files: number };
-  after: { bytes: number; files: number };
+  before: Counted;
+  after: Counted;
   drift: boolean;
 }
 
@@ -56,9 +63,15 @@ export async function reconcileUsage(
     const before = {
       bytes: stored?.usage.bytes ?? 0,
       files: stored?.usage.files ?? 0,
+      versionBytes: stored?.usage.versionBytes ?? 0,
+      trashBytes: stored?.usage.trashBytes ?? 0,
     };
     const after = await recountStorage(tx);
-    const drift = before.bytes !== after.bytes || before.files !== after.files;
+    const drift =
+      before.bytes !== after.bytes ||
+      before.files !== after.files ||
+      before.versionBytes !== after.versionBytes ||
+      before.trashBytes !== after.trashBytes;
     if (drift) await setUsage(coreTx, workspaceId, after);
     return { workspaceId, before, after, drift };
   });

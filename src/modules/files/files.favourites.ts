@@ -1,4 +1,4 @@
-import { type NodeDoc, nodeNotFound, ownedNode } from "@/modules/nodes/public";
+import { type NodeDoc, ownedNode } from "@/modules/nodes/public";
 import {
   afterPosition,
   type PersonalPage,
@@ -14,9 +14,13 @@ export async function setStarred(
   mongo: FilesMongo,
   input: { id: string; starred: boolean; accountId: string },
 ): Promise<NodeDoc> {
-  const node = await ownedNode(mongo, input.id, input.accountId);
+  const node = await ownedNode(
+    mongo,
+    input.id,
+    input.accountId,
+    input.starred ? "live" : "any",
+  );
   if (input.starred) {
-    if (node.trashedAt) throw nodeNotFound();
     await mongo.db.stars.upsert(
       { accountId: input.accountId, nodeId: node._id },
       {},

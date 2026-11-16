@@ -2,6 +2,8 @@
 // the orphan sweep.
 // Everything else in this folder is private.
 
+export { accounted } from "./files.accounting";
+export { releaseBlobs } from "./files.blob";
 export { filesMongo } from "./files.handle";
 export { fileReader } from "./files.reader";
 export { recountStorage } from "./files.recount";
@@ -20,4 +22,10 @@ export type {
   SweepOptions,
   SweepReport,
 } from "./files.sweep.run";
+export {
+  type RetentionOptions,
+  type RetentionReport,
+  retainAll,
+  retainVersions,
+} from "./files.versions.retention";
 export { filesModule } from "./module";
