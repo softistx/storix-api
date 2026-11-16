@@ -1,4 +1,4 @@
-import { afterAll } from "bun:test";
+import { afterAll, setDefaultTimeout } from "bun:test";
 import { MongoMemoryReplSet } from "mongodb-memory-server-core";
 
 // Preloaded by `bun test` (bunfig.toml), before any spec imports src/: one
@@ -8,6 +8,11 @@ import { MongoMemoryReplSet } from "mongodb-memory-server-core";
 // (storix_core, storix_ws_<id>), on that one server. Nothing here needs
 // Docker or the developer's .env, so CI runs the same specs.
 const START_TIMEOUT_MS = 60_000;
+
+// The first test of a file builds a world (databases, indexes) on a cold
+// server and can pass the 5 s default of a bare `bun test <file>`; the
+// `test` script's 15 s holds for every run.
+setDefaultTimeout(15_000);
 const starting = MongoMemoryReplSet.create({
   replSet: { count: 1, storageEngine: "wiredTiger" },
   instanceOpts: [

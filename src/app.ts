@@ -9,14 +9,18 @@ import {
   uploadLimit as serverUploadLimit,
 } from "./config/storage";
 import type { Identity } from "./core/identity";
-import { storageRoutes, type UploadLimit } from "./core/storage";
+import {
+  type FileReader,
+  storageRoutes,
+  type UploadLimit,
+} from "./core/storage";
 import { createBase } from "./http/context";
 import { clientHeader } from "./http/csrf";
 import { graphqlPlugins } from "./http/graphql-plugins";
 import { keyPathsOnly } from "./http/key-paths";
 import type { Limits } from "./http/rate-limits";
 import { schema } from "./http/schema";
-import type { RenditionsQueue } from "./modules/files/public";
+import { fileReader, type RenditionsQueue } from "./modules/files/public";
 
 // The largest body /graphql reads.
 export const BODY_LIMIT = 100 * 1024;
@@ -36,7 +40,13 @@ export function createApp(
     limits?: Limits;
     // The files' bucket (`undefined`: /media answers 503) and the upload
     // limit; specs inject ones over their own SeaweedFS and Redis.
-    media?: { bucket: MediaBucket | undefined; limit?: UploadLimit };
+    // `fileReader` decides who may read a `files` key (default: the `files`
+    // module's, a node of the caller's tree holds it).
+    media?: {
+      bucket: MediaBucket | undefined;
+      limit?: UploadLimit;
+      fileReader?: FileReader;
+    };
     // The `renditions` queue `addFile` adds to (`undefined`: a file has no
     // previews and is `READY` at once); specs inject one over their own Redis.
     renditions?: RenditionsQueue | undefined;
@@ -70,6 +80,7 @@ export function createApp(
         storageRoutes({
           bucket,
           limit: options.media?.limit ?? serverUploadLimit,
+          fileReader: options.media?.fileReader ?? fileReader,
         }),
       )
       .onStop(async () => {

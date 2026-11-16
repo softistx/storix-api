@@ -19,9 +19,9 @@ type Storage {
 
 extend type Query {
   """
-  The workspace's storage: its quota, what is used and the split. Any member
-  may read it. 400 `workspaces.errors.workspace-required`, 404
-  `workspaces.errors.not-found`; 401 `auth.errors.api-key-not-accepted`.
+  The workspace's storage: its quota, what is used and the split. Needs the
+  `workspace:read` permission, which every member holds. 400
+  `workspaces.errors.workspace-required`, 404 `workspaces.errors.not-found`; 401 `auth.errors.api-key-not-accepted`.
   """
   storage: Storage!
 }

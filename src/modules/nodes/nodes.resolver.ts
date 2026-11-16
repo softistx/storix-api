@@ -3,21 +3,16 @@ import { memberActor } from "@/core/audit";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { invalidInput } from "@/i18n/fail";
 import { recordFolderCreate, recordMove, recordRename } from "./nodes.audit";
+import { nodesMongo } from "./nodes.handle";
 import { listNodes } from "./nodes.list";
 import { moveNodes } from "./nodes.move";
 import { checkName } from "./nodes.rules";
-import {
-  createFolder,
-  type NodesMongo,
-  ownedNode,
-  renameNode,
-} from "./nodes.service";
+import { createFolder, ownedNode, renameNode } from "./nodes.service";
 import { foldersOf, nodeView, pathTo, rootsOf } from "./nodes.tree";
 
-// The module's handle on the request's workspace database (the scope's, typed
-// by the registry; see src/core/access/ports.ts).
+// The module's handle on the request's workspace database.
 const workspaceDb = (scope: { readonly mongo: unknown }) =>
-  scope.mongo as NodesMongo;
+  nodesMongo(scope.mongo);
 
 // A name is trimmed and checked; a refused one is a field issue of `name`.
 function nameOf(raw: string): string {

@@ -3,7 +3,7 @@ import { memberActor } from "@/core/audit";
 import type { WorkspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { invalidInput } from "@/i18n/fail";
-import { checkName, nodeView } from "@/modules/nodes/public";
+import { checkName, fileView, nodeView } from "@/modules/nodes/public";
 import {
   recordCopy,
   recordFileAdd,
@@ -14,16 +14,16 @@ import { copyNodes } from "./files.copy";
 import { notAFile } from "./files.errors";
 import { listStarred, setStarred } from "./files.favourites";
 import { fileRenditionResolvers, setFocalPoint } from "./files.focal.resolver";
+import { filesMongo } from "./files.handle";
 import type { PersonalPage } from "./files.personal";
 import { listRecent, openFile, recordRecent } from "./files.recents";
 import { checkTags, MAX_META_BYTES, metaFits } from "./files.rules";
-import { addFile, type FilesMongo, isQuotaExceeded } from "./files.service";
+import { addFile, isQuotaExceeded } from "./files.service";
 import { updateFile } from "./files.update";
 
 // The module's handle on the request's workspace database (the scope's, typed
-// by the registry; see src/core/access/ports.ts): the one cast of this file.
-const filesDb = (scope: { readonly mongo: unknown }) =>
-  scope.mongo as unknown as FilesMongo;
+// by the registry; see src/core/access/ports.ts).
+const filesDb = (scope: { readonly mongo: unknown }) => filesMongo(scope.mongo);
 
 // A personal page as the API says it: the nodes and the cursor to go on.
 const pageOf = (page: PersonalPage, after: string | null | undefined) => ({
@@ -217,9 +217,7 @@ export const filesResolvers: Resolvers = {
           ...(meta !== undefined ? ["meta" as const] : []),
         ],
       );
-      const view = nodeView(node);
-      if (view.__typename !== "File") throw notAFile();
-      return view;
+      return fileView(node);
     },
   },
 };

@@ -1,10 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { store } from "@/config/tenancy";
+import { nodesMongo } from "./nodes.handle";
 import { CREATE, MOVE, RENAME, setup } from "./nodes.harness";
-import type { NodesMongo } from "./nodes.service";
 
-const databaseOf = async (id: string) =>
-  (await store.databaseOf(id)) as unknown as NodesMongo;
+const databaseOf = async (id: string) => nodesMongo(await store.databaseOf(id));
 
 // What every write must leave true: each node's `ancestors` is its parent's plus
 // the parent, nothing is its own ancestor, and a parent's name is never

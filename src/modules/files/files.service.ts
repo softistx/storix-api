@@ -8,6 +8,7 @@ import {
   type NodeDoc,
   type NodesMongo,
   named,
+  nodesMongo,
   type OnConflict,
 } from "@/modules/nodes/public";
 import { type RenditionJob, renditionJobId } from "@/queues/renditions";
@@ -62,13 +63,13 @@ export async function addFile(
     try {
       const node = await named(() =>
         mongo.transaction(async (tx) => {
-          await lockTree(tx as unknown as NodesMongo, input.accountId);
+          await lockTree(nodesMongo(tx), input.accountId);
           await recordBlob(tx, input.key, object);
           await addUsage(core.withSession(tx.session), input.workspaceId, {
             bytes: object.size,
             files: 1,
           });
-          return insertFile(tx as unknown as NodesMongo, {
+          return insertFile(nodesMongo(tx), {
             parentId: input.parentId,
             accountId: input.accountId,
             name: input.name,
@@ -138,13 +139,13 @@ export async function enqueue(
   }
 }
 
-export const isQuotaExceeded = (error: unknown) =>
-  (error as { extensions?: { code?: string } }).extensions?.code ===
-  "quotas.errors.exceeded";
+// Whether `error` is a GraphQL error carrying the catalogue code.
+const hasCode = (code: string) => (error: unknown) =>
+  (error as { extensions?: { code?: string } }).extensions?.code === code;
 
-const isNameTaken = (error: unknown) =>
-  (error as { extensions?: { code?: string } }).extensions?.code ===
-  "nodes.errors.name-taken";
+export const isQuotaExceeded = hasCode("quotas.errors.exceeded");
+
+const isNameTaken = hasCode("nodes.errors.name-taken");
 
 async function recordBlob(
   tx: FilesMongo,

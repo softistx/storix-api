@@ -2,6 +2,8 @@
 // the orphan sweep.
 // Everything else in this folder is private.
 
+export { filesMongo } from "./files.handle";
+export { fileReader } from "./files.reader";
 export { recountStorage } from "./files.recount";
 export {
   type RenditionsQueue,

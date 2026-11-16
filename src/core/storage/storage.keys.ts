@@ -1,33 +1,13 @@
 // Who may read a `files` key. The kernel cannot reach the node tree (a core
-// module depends on no business module), so the `files` module registers the
-// check when it loads, as `onMemberJoined` does for a new member.
+// module depends on no business module), so the application hands the media
+// routes a check written by the `files` module (`createApp`, src/app.ts):
+// there is no registry to fill and no state to reset between two apps.
 
 export interface FileRead {
   key: string;
   accountId: string;
 }
 
-// `mongo` is the request's workspace database, as the module that registers
-// the check knows it.
+// `mongo` is the request's workspace database, as the module that writes the
+// check knows it.
 export type FileReader = (mongo: unknown, read: FileRead) => Promise<boolean>;
-
-let reader: FileReader | undefined;
-
-// Sets the check (one module owns it; a second call replaces the first) and
-// answers the one it replaced, so a spec can put it back.
-export function onFileRead(
-  check: FileReader | undefined,
-): FileReader | undefined {
-  const previous = reader;
-  reader = check;
-  return previous;
-}
-
-// Without a check registered nothing is readable: a `files` object is served
-// only once a node holds its key.
-export async function mayReadFile(
-  mongo: unknown,
-  read: FileRead,
-): Promise<boolean> {
-  return reader ? reader(mongo, read) : false;
-}

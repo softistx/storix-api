@@ -1,5 +1,9 @@
 import { setUsage, storageOf, type WorkspacesMongo } from "@/core/workspaces";
-import { type FilesMongo, recountStorage } from "@/modules/files/public";
+import {
+  type FilesMongo,
+  filesMongo,
+  recountStorage,
+} from "@/modules/files/public";
 
 export interface StorageView {
   quotaBytes: number;
@@ -76,7 +80,7 @@ export async function reconcileAll(
   const failed: { workspaceId: string; error: unknown }[] = [];
   for (const workspace of workspaces) {
     try {
-      const mongo = (await databaseOf(workspace.id)) as FilesMongo;
+      const mongo = filesMongo(await databaseOf(workspace.id));
       done.push(await reconcileUsage(mongo, core, workspace.id));
     } catch (error) {
       failed.push({ workspaceId: workspace.id, error });

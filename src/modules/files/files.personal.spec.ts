@@ -3,8 +3,8 @@ import { ObjectId } from "mongodb";
 import { store } from "@/config/tenancy";
 import { filesWorld } from "../../../test/files.harness";
 import { NODE, setup } from "../nodes/nodes.harness";
+import { filesMongo } from "./files.handle";
 import { MAX_RECENTS, recordRecent } from "./files.recents";
-import type { FilesMongo } from "./files.service";
 
 const files = filesWorld();
 
@@ -22,7 +22,7 @@ async function area() {
   const s = await setup(files.ctx.w);
   const root = await s.owner.root();
   const { owner, id } = s.workspace;
-  const db = (await store.databaseOf(id)) as unknown as FilesMongo;
+  const db = filesMongo(await store.databaseOf(id));
   const file = (name: string, who = owner, parentId = root.id) =>
     files.addFile(who, id, parentId, name);
   const send = (

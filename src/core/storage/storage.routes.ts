@@ -2,6 +2,7 @@ import type { MediaBucket } from "@alxia/media";
 import { mediaRoutes } from "@alxia/media";
 import { keyPrefix } from "./storage.access";
 import type { MediaRequires } from "./storage.context";
+import type { FileReader } from "./storage.keys";
 import { mediaKinds } from "./storage.kinds";
 import type { UploadLimit } from "./storage.limit";
 import { refusalReply } from "./storage.refusal";
@@ -14,9 +15,11 @@ import { refusalReply } from "./storage.refusal";
 export function storageRoutes(options: {
   bucket: MediaBucket | undefined;
   limit: UploadLimit;
+  fileReader: FileReader;
 }) {
   const kinds = mediaKinds({
     limit: options.limit,
+    fileReader: options.fileReader,
     available: options.bucket !== undefined,
   });
   return mediaRoutes<MediaRequires>(kinds, {

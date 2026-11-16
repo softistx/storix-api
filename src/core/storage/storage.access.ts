@@ -3,7 +3,7 @@ import type { MediaDenial } from "@alxia/media";
 import { GraphQLError } from "graphql";
 import { apiRefusal } from "@/core/access/refusals";
 import type { MediaRequires } from "./storage.context";
-import { mayReadFile } from "./storage.keys";
+import type { FileReader } from "./storage.keys";
 
 // Who may touch /media: a member of the request's workspace (the
 // `x-storix-workspace` header), through a session. A personal API key is
@@ -63,12 +63,16 @@ export async function authorizeRead(ctx: MediaRequires) {
 }
 
 // Reads of `files`: a member of the workspace, and a key some node of the
-// caller's tree holds (`files` registers the check, storage.keys.ts). An
+// caller's tree holds (the check is `files`'s, passed in: storage.keys.ts). An
 // object nobody recorded, another member's file and a missing key are one 404.
-export async function authorizeFileRead(ctx: MediaRequires, key: string) {
+export async function authorizeFileRead(
+  ctx: MediaRequires,
+  key: string,
+  fileReader: FileReader,
+) {
   const access = await accessOf(ctx);
   if (!access.ok) return access.denial;
-  const allowed = await mayReadFile(access.scope.mongo, {
+  const allowed = await fileReader(access.scope.mongo, {
     key,
     accountId: access.accountId,
   });

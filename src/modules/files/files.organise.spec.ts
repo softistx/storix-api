@@ -1,52 +1,20 @@
 import { describe, expect, test } from "bun:test";
 import { tryObjectId } from "@softistx/mongo";
-import { S3Client } from "bun";
 import { store } from "@/config/tenancy";
+import { areaOf, code, field, objects } from "../../../test/files.area";
 import {
-  BUCKET,
   COPY,
   type FileView,
   filesWorld,
   UPDATE,
 } from "../../../test/files.harness";
-import { MOVE, type NodeView, RENAME, setup } from "../nodes/nodes.harness";
-import type { FilesMongo } from "./files.service";
+import { MOVE, type NodeView, RENAME } from "../nodes/nodes.harness";
+import { filesMongo } from "./files.handle";
 
 const files = filesWorld();
 
-const databaseOf = async (id: string) =>
-  (await store.databaseOf(id)) as unknown as FilesMongo;
-
-const code = (r: {
-  errors?: readonly { extensions?: unknown }[] | undefined;
-}) => (r.errors?.[0]?.extensions as { code?: string } | undefined)?.code;
-
-// A field of an answer's data, or undefined.
-const field = <T>(r: { data?: Record<string, unknown> | null }, name: string) =>
-  r.data?.[name] as T;
-
-// How many objects the bucket holds.
-async function objects() {
-  const s3 = new S3Client({
-    bucket: BUCKET,
-    endpoint: files.ctx.s3.endpoint,
-    accessKeyId: files.ctx.s3.accessKeyId,
-    secretAccessKey: files.ctx.s3.secretAccessKey,
-    region: files.ctx.s3.region,
-  });
-  return (await s3.list({ maxKeys: 1000 })).contents?.length ?? 0;
-}
-
-async function area() {
-  const s = await setup(files.ctx.w);
-  const root = await s.owner.root();
-  const { owner } = s.workspace;
-  const send = (query: string, variables: Record<string, unknown>) =>
-    s.w.send(owner, query, { ...s.at, variables });
-  const file = (parentId: string, name: string, body?: string) =>
-    files.addFile(owner, s.workspace.id, parentId, name, body);
-  return { ...s, root, send, file };
-}
+const databaseOf = async (id: string) => filesMongo(await store.databaseOf(id));
+const area = () => areaOf(files);
 
 describe("renameNode on a file", () => {
   test("renames it, keeps its blob, refuses a clash in any case and a stale version", async () => {
@@ -126,7 +94,7 @@ describe("copyNodes", () => {
     const { workspace, root, owner, send, file } = await area();
     const original = await file(root.id, "report.txt", "the report");
     const dest = await owner.folder(root.id, "dest");
-    const before = await objects();
+    const before = await objects(files);
     const copied = await send(COPY, {
       ids: [original.id],
       parentId: root.id,
@@ -140,7 +108,7 @@ describe("copyNodes", () => {
     });
     const [other] = field<NodeView[]>(elsewhere, "copyNodes");
     expect(other).toMatchObject({ name: "report.txt", parentId: dest.id });
-    expect(await objects()).toBe(before);
+    expect(await objects(files)).toBe(before);
     const db = await databaseOf(workspace.id);
     expect(await db.db.blobs.findFirst({ key: original.key })).toMatchObject({
       refs: 3,
@@ -184,7 +152,7 @@ describe("copyNodes", () => {
     const leaf = await file(sub.id, "leaf.txt");
     const top = await file(dir.id, "top.txt");
     const dest = await owner.folder(root.id, "dest");
-    const before = await objects();
+    const before = await objects(files);
     const copied = await send(COPY, { ids: [dir.id], parentId: dest.id });
     expect(copied.errors).toBeUndefined();
     const [copy] = field<NodeView[]>(copied, "copyNodes");
@@ -206,7 +174,7 @@ describe("copyNodes", () => {
       copy?.id ?? "",
       below.find((n) => n.name === "sub")?.id ?? "",
     ]);
-    expect(await objects()).toBe(before);
+    expect(await objects(files)).toBe(before);
     for (const f of [leaf, top]) {
       expect(await db.db.blobs.findFirst({ key: f.key })).toMatchObject({
         refs: 2,
@@ -252,84 +220,5 @@ describe("copyNodes", () => {
     });
     expect(code(stranger)).toBe("nodes.errors.not-found");
     expect(workspace.id).not.toBe(other.id);
-  });
-});
-
-describe("updateFile", () => {
-  test("tags are trimmed, lower case and unique; meta replaces; a field left out stays", async () => {
-    const { root, send, file } = await area();
-    const f = await file(root.id, "a.txt");
-    const first = await send(UPDATE, {
-      id: f.id,
-      input: { tags: [" Invoice ", "invoice", "2026", ""], meta: { a: 1 } },
-    });
-    expect(first.errors).toBeUndefined();
-    expect(first.data?.["updateFile"]).toMatchObject({
-      tags: ["invoice", "2026"],
-      meta: { a: 1 },
-      version: f.version + 1,
-    });
-    const second = await send(UPDATE, {
-      id: f.id,
-      input: { meta: { b: { c: [1] } } },
-    });
-    expect(second.data?.["updateFile"]).toMatchObject({
-      tags: ["invoice", "2026"],
-      meta: { b: { c: [1] } },
-    });
-    const cleared = await send(UPDATE, { id: f.id, input: { tags: [] } });
-    expect(field<FileView>(cleared, "updateFile").tags).toEqual([]);
-  });
-
-  test("a version that moved on is a conflict; the current one holds", async () => {
-    const { root, send, file } = await area();
-    const f = await file(root.id, "a.txt");
-    const ok = await send(UPDATE, {
-      id: f.id,
-      input: { tags: ["a"], version: f.version },
-    });
-    expect(ok.errors).toBeUndefined();
-    const stale = await send(UPDATE, {
-      id: f.id,
-      input: { tags: ["b"], version: f.version },
-    });
-    expect(code(stale)).toBe("nodes.errors.conflict");
-  });
-
-  test("a folder is not-a-file; bad tags and metadata are field issues", async () => {
-    const { root, owner, send, file } = await area();
-    const dir = await owner.folder(root.id, "dir");
-    expect(
-      code(await send(UPDATE, { id: dir.id, input: { tags: ["a"] } })),
-    ).toBe("files.errors.not-a-file");
-    const f = await file(root.id, "a.txt");
-    const long = await send(UPDATE, {
-      id: f.id,
-      input: { tags: ["x".repeat(51)] },
-    });
-    expect(code(long)).toBe("validation.errors.invalid-input");
-    const many = await send(UPDATE, {
-      id: f.id,
-      input: { tags: Array.from({ length: 21 }, (_, i) => `t${i}`) },
-    });
-    expect(many.errors).toBeDefined();
-    const big = await send(UPDATE, {
-      id: f.id,
-      input: { meta: { text: "x".repeat(20_000) } },
-    });
-    expect(code(big)).toBe("validation.errors.invalid-input");
-    const kept = await send(UPDATE, { id: f.id, input: {} });
-    expect(kept.data?.["updateFile"]).toMatchObject({ tags: [], meta: {} });
-  });
-
-  test("a node of another workspace is not found", async () => {
-    const { w, root, file } = await area();
-    const other = await w.workspaceOf();
-    const f = await file(root.id, "a.txt");
-    const result = await w.send(other.owner, UPDATE, {
-      workspace: other.id,
-      variables: { id: f.id, input: { tags: ["a"] } },
-    });
-    expect(code(result)).toBe("nodes.errors.not-found");
   });
 });

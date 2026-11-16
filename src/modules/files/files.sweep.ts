@@ -1,5 +1,6 @@
 import { mediaPlace } from "@alxia/media";
 import type { WorkspacesMongo } from "@/core/workspaces";
+import { filesMongo } from "./files.handle";
 import type { FilesMongo } from "./files.service";
 import { sweepOrphans } from "./files.sweep.orphans";
 import {
@@ -87,7 +88,7 @@ export async function sweepAll(
   const failed: { workspaceId: string; error: unknown }[] = [];
   for (const workspace of workspaces) {
     try {
-      const mongo = (await databaseOf(workspace.id)) as FilesMongo;
+      const mongo = filesMongo(await databaseOf(workspace.id));
       const report = await sweepWorkspace(mongo, bucket, workspace.id, options);
       done.push({ workspaceId: workspace.id, ...report });
     } catch (error) {

@@ -9,12 +9,11 @@ import {
   png,
 } from "../../../test/files.harness";
 import { setup } from "../nodes/nodes.harness";
-import type { FilesMongo } from "./files.service";
+import { filesMongo } from "./files.handle";
 
 const files = filesWorld({ renditions: true });
 
-const databaseOf = async (id: string) =>
-  (await store.databaseOf(id)) as unknown as FilesMongo;
+const databaseOf = async (id: string) => filesMongo(await store.databaseOf(id));
 
 // A drawn picture: the worker decodes it for real.
 function picture(width: number, height: number, type: "png" | "jpeg") {

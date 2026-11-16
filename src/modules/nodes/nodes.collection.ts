@@ -85,11 +85,19 @@ export const nodes = defineCollection({
         trashedAt: { $type: "null" },
       },
     },
-    { key: { parentId: 1, type: 1, name: 1, _id: 1 }, name: "nodes_listing" },
+    // The listings by name, size and kind (`nodes.list.ts`): folders first
+    // (`type` descending, as every sort of the listing), then the field, the
+    // name and the id. The name sorts with `NAME_COLLATION`, so the indexes
+    // carry it: without it MongoDB sorts a big folder in memory. A change to
+    // one of them is a migration too (2026-11-15-nodes-listing-collation).
+    {
+      key: { parentId: 1, type: -1, name: 1, _id: 1 },
+      name: "nodes_listing",
+      collation: NAME_COLLATION,
+    },
     { key: { ancestors: 1 }, name: "nodes_ancestors" },
     { key: { ownerId: 1, parentId: 1 }, name: "nodes_owner_parent" },
-    // The listing's sorts (`nodes.list.ts`): folders first, then the field,
-    // then the name and the id, so a cursor is stable.
+    // The date sort has no name in its key: no collation.
     {
       key: { parentId: 1, type: -1, updatedAt: 1, _id: 1 },
       name: "nodes_listing_date",
@@ -97,10 +105,12 @@ export const nodes = defineCollection({
     {
       key: { parentId: 1, type: -1, size: 1, name: 1, _id: 1 },
       name: "nodes_listing_size",
+      collation: NAME_COLLATION,
     },
     {
       key: { parentId: 1, type: -1, family: 1, name: 1, _id: 1 },
       name: "nodes_listing_kind",
+      collation: NAME_COLLATION,
     },
     { key: { tags: 1 }, name: "nodes_tags" },
     {
