@@ -140,7 +140,7 @@ export const membersResolvers: Resolvers = {
           ? {
               beforeCommit: async (target: MemberDoc) => {
                 name = await nameOf(ctx, target);
-                handed = await handOver(scope, {
+                handed ||= await handOver(scope, {
                   workspaceId: scope.tenant.id,
                   from: {
                     memberId: target.id,

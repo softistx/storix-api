@@ -119,6 +119,8 @@ describe("removeMember with transferTo", () => {
       off();
     }
     expect(await t.memberIds()).toContain(t.leaver.memberId);
+    // Handover listeners are not atomic with each other: the nodes listener
+    // ran first, so the files stay moved; only the removal and its audit hold.
     const events = await storedEvents(t.workspace.id);
     expect(actionsOf(events)).not.toContain("member.remove");
     expect(JSON.stringify(events)).not.toContain("transferredTo");
