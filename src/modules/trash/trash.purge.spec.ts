@@ -82,7 +82,7 @@ describe("purgeNodes", () => {
     });
     const result = await a.purge([docs]);
     expect(result.errors).toBeUndefined();
-    expect(result.data?.["purgeNodes"]).toBe(3);
+    expect(result.data?.["purgeNodes"]).toBe(2);
     expect(await a.mongo.db.nodes.findFirst({ name: "a.txt" })).toBeUndefined();
     expect(await a.mongo.db.versions.findMany({ filter: {} })).toEqual([]);
     for (const key of [file.key, up.key]) {

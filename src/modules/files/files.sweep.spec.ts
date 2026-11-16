@@ -119,6 +119,7 @@ describe("the orphan sweep", () => {
       bytes: after.bytes,
       files: after.files,
       versionBytes: after.versionBytes,
+      trashBytes: after.trashBytes,
     }).toEqual(recount);
   });
 

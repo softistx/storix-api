@@ -203,6 +203,7 @@ describe("the quota of a workspace", () => {
       bytes: usage.bytes,
       files: usage.files,
       versionBytes: usage.versionBytes,
+      trashBytes: usage.trashBytes,
     }).toEqual(recount);
   });
 
