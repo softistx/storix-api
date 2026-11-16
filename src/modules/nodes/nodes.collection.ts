@@ -111,6 +111,12 @@ export const nodes = defineCollection({
       name: "nodes_trash",
       partialFilterExpression: { trashedAt: { $type: "date" } },
     },
+    // The retention job's scan: the oldest trashed nodes of the workspace.
+    {
+      key: { trashedAt: 1 },
+      name: "nodes_trashed_at",
+      partialFilterExpression: { trashedAt: { $type: "date" } },
+    },
     // What a trash entry took with it.
     {
       key: { trashRootId: 1 },

@@ -21,7 +21,16 @@ export interface TrashRetentionOptions {
 export interface TrashRetentionReport {
   entries: number;
   removed: number;
+  // Entries whose purge failed for another reason than being gone or restored.
+  failed: number;
 }
+
+// An entry purged by an outer one, or restored, since the list was read.
+const SETTLED = new Set(["nodes.errors.not-found", "trash.errors.not-trashed"]);
+const isSettled = (error: unknown) =>
+  SETTLED.has(
+    String((error as { extensions?: { code?: unknown } })?.extensions?.code),
+  );
 
 // Purges what has been in the trash longer than the workspace's `trashDays`
 // (a run may pass `days`): each entry older than that, with its subtree, in a
@@ -48,7 +57,7 @@ export async function retainTrash(
     .sort({ trashedAt: 1 })
     .limit(options.entries ?? ENTRIES_PER_RUN)
     .toArray();
-  const report: TrashRetentionReport = { entries: 0, removed: 0 };
+  const report: TrashRetentionReport = { entries: 0, removed: 0, failed: 0 };
   for (const entry of due) {
     try {
       const done = await purgeEntry(mongo, core, {
@@ -58,8 +67,10 @@ export async function retainTrash(
       });
       report.entries += 1;
       report.removed += done.removed;
-    } catch {
-      // Gone (an outer entry purged first) or restored since the list was read.
+    } catch (error) {
+      // Gone or restored since the list was read: nothing to do. Any other
+      // failure is counted, so the job exits 1 instead of hiding it.
+      if (!isSettled(error)) report.failed += 1;
     }
   }
   return report;

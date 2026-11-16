@@ -26,7 +26,7 @@ describe("trash retention", () => {
       { $set: { trashedAt: new Date(Date.now() - 40 * DAY) } },
     );
     const report = await retainTrash(a.mongo, a.core(), a.id);
-    expect(report).toEqual({ entries: 1, removed: 1 });
+    expect(report).toEqual({ entries: 1, removed: 1, failed: 0 });
     expect((await a.trashed()).map((n) => n.name)).toEqual(["new.txt"]);
     expect(await a.usage()).toMatchObject({ bytes: 3, trashBytes: 3 });
   });
@@ -48,11 +48,13 @@ describe("trash retention", () => {
     expect(await retainTrash(a.mongo, a.core(), a.id)).toEqual({
       entries: 0,
       removed: 0,
+      failed: 0,
     });
     await updateSettings(a.core(), a.id, { trashDays: 3 });
     expect(await retainTrash(a.mongo, a.core(), a.id)).toEqual({
       entries: 1,
       removed: 1,
+      failed: 0,
     });
   });
 
