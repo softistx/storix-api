@@ -10,6 +10,7 @@ The v1 plan is split into efforts E0 to E8, each a tracking issue with its slice
 bun install   # @softistx/* comes from npm.softistx.com (NPM_REGISTRY_TOKEN)
 cp .env.example .env
 bun run dev                                  # starts the Docker services, then the API on :3000
+bun run worker                               # second terminal: thumbnails and crops (no previews without it)
 curl localhost:3000/health
 ```
 
@@ -20,6 +21,7 @@ curl localhost:3000/health
 | Script                 | Does                                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------------------ |
 | `bun run dev`          | the Docker services (MongoDB replica set, Redis, Mailpit, SeaweedFS), then the API in watch mode       |
+| `bun run start:worker` | the production worker (`dist/worker.js`), a required second process beside the API when previews are wanted |
 | `bun run worker`       | the queue worker in watch mode (renditions: thumbnails, previews and crops); needs `REDIS_URL`, `S3_*` and `MONGO_URI`; `bun run dev` does not start it |
 | `bun run verify`       | the green bar: generate, schema check, Biome, context and dependency checks, `bun check`, tests, build |
 | `bun run verify:pr`    | the same with only the specs a diff against `origin/develop` affects                                   |
@@ -333,7 +335,7 @@ An input refused as a whole is one error, `validation.errors.invalid-input` (HTT
 
 The refusals of a schema `@constraint` arrive in this same shape: the plugin in `src/http/api-errors.ts` converts them with `invalidInputOf` of `@nxgt/graphql-validation`, which maps each argument to its code and params (`minLength` is `too-short` with `params.min`, `maxLength` `too-long` with `params.max`, `min`/`max` `out-of-range`, and so on); the `@nxgt/graphql-validation` guide `docs/guide/invalid-input.md` has the full table.
 
-### Thumbnails and previews (the worker; crops follow)
+### Thumbnails and previews (the worker)
 
 `addFile` of a JPEG, PNG, WebP or PDF records the file as `PROCESSING` and enqueues a `renditions` job (`@softistx/redis`
 queue, one job per file). The worker (`bun run worker`, `dist/worker.js` in production, a second process beside the API)
@@ -347,7 +349,7 @@ previews failed, the original stays downloadable. Other types stay `READY` with 
 
 A JPEG, PNG or WebP picture also gets four crops, JPEG at quality 85, written at most at these sizes and never enlarged:
 `square` (1:1, 1080 x 1080), `portrait` (4:5, 1080 x 1350), `story` (9:16, 1080 x 1920) and `landscape` (16:9, 1920 x 1080), the
-same presets as publix. Each is the largest box of its ratio, centred on the file's focal point (the centre of the picture
+the common social-media ratios. Each is the largest box of its ratio, centred on the file's focal point (the centre of the picture
 until one is set) and held inside the picture near an edge. A PDF has `thumb` and `preview` only.
 
 ```graphql

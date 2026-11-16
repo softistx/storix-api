@@ -18,6 +18,12 @@ enum FileFamily {
   OTHER
 }
 
+"""
+Where a file stands in its renditions. READY: nothing is pending (also the
+status of every file when no worker runs). PROCESSING: a worker is making the
+thumbnail and crops. FAILED: only the previews failed; the original stays
+downloadable, and a size stored before the failure may still be served.
+"""
 enum FileStatus {
   READY
   PROCESSING

@@ -107,7 +107,8 @@ extend type Mutation {
   `files.errors.key-unknown` (field `key`) for a key of another workspace or
   kind, a malformed or never uploaded key, and one a file already holds; 404
   `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`; 409
-  `nodes.errors.name-taken` (field `name`, REFUSE only); 409
+  `nodes.errors.name-taken` (field `name`, REFUSE only); 413 `quotas.errors.exceeded` when the
+  workspace quota would be passed; 409
   `nodes.errors.too-deep`; 400 `validation.errors.invalid-input` for a bad
   name; 503 `storage.errors.unavailable` when no bucket is configured.
   """
