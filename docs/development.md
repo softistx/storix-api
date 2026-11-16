@@ -45,7 +45,7 @@ replica set.
 - `context:check`: every error code declared with `defineCodes` has a row in `CONTEXT.md`.
 - `deps:check`: no file outside `src/core/identity/**` and `src/config/auth.ts` imports a
   `@softistx/janus*` package (the identity seam, plan §3.11).
-- `workspace:quota <slug> <bytes|20GiB|default>` sets a quota; `quota:reconcile` recounts every workspace's usage and fixes any drift; `storage:sweep` removes unreferenced storage (see the orphan sweep below).
+- `workspace:quota <slug> <bytes|20GiB|default>` sets a quota; `quota:reconcile` recounts every workspace's usage and fixes any drift; `versions:retention` drops old file versions; `storage:sweep` removes unreferenced storage (see the orphan sweep below).
 - `verify:pr` selects the specs that are, or import, a changed file (`src/scripts/affected-tests.ts`);
   a change to shared infrastructure runs them all.
 
@@ -150,6 +150,10 @@ An admin invites an address into the request's workspace; the invitee accepts wi
 - **`family`** comes from the MIME type (`nodes.family.ts`); unknown types are `OTHER`. `tags` and `meta` are stored, set by a later slice. `status` is `PROCESSING` for a JPEG, PNG, WebP or PDF until the renditions worker has rendered its `thumb` and `preview` and, for a picture, its four crops; `setFocalPoint` puts it back to `PROCESSING` while the crops are redone (then `READY`, or `FAILED` when only the previews or crops failed; the original stays downloadable), and `READY` for any other type or when `REDIS_URL` is unset.
 - **The bucket** reaches the resolvers through the GraphQL context (`ctx.media`), the same one `/media` uses.
 - **Favourites and recents** (`files.favourites.ts`, `files.recents.ts`, `files.personal.ts`): the `stars` and `recents` collections hold one row per account and node. Both lists page the rows newest first by a keyset cursor `[date, _id]` bound to the list and the member, look up the nodes in batches of 100 and skip rows whose node is trashed, gone or not the member's, so a restore brings them back and a trash writes nothing. `recents` keeps 200 per member (the oldest are removed when one is noted). `addFile` notes the upload after its commit; if noting fails it is logged and the upload stands. `setStarred` and `openFile` record no audit event: they are a member's own preferences.
+
+## File versions and retention (`versions:retention`)
+
+A file's versions are rows of the `versions` collection (`src/modules/files/files.versions*.ts`). Numbers are gap-free per file: they are read as last + 1 inside the transaction that holds the owner's tree lock, so a rolled-back write leaves no gap, and the unique `{fileId, number}` index backs it. Each version row and each node holds one `refs` of its blob; a restore adds a row for an older blob and stores no object. `usage.versionBytes` counts the blobs held only by versions. `bun run versions:retention` (`retainAll`, exported by `public.ts`; schedule it daily from the host) drops, per file, versions beyond the newest 20 or older than 90 days, never the current one; the blobs it releases go with the next `storage:sweep`. Workspace settings are not stored yet, so 20 and 90 are constants (`RetentionOptions` overrides them).
 
 ## Orphan sweep (`storage:sweep`)
 

@@ -61,3 +61,18 @@ export const recordQuotaRefusal = (done: Done, name: string) =>
     action: "quota.exceeded",
     target: { type: "WORKSPACE", id: done.workspaceId, name },
   });
+
+// A version made, restored or deleted: the number (and, for a restore, the one
+// it copied), never the key.
+export const recordVersion = (
+  done: Done,
+  action: "file.version-add" | "file.version-restore" | "file.version-delete",
+  node: NodeDoc,
+  meta: { number: number; from?: number },
+) =>
+  audit.record({
+    ...done,
+    action,
+    target: { type: node.type, id: node.id, name: node.name },
+    meta,
+  });

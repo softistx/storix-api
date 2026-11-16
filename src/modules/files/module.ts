@@ -1,6 +1,11 @@
 import { defineModule } from "@alxia/modules";
-import { files as codes } from "@/i18n/codes";
-import { blobs, recents, stars } from "./files.collection";
+import { files, versions } from "@/i18n/codes";
+import {
+  blobs,
+  recents,
+  stars,
+  versions as versionRows,
+} from "./files.collection";
 import typeDefs from "./files.graphqls" with { type: "text" };
 import { filesResolvers } from "./files.resolver";
 
@@ -12,8 +17,8 @@ import { filesResolvers } from "./files.resolver";
 export const filesModule = defineModule({
   name: "files",
   dependsOn: ["nodes", "members", "workspaces", "audit", "storage"],
-  collections: { blobs, stars, recents },
-  codes,
+  collections: { blobs, stars, recents, versions: versionRows },
+  codes: [...files, ...versions],
   typeDefs: [typeDefs],
   resolvers: filesResolvers,
 });

@@ -9,6 +9,7 @@ import {
   recordFileAdd,
   recordFileUpdate,
   recordQuotaRefusal,
+  recordVersion,
 } from "./files.audit";
 import { copyNodes } from "./files.copy";
 import { notAFile } from "./files.errors";
@@ -20,6 +21,10 @@ import { listRecent, openFile, recordRecent } from "./files.recents";
 import { checkTags, MAX_META_BYTES, metaFits } from "./files.rules";
 import { addFile, isQuotaExceeded } from "./files.service";
 import { updateFile } from "./files.update";
+import {
+  fileVersionResolvers,
+  versionMutations,
+} from "./files.versions.resolver";
 
 // The module's handle on the request's workspace database (the scope's, typed
 // by the registry; see src/core/access/ports.ts).
@@ -63,8 +68,9 @@ export const filesResolvers: Resolvers = {
       return pageOf(page, after);
     },
   },
-  File: fileRenditionResolvers,
+  File: { ...fileRenditionResolvers, ...fileVersionResolvers },
   Mutation: {
+    ...versionMutations,
     setFocalPoint,
     setStarred: async (_, { id, starred }, ctx) => {
       const { principal, scope } = await requireWorkspacePermission(
@@ -113,9 +119,9 @@ export const filesResolvers: Resolvers = {
         actor: memberActor(principal),
         ip: ctx.ip,
       };
-      let node: Awaited<ReturnType<typeof addFile>>;
+      let added: Awaited<ReturnType<typeof addFile>>;
       try {
-        node = await addFile(
+        added = await addFile(
           filesDb(scope),
           ctx.tenancy.core as WorkspacesMongo,
           ctx.media,
@@ -133,7 +139,12 @@ export const filesResolvers: Resolvers = {
         if (isQuotaExceeded(error)) await recordQuotaRefusal(done, input.name);
         throw error;
       }
-      await recordFileAdd(done, node);
+      const { node, appended } = added;
+      if (appended === null) await recordFileAdd(done, node);
+      else
+        await recordVersion(done, "file.version-add", node, {
+          number: appended,
+        });
       // An upload is a recent file; the upload stands if the note fails.
       await recordRecent(filesDb(scope), {
         accountId: principal.accountId,

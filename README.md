@@ -30,6 +30,7 @@ curl localhost:3000/health
 | `bun run db:sync`      | creates the indexes and validators of the core and identity collections (`--dry-run` to preview)      |
 | `bun run workspace:quota` | sets a workspace's quota: `<slug> <bytes\|20GiB\|default>`                                       |
 | `bun run quota:reconcile` | recounts every workspace's usage and fixes any drift                                                |
+| `bun run versions:retention` | drops file versions past 20 per file or older than 90 days, never the current one                    |
 | `bun run storage:sweep` | removes released blobs and unrecorded objects older than 75 minutes (one run at a time)              |
 | `bun run schema:print` | writes `schema.graphql`, the committed contract a client generates its types from                    |
 
@@ -218,6 +219,7 @@ or blob. The `storage` query (`workspace:read`) answers `quotaBytes`, `usedBytes
 ```sh
 bun run workspace:quota acme 20GiB     # set a quota (bytes, 20GiB, or "default")
 bun run quota:reconcile                # recount every workspace and fix any drift
+bun run versions:retention             # drop old file versions (max 20, 90 days; never the current one)
 bun run storage:sweep                  # remove released blobs and unrecorded objects older than 75 minutes
 ```
 

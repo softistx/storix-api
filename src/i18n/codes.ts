@@ -127,6 +127,16 @@ export const files = defineCodes("files", [
   "invalid-focal",
 ]);
 
+// The versions of a file (src/modules/files, `files.versions.*`).
+export const versions = defineCodes("versions", [
+  // 404: the file has no version with this id (an unknown id, another file's
+  // version and a malformed id are one answer).
+  "not-found",
+  // 409: the operation names the current version: it is never deleted, and
+  // restoring it would change nothing.
+  "is-current",
+]);
+
 // The workspace's storage quota (src/core/workspaces, src/modules/quotas).
 export const quotas = defineCodes("quotas", [
   // 413: the file does not fit in what the workspace has left. Raised by the
@@ -176,6 +186,7 @@ export const errorCodes = [
   ...teams,
   ...nodes,
   ...files,
+  ...versions,
   ...quotas,
   ...storage,
 ] as const;

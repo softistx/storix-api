@@ -45,7 +45,7 @@ describe("addFile", () => {
     });
     const db = await databaseOf(workspace.id);
     const blob = await db.db.blobs.findFirst({ key: up.key });
-    expect(blob).toMatchObject({ size: 11, mimeType: "text/plain", refs: 1 });
+    expect(blob).toMatchObject({ size: 11, mimeType: "text/plain", refs: 2 });
     const node = await db.db.nodes.findFirst({ blobKey: up.key });
     expect(node).toMatchObject({ type: "FILE", size: 11 });
   });
