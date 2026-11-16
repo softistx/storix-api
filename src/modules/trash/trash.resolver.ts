@@ -74,13 +74,19 @@ export const trashResolvers: Resolvers = {
         ctx,
         "nodes:manage",
       );
-      const { entries, removed } = await purgeNodes(
+      const done = doneBy(ctx, scope.tenant.id, principal);
+      // Each entry is audited as it is purged, so a failure partway leaves a
+      // record of what went.
+      const { removed } = await purgeNodes(
         filesMongo(scope.mongo),
         ctx.tenancy.core as WorkspacesMongo,
-        { workspaceId: scope.tenant.id, accountId: principal.accountId, ids },
+        {
+          workspaceId: scope.tenant.id,
+          accountId: principal.accountId,
+          ids,
+          onPurged: (node) => recordTrash(done, "node.purge", node),
+        },
       );
-      const done = doneBy(ctx, scope.tenant.id, principal);
-      for (const node of entries) await recordTrash(done, "node.purge", node);
       return removed;
     },
     emptyTrash: async (_, __, ctx) => {
@@ -88,17 +94,28 @@ export const trashResolvers: Resolvers = {
         ctx,
         "nodes:manage",
       );
-      const { entries, removed } = await emptyTrash(
-        filesMongo(scope.mongo),
-        ctx.tenancy.core as WorkspacesMongo,
-        { workspaceId: scope.tenant.id, accountId: principal.accountId },
-      );
-      await recordEmpty(
-        doneBy(ctx, scope.tenant.id, principal),
-        principal.accountId,
-        { entries, nodes: removed },
-      );
-      return removed;
+      const done = doneBy(ctx, scope.tenant.id, principal);
+      const counts = { entries: 0, nodes: 0 };
+      try {
+        await emptyTrash(
+          filesMongo(scope.mongo),
+          ctx.tenancy.core as WorkspacesMongo,
+          {
+            workspaceId: scope.tenant.id,
+            accountId: principal.accountId,
+            onPurged: (_entry, removed) => {
+              counts.entries += 1;
+              counts.nodes += removed;
+            },
+          },
+        );
+      } finally {
+        // Also when it failed partway: what was purged is recorded.
+        if (counts.entries > 0) {
+          await recordEmpty(done, principal.accountId, counts);
+        }
+      }
+      return counts.nodes;
     },
   },
 };

@@ -26,6 +26,8 @@ export interface RetentionOptions {
 export interface RetentionReport {
   files: number;
   removed: number;
+  // Files whose versions could not be dropped; the next run tries them again.
+  failed: number;
 }
 
 // The files that have a version to drop: more than one version, and either
@@ -71,33 +73,43 @@ export async function retainVersions(
     options.days ?? settings?.versionsDays ?? DEFAULT_SETTINGS.versionsDays;
   const now = (options.now ?? (() => new Date()))();
   const cutoff = new Date(now.getTime() - days * DAY_MS);
-  const report: RetentionReport = { files: 0, removed: 0 };
+  const report: RetentionReport = { files: 0, removed: 0, failed: 0 };
   const ids = await candidates(mongo, cutoff, max);
   for (const fileId of ids.slice(0, options.files ?? ids.length)) {
-    const node = await mongo.db.nodes.findFirst({ _id: fileId });
-    if (!node?.ownerId) continue;
-    const owner = node.ownerId;
-    const removed = await mongo.transaction(async (tx) => {
-      await lockTree(nodesMongo(tx), owner);
-      const fresh = await tx.db.nodes.findFirst({ _id: fileId });
-      if (!fresh?.currentVersionId) return 0;
-      const rows = await tx.db.versions.findMany({
-        filter: { fileId },
-        sort: { number: -1 },
+    try {
+      const node = await mongo.db.nodes.findFirst({ _id: fileId });
+      if (!node?.ownerId) continue;
+      const owner = node.ownerId;
+      const removed = await mongo.transaction(async (tx) => {
+        await lockTree(nodesMongo(tx), owner);
+        const fresh = await tx.db.nodes.findFirst({ _id: fileId });
+        if (!fresh?.currentVersionId) return 0;
+        const rows = await tx.db.versions.findMany({
+          filter: { fileId },
+          sort: { number: -1 },
+        });
+        const drop = rows.filter(
+          (row, index) =>
+            !row._id.equals(fresh.currentVersionId ?? row._id) &&
+            (index >= max || row.createdAt < cutoff),
+        );
+        for (const row of drop) {
+          await removeVersion(tx, core, workspaceId, fresh, row);
+        }
+        return drop.length;
       });
-      const drop = rows.filter(
-        (row, index) =>
-          !row._id.equals(fresh.currentVersionId ?? row._id) &&
-          (index >= max || row.createdAt < cutoff),
-      );
-      for (const row of drop) {
-        await removeVersion(tx, core, workspaceId, fresh, row);
+      if (removed > 0) {
+        report.files += 1;
+        report.removed += removed;
       }
-      return drop.length;
-    });
-    if (removed > 0) {
-      report.files += 1;
-      report.removed += removed;
+    } catch (error) {
+      // One bad file does not stop the workspace: it is counted and logged, and
+      // the next run takes it again.
+      report.failed += 1;
+      console.error(
+        `version retention: file ${fileId.toHexString()} of workspace ${workspaceId} not settled:`,
+        error,
+      );
     }
   }
   return report;

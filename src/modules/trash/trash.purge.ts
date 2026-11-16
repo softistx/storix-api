@@ -96,7 +96,12 @@ export async function purgeEntry(
 export async function purgeNodes(
   mongo: FilesMongo,
   core: WorkspacesMongo,
-  input: Done & { ids: readonly string[] },
+  input: Done & {
+    ids: readonly string[];
+    // Called after each entry's purge has committed, so a caller can record it
+    // even when a later entry fails and the call throws.
+    onPurged?: (entry: NodeDoc) => Promise<void> | void;
+  },
 ): Promise<{ entries: NodeDoc[]; removed: number }> {
   const nodes = nodesMongo(mongo);
   const selected: NodeDoc[] = [];
@@ -109,6 +114,7 @@ export async function purgeNodes(
     const done = await purgeEntry(mongo, core, { ...input, id: top.id });
     entries.push(done.entry);
     removed += done.removed;
+    await input.onPurged?.(done.entry);
   }
   return { entries, removed };
 }
@@ -117,7 +123,10 @@ export async function purgeNodes(
 export async function emptyTrash(
   mongo: FilesMongo,
   core: WorkspacesMongo,
-  input: Done,
+  input: Done & {
+    // Called after each entry's purge has committed (see `purgeNodes`).
+    onPurged?: (entry: NodeDoc, removed: number) => Promise<void> | void;
+  },
 ): Promise<{ entries: number; removed: number }> {
   let entries = 0;
   let removed = 0;
@@ -137,5 +146,6 @@ export async function emptyTrash(
     });
     entries += 1;
     removed += done.removed;
+    await input.onPurged?.(done.entry, done.removed);
   }
 }

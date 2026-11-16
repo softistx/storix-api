@@ -1,8 +1,7 @@
 import type { NodeDoc } from "@/modules/nodes/public";
 import type { FilesMongo } from "./files.service";
 
-// The row for the blob a file holds now, as its version 1 (or the next number
-// when none is current), made in the caller's transaction. A file that
+// The row for the blob a file holds now, as its version 1, made in the caller's transaction. A file that
 // `addFile` recorded gets it at once; a file recorded before versions existed,
 // or a copy, gets it here the first time a version is read or changed. The
 // blob's `refs` is the caller's: `addFile` creates the blob already held by

@@ -15,6 +15,24 @@ async function tree(a: Awaited<ReturnType<typeof trashArea>>) {
 }
 
 describe("trashNodes", () => {
+  test("a subtree of more than 5,000 nodes is refused, and stays live", async () => {
+    const a = await trashArea(files);
+    const big = await a.folder(a.root.id, "big");
+    const parent = await a.mongo.db.nodes.getById(big.id);
+    const owner = a.owner.principal.accountId;
+    await a.mongo.db.nodes.as(owner).createMany(
+      Array.from({ length: 5001 }, (_, i) => ({
+        type: "FOLDER" as const,
+        name: `n${i}`,
+        parentId: parent._id,
+        ancestors: [...parent.ancestors, parent._id],
+        ownerId: owner,
+      })),
+    );
+    expect(codeOf(await a.trash([big]))).toBe("nodes.errors.move-too-large");
+    expect(await a.names(a.root.id)).toEqual(["big"]);
+  });
+
   test("a trashed folder takes its subtree out of every read", async () => {
     const a = await trashArea(files);
     const { docs, deep, top, low } = await tree(a);

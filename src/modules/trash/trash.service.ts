@@ -4,7 +4,9 @@ import {
   ensureRoot,
   freeName,
   lockTree,
+  MAX_MOVE_NODES,
   moveOne,
+  moveTooLarge,
   type NodeDoc,
   named,
   nodeNotFound,
@@ -35,7 +37,8 @@ async function reread(tx: FilesMongo, nodes: readonly NodeDoc[]) {
 // it gets the same stamp and `trashRootId` = the top, so a restore brings back
 // that subtree and not what was trashed before it. The bytes the nodes held
 // become the trash's (`trashBytes`) when no live node holds them any more.
-// `nodes.errors.not-found` (also for a trashed node), `root-locked`.
+// `nodes.errors.not-found` (also for a trashed node), `root-locked`,
+// `move-too-large` (a folder with more than `MAX_MOVE_NODES` nodes under it).
 export async function trashNodes(
   mongo: FilesMongo,
   core: WorkspacesMongo,
@@ -51,6 +54,13 @@ export async function trashNodes(
       }
       if (selected.some((node) => node.parentId === null)) throw rootLocked();
       const tops = topsOf(selected);
+      // A subtree past what a move allows is refused, counted as `moveOne` does,
+      // so what goes to the trash can always be restored.
+      for (const top of tops) {
+        if (top.type !== "FOLDER") continue;
+        const below = await tx.db.nodes.count({ ancestors: top._id });
+        if (below > MAX_MOVE_NODES) throw moveTooLarge();
+      }
       const at = new Date();
       for (const top of tops) {
         const live = {
@@ -103,7 +113,8 @@ export async function trashNodes(
 // name a live sibling holds there becomes `name (1)` (`freeName`). A restore
 // never fails on a name. `trash.errors.not-trashed` for a live node,
 // `nodes.errors.not-found` for a node that is not an entry, `too-deep` when
-// the root is deeper than the subtree allows (it is not).
+// the root is deeper than the subtree allows (it is not), `move-too-large` for
+// an entry with more than `MAX_MOVE_NODES` nodes under it (a restore is a move).
 export async function restoreNodes(
   mongo: FilesMongo,
   core: WorkspacesMongo,

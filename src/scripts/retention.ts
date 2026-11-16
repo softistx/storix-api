@@ -18,11 +18,13 @@ try {
   for (const f of [...trash.failed, ...versions.failed]) {
     console.error(`workspace ${f.workspaceId}: not settled:`, f.error);
   }
-  const entriesFailed = trash.done.reduce((sum, r) => sum + r.failed, 0);
+  const entriesFailed =
+    trash.done.reduce((sum, r) => sum + r.failed, 0) +
+    versions.done.reduce((sum, r) => sum + r.failed, 0);
   const purged = trash.done.reduce((sum, r) => sum + r.removed, 0);
   const dropped = versions.done.reduce((sum, r) => sum + r.removed, 0);
   console.log(
-    `trash: ${purged} nodes purged; versions: ${dropped} removed; ${trash.failed.length + versions.failed.length} workspaces and ${entriesFailed} trash entries failed`,
+    `trash: ${purged} nodes purged; versions: ${dropped} removed; ${trash.failed.length + versions.failed.length} workspaces and ${entriesFailed} trash entries or files failed`,
   );
   if (trash.failed.length + versions.failed.length + entriesFailed > 0)
     process.exitCode = 1;

@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { seedsOf } from "@alxia/i18n";
+import { migrationsOf } from "@alxia/modules";
 import { defineMigration, migrate, rollback } from "@softistx/mongo/migrations";
 import { authValidationErrors } from "../core/translations/migrations/2026-11-13-auth-validation-errors.migration";
 import { texts } from "../core/translations/migrations/2026-11-13-auth-validation-errors.texts";
+import { modules } from "../modules/registry";
 import { connection } from "./db";
 import {
   assertMigrated,
@@ -18,6 +20,38 @@ describe("the core migrations", () => {
   test("the list is the registry's, ids unique and ordered by date", () => {
     expect(migrations.length).toBeGreaterThan(0);
     const ids = migrations.map((m) => m.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toEqual([...ids].sort());
+  });
+
+  // The ids a database may already have applied (what `develop` shipped before
+  // E3), in order. A new migration is listed after them, never among them: the
+  // runner throws "pending and listed before one that is already applied".
+  // This list is frozen; add a new id to `ADDED`, not here.
+  const SHIPPED_CORE = [
+    "2026-11-13-auth-validation-errors",
+    "2026-11-14-identity-errors",
+    "2026-11-14-workspaces-errors",
+    "2026-11-15-invitations-errors",
+    "2026-11-15-teams-errors",
+    "2026-11-16-nodes-errors",
+    "2026-11-16-storage-errors",
+    "2026-11-17-files-errors",
+    "2026-11-18-files-copy-errors",
+    "2026-11-19-quotas-errors",
+    "2026-11-20-files-focal-errors",
+    "2026-11-20-workspaces-quota",
+  ];
+  const SHIPPED_WORKSPACE = ["2026-11-15-nodes-listing-collation"];
+
+  test("the core ids a database already ran are a frozen prefix of the list", () => {
+    const ids = migrations.map((m) => m.id);
+    expect(ids.slice(0, SHIPPED_CORE.length)).toEqual(SHIPPED_CORE);
+  });
+
+  test("the workspace ids a database already ran are a frozen prefix of its list", () => {
+    const ids = migrationsOf(modules).map((m) => m.id);
+    expect(ids.slice(0, SHIPPED_WORKSPACE.length)).toEqual(SHIPPED_WORKSPACE);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toEqual([...ids].sort());
   });

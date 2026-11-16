@@ -51,7 +51,7 @@ export async function retainTrash(
   );
   const due = await mongo.db.nodes.raw
     .find(
-      { trashedAt: { $lt: cutoff }, trashRootId: null },
+      { trashedAt: { $type: "date", $lt: cutoff }, trashRootId: null },
       { projection: { _id: 1, ownerId: 1 } },
     )
     .sort({ trashedAt: 1 })
@@ -70,7 +70,13 @@ export async function retainTrash(
     } catch (error) {
       // Gone or restored since the list was read: nothing to do. Any other
       // failure is counted, so the job exits 1 instead of hiding it.
-      if (!isSettled(error)) report.failed += 1;
+      if (!isSettled(error)) {
+        report.failed += 1;
+        console.error(
+          `trash retention: entry ${entry._id.toHexString()} of workspace ${workspaceId} not purged:`,
+          error,
+        );
+      }
     }
   }
   return report;

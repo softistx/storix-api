@@ -14,12 +14,13 @@ export {
 } from "./nodes.file";
 export { nodesMongo } from "./nodes.handle";
 export { moveOne } from "./nodes.move";
-export { checkName, MAX_DEPTH } from "./nodes.rules";
+export { checkName, MAX_DEPTH, MAX_MOVE_NODES } from "./nodes.rules";
 export {
   cycle,
   depthOf,
   ensureRoot,
   lockTree,
+  moveTooLarge,
   type NodeDoc,
   type NodeState,
   type NodesMongo,

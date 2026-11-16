@@ -17,7 +17,8 @@ extend type Mutation {
   404 everywhere and leaves the listings, the media routes and the file's
   versions; its bytes count as the trash's until it is purged. Answers the
   nodes trashed. Needs `nodes:manage`. 404 `nodes.errors.not-found` (also for a
-  node already trashed); 409 `nodes.errors.root-locked`.
+  node already trashed); 409 `nodes.errors.root-locked`, 409
+  `nodes.errors.move-too-large` (a folder with more than 5,000 nodes under it).
   """
   trashNodes(ids: [ID!]! @constraint(minItems: 1, maxItems: 100)): [Node!]!
 
@@ -27,7 +28,9 @@ extend type Mutation {
   files"; a name a live sibling holds becomes `name (1)`. Answers the nodes
   restored. Needs `nodes:manage`. 409 `trash.errors.not-trashed` (a live
   node); 404 `nodes.errors.not-found` (also for a node that went to the trash
-  with a folder: restore the folder); 409 `nodes.errors.too-deep`.
+  with a folder: restore the folder); 409 `nodes.errors.too-deep`; 409
+  `nodes.errors.move-too-large` (a folder with more than 5,000 nodes under
+  it).
   """
   restoreNodes(ids: [ID!]! @constraint(minItems: 1, maxItems: 100)): [Node!]!
 
