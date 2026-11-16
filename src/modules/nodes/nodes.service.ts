@@ -43,18 +43,30 @@ export async function named<T>(write: () => Promise<T>): Promise<T> {
   }
 }
 
+// Which nodes of a tree a lookup sees: the live ones (the default: a trashed
+// node is gone for every read and write), the trashed ones (the trash's own
+// operations) or both.
+export type NodeState = "live" | "trashed" | "any";
+
 // The node with this id that the account owns, or 404: a malformed id, an id
-// of another workspace and the node of another member are one answer. Nothing
-// is shared yet (the shares module widens this one function).
+// of another workspace, the node of another member and (unless `state` says
+// otherwise) a trashed node are one answer. Nothing is shared yet (the shares
+// module widens this one function).
 export async function ownedNode(
   mongo: NodesMongo,
   id: string,
   accountId: string,
+  state: NodeState = "live",
 ): Promise<NodeDoc> {
   const objectId = tryObjectId(id);
   const node =
     objectId &&
-    (await mongo.db.nodes.findFirst({ _id: objectId, ownerId: accountId }));
+    (await mongo.db.nodes.findFirst({
+      _id: objectId,
+      ownerId: accountId,
+      ...(state === "live" && { trashedAt: null }),
+      ...(state === "trashed" && { trashedAt: { $ne: null } }),
+    }));
   if (!node) throw nodeNotFound();
   return node;
 }

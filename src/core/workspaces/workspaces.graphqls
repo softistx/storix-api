@@ -7,6 +7,28 @@ type Workspace {
   "The caller's role in it."
   myRole: WorkspaceRole!
   createdAt: DateTime!
+  "What an administrator tunes: the trash's and the versions' retention."
+  settings: WorkspaceSettings!
+}
+
+"""
+The workspace's settings. The retention job (`bun run retention`) applies the
+three of them.
+"""
+type WorkspaceSettings {
+  "Days a trashed item stays in the trash before it is purged; 30 by default."
+  trashDays: Int!
+  "Most versions a file keeps; 20 by default."
+  versionsMax: Int!
+  "Days a version is kept; 90 by default. A file's current version is never dropped."
+  versionsDays: Int!
+}
+
+"The settings to change; the ones left out keep their value."
+input WorkspaceSettingsInput {
+  trashDays: Int @constraint(min: 1, max: 3650)
+  versionsMax: Int @constraint(min: 1, max: 1000)
+  versionsDays: Int @constraint(min: 1, max: 3650)
 }
 
 input CreateWorkspaceInput {
@@ -42,4 +64,11 @@ extend type Mutation {
   empty name); 429 `auth.errors.rate-limited`.
   """
   createWorkspace(input: CreateWorkspaceInput!): Workspace!
+
+  """
+  Changes the workspace's settings. Needs `workspace:manage` (OWNER and ADMIN).
+  Audited as `workspace.settings`. 400 `validation.errors.invalid-input` for a
+  value out of range.
+  """
+  updateWorkspaceSettings(input: WorkspaceSettingsInput!): WorkspaceSettings!
 }

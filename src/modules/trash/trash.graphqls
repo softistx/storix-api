@@ -1,0 +1,48 @@
+extend type Query {
+  """
+  The caller's trash, newest first: each node they trashed that is still
+  there, a folder once (its subtree goes with it). Needs `nodes:read`. 400
+  `validation.errors.invalid-cursor`.
+  """
+  trash(
+    first: Int! = 50 @constraint(min: 1, max: 100)
+    after: String @constraint(maxLength: 500)
+  ): NodePage!
+}
+
+extend type Mutation {
+  """
+  Moves nodes to the trash, folders with everything under them (a node under
+  another selected node goes with it and is not listed). A trashed node is a
+  404 everywhere and leaves the listings, the media routes and the file's
+  versions; its bytes count as the trash's until it is purged. Answers the
+  nodes trashed. Needs `nodes:manage`. 404 `nodes.errors.not-found` (also for a
+  node already trashed); 409 `nodes.errors.root-locked`.
+  """
+  trashNodes(ids: [ID!]! @constraint(minItems: 1, maxItems: 100)): [Node!]!
+
+  """
+  Brings trashed nodes back, folders with what went with them. A node returns
+  to its folder; when that folder is gone or trashed it returns to "My
+  files"; a name a live sibling holds becomes `name (1)`. Answers the nodes
+  restored. Needs `nodes:manage`. 409 `trash.errors.not-trashed` (a live
+  node); 404 `nodes.errors.not-found` (also for a node that went to the trash
+  with a folder: restore the folder); 409 `nodes.errors.too-deep`.
+  """
+  restoreNodes(ids: [ID!]! @constraint(minItems: 1, maxItems: 100)): [Node!]!
+
+  """
+  Deletes trashed nodes for good, with everything under them: their versions,
+  stars and recents go, the blobs they held are released (the sweep removes
+  the objects) and the quota is freed. Answers the nodes removed. Needs
+  `nodes:manage`. 409 `trash.errors.not-trashed`; 404
+  `nodes.errors.not-found`.
+  """
+  purgeNodes(ids: [ID!]! @constraint(minItems: 1, maxItems: 100)): Int!
+
+  """
+  Purges everything the caller has in the trash. Answers the nodes removed.
+  Needs `nodes:manage`.
+  """
+  emptyTrash: Int!
+}

@@ -49,7 +49,7 @@ export async function moveNodes(
   );
 }
 
-async function moveOne(
+export async function moveOne(
   tx: NodesMongo,
   node: NodeDoc,
   target: NodeDoc,

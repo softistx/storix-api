@@ -12,6 +12,7 @@ import { filesModule } from "./files/public";
 import { nodesModule } from "./nodes/public";
 import { quotasModule } from "./quotas/public";
 import { teamsModule } from "./teams/public";
+import { trashModule } from "./trash/public";
 
 // THE list of modules: adding one is one line here. Dependency order is
 // computed (`resolveModules`), not written. Each module of the plan's §3.2 is
@@ -27,6 +28,7 @@ const registered = [
   teamsModule,
   nodesModule,
   filesModule,
+  trashModule,
   quotasModule,
   storageModule,
 ] as const;

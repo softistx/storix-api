@@ -13,7 +13,7 @@ type Storage {
   versionBytes: Float!
   "Of `usedBytes`, what only the trash holds."
   trashBytes: Float!
-  "The files of the workspace, copies and trashed ones included."
+  "The live files of the workspace, copies included; trashed ones are not counted."
   files: Int!
 }
 

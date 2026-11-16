@@ -39,3 +39,12 @@ export async function releaseBlob(
   }
   return left;
 }
+
+// Lets go of several blobs' holds at once (`counts`: key to holds released),
+// as `releaseBlob` does for one; the blobs a last hold leaves are released.
+export async function releaseBlobs(
+  tx: FilesMongo,
+  counts: ReadonlyMap<string, number>,
+): Promise<void> {
+  for (const [key, count] of counts) await releaseBlob(tx, key, count);
+}
