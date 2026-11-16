@@ -20,11 +20,14 @@ import type { Mail } from "./janus.mail";
 // `invitationPreview`, `acceptInvitation`. Only this folder imports janus.
 // The SDL carries janus's directive declarations (`@authenticated`…): they do
 // nothing here, `authorize` is the guard.
-export const invitationTypeDefs: string = `${janusTypeDefs}\n${janusInvitationTypeDefs}`;
+// An invitation's `role` is the workspace's `WorkspaceRole` enum (members.graphqls),
+// where janus's SDL types it as a free string.
+export const invitationTypeDefs: string = `${janusTypeDefs}\n${janusInvitationTypeDefs.replace(/\brole: String\b/g, "role: WorkspaceRole")}`;
 
 // janus-graphql's refusals as the API answers them: the code says what the
-// client can act on, never which of janus's reasons it was (an unknown, spent,
-// revoked or lapsed code is one `invitations.errors.invalid`).
+// client can act on. janus refuses every unusable code as one INVITATION_INVALID:
+// it is `invitations.errors.invalid` here, and the invitations module refines it
+// (`expired`, `already-accepted`, `revoked`) from the code's stored state.
 export function invitationRefusal(error: GraphQLError): GraphQLError {
   const code = error.extensions["code"];
   const field = error.extensions["field"];

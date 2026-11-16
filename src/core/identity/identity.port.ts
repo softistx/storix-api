@@ -89,6 +89,14 @@ export type InvitationResolverMap = Record<
   Record<string, (...args: unknown[]) => unknown>
 >;
 
+/** What an invitation code names, for the reason janus withholds. */
+export type InvitationState =
+  | "pending"
+  | "expired"
+  | "accepted"
+  | "revoked"
+  | "unknown";
+
 export interface Identity {
   // The principal of a request, or null when anonymous. A key-shaped bearer
   // is read as a key only with `apiKey: true`; without it, it is anonymous.
@@ -169,6 +177,11 @@ export interface Identity {
     resolvers<C extends { viewer: Principal | null }>(
       hooks: InvitationHooks<C>,
     ): InvitationResolverMap;
+    // What a code names: `pending`, `expired`, `accepted`, `revoked`, or
+    // `unknown` (never issued, or replaced by a resend). It lets the
+    // invitation module say why a code was refused; janus itself refuses
+    // all of them as one.
+    stateOf(code: string): Promise<InvitationState>;
   };
 
   // Creates the collections, validators and indexes the identity stores keep

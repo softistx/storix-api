@@ -157,7 +157,13 @@ export async function changeRole(
 // member who left, for `memberRemoved` (members.removal.ts).
 export async function endMembership(
   mongo: MembersMongo,
-  input: Change & ({ memberId: string } | { accountId: string }),
+  input: Change &
+    ({ memberId: string } | { accountId: string }) & {
+      // Runs inside the transaction once the membership is marked ended: when it
+      // throws, the membership stays (`removeMember(transferTo:)` hands the files
+      // over here, so a failed handover removes nobody).
+      beforeCommit?: (target: MemberDoc) => Promise<unknown>;
+    },
 ): Promise<MemberDoc> {
   const workspaceId = toObjectId(input.workspaceId);
   return mongo.transaction(async (tx) => {
@@ -177,8 +183,27 @@ export async function endMembership(
     await tx.db.members
       .as(input.actorId)
       .update(target._id, { removedAt: new Date(), version: target.version });
+    await input.beforeCommit?.(target);
     return target;
   });
+}
+
+// The current member of this workspace with this id, or undefined (malformed,
+// unknown, of another workspace, or who left).
+export async function findActiveMember(
+  mongo: MembersMongo,
+  workspaceId: string,
+  id: string,
+): Promise<MemberDoc | undefined> {
+  const memberId = tryObjectId(id);
+  if (!memberId) return undefined;
+  return (
+    (await mongo.db.members.findFirst({
+      _id: memberId,
+      workspaceId: toObjectId(workspaceId),
+      removedAt: null,
+    })) ?? undefined
+  );
 }
 
 // A page of a workspace's current members, oldest first.

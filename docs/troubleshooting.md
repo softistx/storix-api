@@ -119,13 +119,13 @@ A user who enrolled an authenticator cannot confirm a code, or the server cannot
 
 **Fix:** wait, or raise the variable. The limit is off when `REDIS_URL` is unset.
 
-## `invitations.errors.invalid` (400) on a link that looked fine
+## `invitations.errors.invalid`, `expired`, `already-accepted`, `revoked` (400) on a link that looked fine
 
-**When:** `invitationPreview` or `acceptInvitation` got a code that names no pending invitation.
+**When:** `invitationPreview` or `acceptInvitation` got a code that cannot be used.
 
-**Why:** the code was already used, the invitation was revoked or sent again (a new code replaced it), or its 7 days passed. The reasons are never told apart, so a guesser learns nothing.
+**Why:** `expired`: the 7 days passed. `already-accepted`: the code was used. `revoked`: an admin withdrew the invitation. `invalid`: the code names no invitation at all (a typo, a truncated link, or a code replaced by `resendInvitation`, whose new code retired the old one) or its workspace is not open.
 
-**Fix:** an admin sends the invitation again (`resendInvitation`: a new code, the old one dies) or issues a new one. A mail scanner that follows links does not spend a code: the link opens a page that posts it from a button.
+**Fix:** an admin sends the invitation again (`resendInvitation`: a new code, the old one dies) or issues a new one; for `already-accepted` the invitee signs in. A mail scanner that follows links does not spend a code: the link opens a page that posts it from a button.
 
 ## `invitations.errors.not-pending`, `limit`, `already-member` (409) and `password-required` (400)
 
@@ -361,6 +361,12 @@ the centre.
 **Why:** a copy makes one node per source node in one transaction, so its size is bounded like a move's.
 
 **Fix:** copy the folder's sub-folders in turn. Nothing was copied.
+
+## `validation.errors.invalid-input` (400) on `removeMember` or `renameWorkspace`
+
+`removeMember` refuses with a field error on `transferTo` when the receiver is the member being removed, is unknown, belongs to another workspace, or already left. Nothing changes: the member stays and no file moves. A failure of the file transfer itself also fails the call and leaves the member in place: retry `removeMember`. Pass the member id of an active member, or omit `transferTo`.
+
+`renameWorkspace` refuses a blank name or one over 100 characters. Only OWNER and ADMIN may rename (`auth.errors.forbidden` otherwise).
 
 ## `quotas.errors.exceeded` (413)
 

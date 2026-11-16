@@ -4,7 +4,7 @@ import { world } from "../../../test/workspaces.harness";
 
 const DAY = 24 * 60 * 60 * 1000;
 
-const ISSUE = `mutation($scope: String!, $email: String!, $role: String!) {
+const ISSUE = `mutation($scope: String!, $email: String!, $role: WorkspaceRole!) {
   issueInvitation(scope: $scope, email: $email, name: "Grace", role: $role) {
     invitation { id email role status } code
   }
@@ -107,14 +107,14 @@ describe("an invitation to a new account", () => {
     const { code } = await invite(w.h.email());
     expect((await accept(code, PASSWORD)).errors).toBeUndefined();
     const again = await accept(code, PASSWORD);
-    expect(w.codeOf(again)).toBe("invitations.errors.invalid");
+    expect(w.codeOf(again)).toBe("invitations.errors.already-accepted");
     expect(again.response.status).toBe(400);
     expect(await members()).toHaveLength(2);
 
     const unknown = await accept("a".repeat(43), PASSWORD);
     expect(w.codeOf(unknown)).toBe("invitations.errors.invalid");
     const preview = await w.send(null, PREVIEW, { variables: { code } });
-    expect(w.codeOf(preview)).toBe("invitations.errors.invalid");
+    expect(w.codeOf(preview)).toBe("invitations.errors.already-accepted");
   });
 
   test("a code past its seven days is refused", async () => {
@@ -122,9 +122,9 @@ describe("an invitation to a new account", () => {
     const { code } = await invite(w.h.email());
     w.h.clock.advance(7 * DAY + 1000);
     const refused = await accept(code, PASSWORD);
-    expect(w.codeOf(refused)).toBe("invitations.errors.invalid");
+    expect(w.codeOf(refused)).toBe("invitations.errors.expired");
     const preview = await w.send(null, PREVIEW, { variables: { code } });
-    expect(w.codeOf(preview)).toBe("invitations.errors.invalid");
+    expect(w.codeOf(preview)).toBe("invitations.errors.expired");
     // the owner's own session lapsed with the clock, so membership is not read
     // again: the accept was refused before it could add anyone.
   });
@@ -203,7 +203,7 @@ describe("revoking and sending again", () => {
     });
     expect(revoked.data?.["revokeInvitation"]).toEqual({ status: "revoked" });
     const refused = await accept(code, PASSWORD);
-    expect(w.codeOf(refused)).toBe("invitations.errors.invalid");
+    expect(w.codeOf(refused)).toBe("invitations.errors.revoked");
     const again = await w.send(workspace.owner, REVOKE, {
       workspace: workspace.id,
       variables: { scope: workspace.id, id },

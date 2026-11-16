@@ -10,6 +10,44 @@ export interface MemberRemoval {
   accountId: string;
 }
 
+// What a leaver hands over, for the modules that own their data
+// (`removeMember(transferTo:)`).
+export interface MemberHandover {
+  workspaceId: string;
+  from: { memberId: string; accountId: string; name: string | null };
+  to: { memberId: string; accountId: string };
+}
+
+// Answers whether it moved something.
+type HandoverListener = (
+  scope: WorkspaceScope,
+  handover: MemberHandover,
+) => Promise<boolean>;
+
+const handovers = new Set<HandoverListener>();
+
+// A business module that owns what a member made asks to receive it when
+// `removeMember` names a receiver. Unlike `onMemberRemoved`, it runs before the
+// removal commits and its failure fails the call: the membership stays.
+export function onMemberHandover(listener: HandoverListener): () => void {
+  handovers.add(listener);
+  return () => {
+    handovers.delete(listener);
+  };
+}
+
+// Runs the handovers; answers whether any moved something.
+export async function handOver(
+  scope: WorkspaceScope,
+  handover: MemberHandover,
+): Promise<boolean> {
+  let moved = false;
+  for (const listener of handovers) {
+    if (await listener(scope, handover)) moved = true;
+  }
+  return moved;
+}
+
 type Listener = (
   scope: WorkspaceScope,
   removal: MemberRemoval,

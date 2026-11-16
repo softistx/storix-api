@@ -31,7 +31,7 @@ type AuditEvent {
   id: ID!
   at: DateTime!
   actor: AuditActor!
-  "`<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete, node.folder-create, node.rename, node.move, node.copy, file.add, file.update, file.focal, node.trash, node.restore, node.purge, trash.empty, workspace.settings, quota.exceeded."
+  "`<area>.<verb>`: workspace.create, member.role-change, member.remove, member.leave, invitation.issue, invitation.resend, invitation.revoke, invitation.accept, team.create, team.rename, team.set-members, team.delete, node.folder-create, node.rename, node.move, node.copy, file.add, file.update, file.focal, node.trash, node.restore, node.purge, trash.empty, workspace.settings, workspace.rename, quota.exceeded."
   action: String!
   target: AuditTarget!
   "A keyed hash of the client address; null when the request had none. Equal hashes are the same address."

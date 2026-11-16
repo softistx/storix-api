@@ -9,6 +9,7 @@ export type {
   InvitationAction,
   InvitationHooks,
   InvitationResolverMap,
+  InvitationState,
   Locale,
   Principal,
   SecondFactorStatus,

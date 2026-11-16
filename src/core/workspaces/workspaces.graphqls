@@ -71,4 +71,16 @@ extend type Mutation {
   value out of range.
   """
   updateWorkspaceSettings(input: WorkspaceSettingsInput!): WorkspaceSettings!
+
+  """
+  Renames the request's workspace: its display name only, the slug and the id
+  stay. Needs `workspace:manage` (OWNER and ADMIN; 403 `auth.errors.forbidden`
+  for a MEMBER). Audited as `workspace.rename`. 400
+  `validation.errors.invalid-input` for a blank name or one over 100
+  characters; 400 `workspaces.errors.workspace-required`; 404
+  `workspaces.errors.not-found`.
+  """
+  renameWorkspace(
+    name: String! @constraint(minLength: 1, maxLength: 100)
+  ): Workspace!
 }

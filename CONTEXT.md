@@ -12,7 +12,7 @@ product (French is offered). Terms join this table slice by slice; the full mode
 | `Registry`  | The ONE list of modules (`src/modules/registry.ts`). Adding a module is one line there.                                                                              |
 | `Kernel`    | `src/core/`: what every module may use. It depends on no business module. Business modules live in `src/modules/`.                                                   |
 | `Workspace` | The tenant (`src/core/workspaces`). Registered in the core database, with its own database `storix_ws_<id>` (`MONGO_WORKSPACE_PREFIX`), named by the `x-storix-workspace` header (id or slug). Created `provisioning` with its first OWNER, then opened (`active`). |
-| `Invitation` | An offer to join a workspace with a role, sent by e-mail (`src/core/invitations`, janus's invitation store in the core database). The code in the link is 43 characters of which only the sha256 is kept; it lives 7 days, and a workspace has one pending invitation per address. Accepting it makes the account if the address has none, and adds a `Member`. |
+| `Invitation` | An offer to join a workspace with a role, sent by e-mail (`src/core/invitations`, janus's invitation store in the core database). The code in the link is 43 characters of which only the sha256 is kept; it lives 7 days, and a workspace has one pending invitation per address. Its `role` is the `WorkspaceRole` enum. A refused code says why (`expired`, `already-accepted`, `revoked`) when it names a real invitation. Accepting it makes the account if the address has none, and adds a `Member`. |
 | `Member` | An account's place in a workspace (`src/core/members`, core database): a role, and `removedAt` once it left. Never a personal API key: keys are refused on workspace operations until they are bound to a workspace. |
 | `Role` | `OWNER`, `ADMIN` or `MEMBER`. Permissions come from the modules' `defaultGrants`; OWNER holds all. Only an OWNER makes, demotes or removes an owner (`owners:manage`), and a workspace always keeps one. |
 | `Team` | A named group of a workspace's members (`src/modules/teams`, the workspace's own database): `name`, unique in the workspace ignoring case, and `memberIds`, the ids of `Member` rows. Anyone reads teams (`teams:read`); OWNER and ADMIN change them (`teams:manage`). A member who leaves is taken out of every team. |
@@ -29,6 +29,8 @@ product (French is offered). Terms join this table slice by slice; the full mode
 | `Settings` | A workspace's tunables (`workspaces.settings`): `trashDays` (30), `versionsMax` (20), `versionsDays` (90). Read with `Workspace.settings`, changed by `updateWorkspaceSettings` (`workspace:manage`: OWNER and ADMIN), audited as `workspace.settings`. |
 | `Retention` | `bun run retention` (`src/scripts/retention.ts`): per active workspace, purges trash entries older than `trashDays`, then drops versions past `versionsMax` or older than `versionsDays`. Schedule it hourly from the host; the sweep removes the released blobs. It exits 1 when a workspace, a trash entry or a file's versions failed. |
 | `Root` | A member's private top folder, "My files": made when they join (`onMemberJoined`), or on first use. Nobody else sees it until sharing exists; a root is never renamed or moved. |
+| `Transfer` | What `removeMember(transferTo:)` does with a leaver's files: their whole tree, trashed nodes included, moves under the receiver's root as a folder `Files of <name>`, and the receiver owns it. It runs before the removal commits, so a failed transfer fails the call and nobody is removed. |
+| `Rename (workspace)` | `renameWorkspace(name)` changes the workspace's display name only (OWNER and ADMIN, audited as `workspace.rename`); the slug and the id never change. |
 | `AuditEvent` | One append-only record of a write in a workspace (`src/core/audit`, the workspace's own database): `at`, `actor`, `action` (`team.create`, `member.remove`, …), `target`, `ipHash` (a keyed HMAC of the client address, never the address) and `meta` (never a secret). Recorded by `audit.record` after the write committed; a failure to record is logged and never undoes the write. OWNER and ADMIN read it (`audit:read`). |
 | `Principal` | Who a request is from, as the `Identity` port (`src/core/identity`) gives it. The rest of the API stores an `accountId` as an opaque string and never imports janus. |
 | `Identity` | The port (`src/core/identity`) behind which accounts live: sign-up, sign-in, reset, the second factor, step-up. janus is its adapter and is imported nowhere else (`bun run deps:check`). |
@@ -64,7 +66,10 @@ when a code lacks a message in English or French.
 | `workspaces.errors.last-owner` | The change (a demotion, a removal, leaving) would leave the workspace without an owner (409). |
 | `members.errors.not-found` | No active member with this id in the workspace (404). |
 | `invitations.errors.not-found` | No invitation with this id in the workspace, or the caller may not see it (404). |
-| `invitations.errors.invalid` | An invitation code names no pending invitation: unknown, already used, revoked or past its 7 days; the reasons are never told apart (400). |
+| `invitations.errors.invalid` | An invitation code names no invitation (unknown, malformed or replaced by a resend), or one of a workspace that is not open (400). |
+| `invitations.errors.expired` | The invitation's 7 days have passed (400). |
+| `invitations.errors.already-accepted` | The invitation was already accepted (400). |
+| `invitations.errors.revoked` | The invitation was withdrawn by an admin (400). |
 | `invitations.errors.not-pending` | The invitation was accepted or revoked, so it cannot be sent again or revoked (409). |
 | `invitations.errors.limit` | The workspace already has 200 pending invitations (409). |
 | `invitations.errors.already-member` | The address already belongs to a member of the workspace (409, field `email`). |

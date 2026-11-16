@@ -17,6 +17,7 @@ import {
 } from "@softistx/janus-mongo";
 import type { Mailer } from "@softistx/mail";
 import type { Db } from "mongodb";
+import { invitationStateReader } from "./identity.invitation-state";
 import { createInvitationResolvers } from "./identity.invitations";
 import type { Account, Identity } from "./identity.port";
 import { type Accepted, createAccounts } from "./janus.accounts";
@@ -66,7 +67,8 @@ const accountOf = (user: AccountUser): Account => ({
 // The identity port over janus: the one place that imports it (with
 // `src/config/auth.ts`, which builds it). `deps:check` refuses a janus import
 // anywhere else.
-export function createJanusIdentity(options: IdentityOptions): Identity {
+// The janus parts one identity is made of, wired once from its options.
+function assemble(options: IdentityOptions) {
   const clock = options.clock ?? systemClock;
   const store = createMongoAdapter(options.db);
   const mail = createMail({
@@ -78,6 +80,7 @@ export function createJanusIdentity(options: IdentityOptions): Identity {
   const runner = options.background ?? background();
   const notices = securityNotices(mail, () => accounts);
   const hasher = options.hasher ?? scryptHasher();
+  const invitationStore = createMongoInvitations(options.db);
   const accounts = createAccounts({
     store,
     apiKeys: createMongoApiKeys(options.db),
@@ -87,10 +90,16 @@ export function createJanusIdentity(options: IdentityOptions): Identity {
     events: notices,
     ...(options.mail && { mail: options.mail }),
     invitations: {
-      store: createMongoInvitations(options.db),
+      store: invitationStore,
       onAccepted: options.onAcceptedInvitation,
     },
   });
+  return { accounts, mail, runner, hasher, invitationStore, clock };
+}
+
+export function createJanusIdentity(options: IdentityOptions): Identity {
+  const { accounts, mail, runner, hasher, invitationStore, clock } =
+    assemble(options);
   const deps = { accounts, mail, background: runner, clock };
 
   return {
@@ -133,6 +142,7 @@ export function createJanusIdentity(options: IdentityOptions): Identity {
     invitations: {
       resolvers: (hooks) =>
         createInvitationResolvers(accounts, mail, options.uiOrigin, hooks),
+      stateOf: invitationStateReader(invitationStore, () => clock.now()),
     },
 
     // The keys and the invitations are opt-in ports: not part of

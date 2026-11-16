@@ -4,7 +4,7 @@ import { world } from "../../../test/workspaces.harness";
 import { actionsOf, storedEvents } from "./audit.harness";
 
 const ISSUE = `mutation($scope: String!, $email: String!) {
-  issueInvitation(scope: $scope, email: $email, name: "Grace", role: "MEMBER") {
+  issueInvitation(scope: $scope, email: $email, name: "Grace", role: MEMBER) {
     invitation { id } code
   }
 }`;

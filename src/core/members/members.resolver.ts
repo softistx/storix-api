@@ -1,13 +1,15 @@
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import type { Context } from "@/http/context";
+import { invalidInput } from "@/i18n/fail";
 import { requireWorkspaceMember, requireWorkspacePermission } from "../access";
 import { memberActor } from "../audit";
 import type { Account } from "../identity";
 import { recordLeave, recordRemoval, recordRoleChange } from "./members.audit";
-import { memberRemoved } from "./members.removal";
+import { handOver, memberRemoved } from "./members.removal";
 import {
   changeRole,
   endMembership,
+  findActiveMember,
   listMembers,
   type MemberDoc,
   type MembersMongo,
@@ -109,26 +111,57 @@ export const membersResolvers: Resolvers = {
       }
       return view;
     },
-    removeMember: async (_, { memberId }, ctx) => {
+    removeMember: async (_, { memberId, transferTo }, ctx) => {
       const { principal, scope } = await requireWorkspacePermission(
         ctx,
         "members:manage",
       );
       // Removing someone is sensitive too (leaving is not): a fresh session.
       ctx.identity.assertFresh(principal);
+      // The receiver is checked before anything is removed.
+      const receiver = transferTo
+        ? await findActiveMember(handleOf(scope), scope.tenant.id, transferTo)
+        : undefined;
+      if (transferTo && (!receiver || receiver.id === memberId)) {
+        throw invalidInput([
+          { path: "transferTo", code: "validation.errors.invalid" },
+        ]);
+      }
+      let name: string | null | undefined;
+      let handed = false;
       const removed = await endMembership(handleOf(scope), {
         workspaceId: scope.tenant.id,
         memberId,
         actorId: principal.accountId,
         canManageOwners: ctx.access.roleCan(scope.member, "owners:manage"),
+        // The files move before the removal commits: a failed handover fails
+        // the call and nobody is removed.
+        ...(receiver
+          ? {
+              beforeCommit: async (target: MemberDoc) => {
+                name = await nameOf(ctx, target);
+                handed ||= await handOver(scope, {
+                  workspaceId: scope.tenant.id,
+                  from: {
+                    memberId: target.id,
+                    accountId: target.accountId,
+                    name,
+                  },
+                  to: { memberId: receiver.id, accountId: receiver.accountId },
+                });
+              },
+            }
+          : {}),
       });
+      name = name === undefined ? await nameOf(ctx, removed) : name;
       await memberRemoved(scope, removed);
       await recordRemoval({
         workspaceId: scope.tenant.id,
         actor: memberActor(principal),
         ip: ctx.ip,
         member: removed,
-        name: await nameOf(ctx, removed),
+        name,
+        transferredTo: handed ? receiver?.accountId : undefined,
       });
       return true;
     },

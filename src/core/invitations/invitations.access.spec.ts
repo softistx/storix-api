@@ -5,7 +5,7 @@ import { world } from "../../../test/workspaces.harness";
 
 const FRESH = 10 * 60 * 1000;
 
-const ISSUE = `mutation($scope: String!, $email: String!, $role: String!) {
+const ISSUE = `mutation($scope: String!, $email: String!, $role: WorkspaceRole!) {
   issueInvitation(scope: $scope, email: $email, name: "Grace", role: $role) {
     invitation { id }
   }
@@ -74,9 +74,10 @@ describe("who may invite", () => {
   });
 
   test("a role that is not a workspace role is refused as input", async () => {
-    const { w, workspace, issue } = await setup();
+    const { workspace, issue } = await setup();
     const refused = await issue(workspace.owner, "ROOT");
-    expect(w.codeOf(refused)).toBe("validation.errors.invalid-input");
+    // The enum is checked by GraphQL itself, before any resolver runs.
+    expect(JSON.stringify(refused.errors)).toContain("WorkspaceRole");
   });
 
   test("an anonymous caller is 401, a key is refused, no header is 400", async () => {
