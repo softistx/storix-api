@@ -49,6 +49,10 @@ interface Node {
   version: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
+  "When it went to the trash; null for a live node. Only the trash shows such nodes."
+  trashedAt: DateTime
+  "The account id of whoever trashed it."
+  trashedBy: String
 }
 
 type Folder implements Node {
@@ -61,6 +65,8 @@ type Folder implements Node {
   version: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
+  trashedAt: DateTime
+  trashedBy: String
 }
 
 "A file: a node that holds a stored object (`addFile` records it)."
@@ -74,6 +80,8 @@ type File implements Node {
   version: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
+  trashedAt: DateTime
+  trashedBy: String
   "The media key of the object: `GET /media/files/<key>` reads it. Never a URL."
   key: String!
   "The content type the storage reported when the file was uploaded."
@@ -140,7 +148,8 @@ extend type Query {
   """
   nodePath(id: ID!): [Node!]!
   """
-  One node of the caller's tree. Needs `nodes:read`. 404 `nodes.errors.not-found`.
+  One live node of the caller's tree (a trashed one is a 404). Needs
+  `nodes:read`. 404 `nodes.errors.not-found`.
   """
   node(id: ID!): Node!
   """

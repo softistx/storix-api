@@ -1,6 +1,6 @@
 import type { MediaBucket } from "@alxia/media";
 import { tryObjectId } from "@softistx/mongo";
-import { addUsage, type WorkspacesMongo } from "@/core/workspaces";
+import type { WorkspacesMongo } from "@/core/workspaces";
 import { fail } from "@/i18n/fail";
 import {
   lockTree,
@@ -10,6 +10,7 @@ import {
   nodesMongo,
   ownedNode,
 } from "@/modules/nodes/public";
+import { accounted } from "./files.accounting";
 import { KeyRecorded, releaseBlob } from "./files.blob";
 import { keyUnknown, notAFile } from "./files.errors";
 import { discardObject, storedObject } from "./files.object";
@@ -190,15 +191,10 @@ export async function removeVersion(
   row: VersionDoc,
 ) {
   if (node.currentVersionId?.equals(row._id)) throw isCurrent();
-  await tx.db.versions.deleteMany({ _id: row._id });
-  const left = await releaseBlob(tx, row.blobKey, 1);
-  if (left === 0) {
-    await addUsage(core.withSession(tx.session), workspaceId, {
-      bytes: -row.size,
-      files: 0,
-      versionBytes: -row.size,
-    });
-  }
+  await accounted(tx, core, workspaceId, [row.blobKey], async () => {
+    await tx.db.versions.deleteMany({ _id: row._id });
+    await releaseBlob(tx, row.blobKey, 1);
+  });
 }
 
 // Deletes a non-current version of a file of the caller's tree. `not-found`,

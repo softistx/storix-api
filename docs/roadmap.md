@@ -4,9 +4,9 @@ What a user gets, in order. An entry moves Next, Now, Shipped as its effort star
 
 ## Now
 
+- **E3 Versions and trash**: keep earlier versions of a file and get deleted files back for 30 days. ([issue](https://github.com/softistx/storix-api/issues/15))
 ## Next
 
-- **E3 Versions and trash**: keep earlier versions of a file and get deleted files back for 30 days. ([issue](https://github.com/softistx/storix-api/issues/15))
 - **E4 Sharing**: share a file or a folder with people and teams as viewer or editor, and be notified. ([issue](https://github.com/softistx/storix-api/issues/16))
 - **E5 Share links**: a link with an expiry and a password, to download or to receive files. ([issue](https://github.com/softistx/storix-api/issues/17))
 - **E6 Search**: find a file by its name, its content, its tags, or what an AI reads in it (AI is opt-in per workspace). ([issue](https://github.com/softistx/storix-api/issues/18))

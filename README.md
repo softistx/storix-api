@@ -30,7 +30,7 @@ curl localhost:3000/health
 | `bun run db:sync`      | creates the indexes and validators of the core and identity collections (`--dry-run` to preview)      |
 | `bun run workspace:quota` | sets a workspace's quota: `<slug> <bytes\|20GiB\|default>`                                       |
 | `bun run quota:reconcile` | recounts every workspace's usage and fixes any drift                                                |
-| `bun run versions:retention` | drops file versions past 20 per file or older than 90 days, never the current one                    |
+| `bun run retention`    | purges trash older than `trashDays` and drops versions past `versionsMax` / `versionsDays` (workspace settings) |
 | `bun run storage:sweep` | removes released blobs and unrecorded objects older than 75 minutes (one run at a time)              |
 | `bun run schema:print` | writes `schema.graphql`, the committed contract a client generates its types from                    |
 
@@ -210,7 +210,7 @@ last page's `endCursor` with the same folder, filter and sort. `node(id)` answer
 ### Storage quota
 
 Each workspace has a quota (`quotaBytes`, 10 GiB by default) and counts what it stores in `usage`: `bytes` (each stored
-object once, so a copy that shares a blob adds nothing), `files`, `versionBytes` and `trashBytes` (kept at 0 until E3).
+object once, so a copy that shares a blob adds nothing), `files`, `versionBytes` (blobs held only by versions) and `trashBytes` (blobs held only by trashed nodes).
 `PUT /media/files` is refused with 413 `quotas.errors.exceeded` before its body is read when the declared length does
 not fit (a chunked body is checked at its worst case, 95 MiB), and `addFile` refuses atomically, leaving no object, node
 or blob. The `storage` query (`workspace:read`) answers `quotaBytes`, `usedBytes`, `currentBytes`, `versionBytes`,
@@ -219,9 +219,19 @@ or blob. The `storage` query (`workspace:read`) answers `quotaBytes`, `usedBytes
 ```sh
 bun run workspace:quota acme 20GiB     # set a quota (bytes, 20GiB, or "default")
 bun run quota:reconcile                # recount every workspace and fix any drift
-bun run versions:retention             # drop old file versions (max 20, 90 days; never the current one)
+bun run retention                      # purge old trash and old file versions (workspace settings; defaults 30 days, max 20, 90 days); exits 1 when a workspace or an entry failed
 bun run storage:sweep                  # remove released blobs and unrecorded objects older than 75 minutes
 ```
+
+### Trash and restore
+
+`trashNodes` moves a node and its whole subtree to the trash: they leave every list, read, search and `/media` read, and
+their blobs count in `trashBytes`. `trash` lists the entries (latest first, paged). `restoreNodes` puts an entry back in
+its old parent, or in the root when that parent is gone or trashed, and renames it `name (1)` when the name is taken; a
+node that went to the trash with a folder is restored with that folder. `purgeNodes` and `emptyTrash` delete for good,
+release the blobs (each version's too) and free the quota. All four need `nodes:manage` (`trash` needs `nodes:read`). The
+retention job purges entries older than `trashDays` (30 by default). `Workspace.settings` (`trashDays`, `versionsMax`,
+`versionsDays`) is read by members and changed by `updateWorkspaceSettings` (`workspace:manage`, ADMIN and OWNER).
 
 ### Orphan sweep
 

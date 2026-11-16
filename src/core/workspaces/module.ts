@@ -1,6 +1,7 @@
 import { defineModule } from "@alxia/modules";
 import { workspaces as codes } from "@/i18n/codes";
 import { workspacesQuota } from "./migrations/2026-11-20-workspaces-quota.migration";
+import { workspacesSettings } from "./migrations/2026-11-21-workspaces-settings.migration";
 import { workspaces } from "./workspaces.collection";
 import typeDefs from "./workspaces.graphqls" with { type: "text" };
 import { workspacesResolvers } from "./workspaces.resolver";
@@ -12,11 +13,11 @@ export const workspacesModule = defineModule({
   name: "workspaces",
   dependsOn: ["members", "audit"],
   coreCollections: { workspaces },
-  coreMigrations: [workspacesQuota],
+  coreMigrations: [workspacesQuota, workspacesSettings],
   codes,
-  permissions: ["workspace:read"],
+  permissions: ["workspace:read", "workspace:manage"],
   defaultGrants: {
-    ADMIN: ["workspace:read"],
+    ADMIN: ["workspace:read", "workspace:manage"],
     MEMBER: ["workspace:read"],
   },
   typeDefs: [typeDefs],

@@ -34,6 +34,8 @@ const config: CodegenConfig = {
           // `renditions` is the files module's field: the parent is the view
           // `nodeView` makes, which holds what it reads.
           File: "@/modules/nodes/public#FileNode",
+          // `settings` is read when asked: the parent is what `view` makes.
+          Workspace: "@/core/workspaces#WorkspaceView",
         },
       },
     },

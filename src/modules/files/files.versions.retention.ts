@@ -1,18 +1,20 @@
-import type { WorkspacesMongo } from "@/core/workspaces";
+import {
+  DEFAULT_SETTINGS,
+  settingsOf,
+  type WorkspacesMongo,
+} from "@/core/workspaces";
 import { lockTree, type NodeDoc, nodesMongo } from "@/modules/nodes/public";
 import { filesMongo } from "./files.handle";
 import type { FilesMongo } from "./files.service";
 import { removeVersion } from "./files.versions";
 
-// The workspace settings of plan §3.3 (`versionsMax`, `versionsDays`) are not
-// stored yet: these are their defaults, and a run may pass others.
-export const VERSIONS_MAX = 20;
-export const VERSIONS_DAYS = 90;
 const DAY_MS = 86_400_000;
 
 // The most files one run settles per workspace (the next run takes the rest).
 const FILES_PER_RUN = 500;
 
+// `max` and `days` default to the workspace's settings (`versionsMax`,
+// `versionsDays`); a run may pass others.
 export interface RetentionOptions {
   max?: number;
   days?: number;
@@ -62,8 +64,11 @@ export async function retainVersions(
   workspaceId: string,
   options: RetentionOptions = {},
 ): Promise<RetentionReport> {
-  const max = options.max ?? VERSIONS_MAX;
-  const days = options.days ?? VERSIONS_DAYS;
+  const settings = await settingsOf(core, workspaceId);
+  const max =
+    options.max ?? settings?.versionsMax ?? DEFAULT_SETTINGS.versionsMax;
+  const days =
+    options.days ?? settings?.versionsDays ?? DEFAULT_SETTINGS.versionsDays;
   const now = (options.now ?? (() => new Date()))();
   const cutoff = new Date(now.getTime() - days * DAY_MS);
   const report: RetentionReport = { files: 0, removed: 0 };

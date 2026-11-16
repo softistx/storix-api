@@ -62,6 +62,8 @@ const commonOf = (node: NodeDoc) => ({
   version: node.version,
   createdAt: node.createdAt,
   updatedAt: node.updatedAt,
+  trashedAt: node.trashedAt ?? null,
+  trashedBy: node.trashedBy ?? null,
 });
 
 // A file node as the API says it, for a caller that knows the node is one (it

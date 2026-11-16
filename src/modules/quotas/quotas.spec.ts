@@ -192,12 +192,18 @@ describe("the quota of a workspace", () => {
     expect(code(refused)).toBe("quotas.errors.exceeded");
     const db = await databaseOf(id);
     const recount = await recountStorage(db);
-    expect(recount).toEqual({ bytes: 40, files: 6, versionBytes: 0 });
+    expect(recount).toEqual({
+      bytes: 40,
+      files: 6,
+      versionBytes: 0,
+      trashBytes: 0,
+    });
     const usage = await stored();
     expect({
       bytes: usage.bytes,
       files: usage.files,
       versionBytes: usage.versionBytes,
+      trashBytes: usage.trashBytes,
     }).toEqual(recount);
   });
 

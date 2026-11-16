@@ -137,6 +137,12 @@ export const versions = defineCodes("versions", [
   "is-current",
 ]);
 
+// The trash (src/modules/trash).
+export const trash = defineCodes("trash", [
+  // 409: the node is not in the trash (restore and purge take what was trashed).
+  "not-trashed",
+]);
+
 // The workspace's storage quota (src/core/workspaces, src/modules/quotas).
 export const quotas = defineCodes("quotas", [
   // 413: the file does not fit in what the workspace has left. Raised by the
@@ -187,6 +193,7 @@ export const errorCodes = [
   ...nodes,
   ...files,
   ...versions,
+  ...trash,
   ...quotas,
   ...storage,
 ] as const;

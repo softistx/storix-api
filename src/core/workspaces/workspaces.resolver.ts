@@ -1,11 +1,12 @@
 import type { Resolvers } from "@/generated/graphql/resolvers";
-import { invalidInput } from "@/i18n/fail";
+import { fail, invalidInput } from "@/i18n/fail";
 import { requireAccountSession, requireWorkspacePermission } from "../access";
 import { audit, memberActor } from "../audit";
 import { membershipsOfAccount, type WorkspaceRole } from "../members";
 import { isObjectIdLike } from "./workspaces.collection";
 import { type Workspace, workspaceOf } from "./workspaces.registry";
 import { createWorkspace, type WorkspacesMongo } from "./workspaces.service";
+import { settingsOf, updateSettings } from "./workspaces.settings";
 
 const view = (workspace: Workspace, myRole: WorkspaceRole) => ({
   id: workspace.id,
@@ -15,7 +16,19 @@ const view = (workspace: Workspace, myRole: WorkspaceRole) => ({
   createdAt: workspace.createdAt,
 });
 
+const notFound = () => fail("workspaces.errors.not-found", { status: 404 });
+
 export const workspacesResolvers: Resolvers = {
+  Workspace: {
+    settings: async (workspace, _, ctx) => {
+      const settings = await settingsOf(
+        ctx.tenancy.core as WorkspacesMongo,
+        workspace.id,
+      );
+      if (!settings) throw notFound();
+      return settings;
+    },
+  },
   Query: {
     workspace: async (_, __, ctx) => {
       const { scope } = await requireWorkspacePermission(ctx, "workspace:read");
@@ -78,6 +91,33 @@ export const workspacesResolvers: Resolvers = {
         meta: { slug: workspace.slug },
       });
       return view(workspace, "OWNER");
+    },
+    updateWorkspaceSettings: async (_, { input }, ctx) => {
+      const { principal, scope } = await requireWorkspacePermission(
+        ctx,
+        "workspace:manage",
+      );
+      const core = ctx.tenancy.core as WorkspacesMongo;
+      const patch = {
+        ...(input.trashDays != null && { trashDays: input.trashDays }),
+        ...(input.versionsMax != null && { versionsMax: input.versionsMax }),
+        ...(input.versionsDays != null && { versionsDays: input.versionsDays }),
+      };
+      const settings = await updateSettings(core, scope.tenant.id, patch);
+      if (!settings) throw notFound();
+      await audit.record({
+        workspaceId: scope.tenant.id,
+        actor: memberActor(principal),
+        action: "workspace.settings",
+        target: {
+          type: "WORKSPACE",
+          id: scope.tenant.id,
+          name: scope.tenant.name,
+        },
+        ip: ctx.ip,
+        meta: patch,
+      });
+      return settings;
     },
   },
 };
