@@ -199,6 +199,16 @@ mutation { requestStepUp { method challenge } }
 mutation { confirmStepUp(challenge: "...", code: "123456") }
 ```
 
+## `auth.errors.forbidden` (403)
+
+Any operation can answer 403 with this code.
+
+**When:** the signed-in member lacks the permission the operation needs (for example a MEMBER calling `auditEvents`, which needs `audit:read`, or managing members).
+
+**Why:** the permission check runs before the operation, and the role's grants (OWNER holds all, ADMIN has `defaultGrants`) do not include it.
+
+**Fix:** ask an OWNER or an ADMIN with the permission to do it, or to change your role. Retrying the same call does not help.
+
 ## `teams.errors.name-taken` (409) and `member-unknown` (400)
 
 **When:** `createTeam` or `renameTeam` with a name another team of the workspace already has (`name-taken`, field `name`); `setTeamMembers` with an id that is not a current member of the request's workspace (`member-unknown`, field `memberIds`).

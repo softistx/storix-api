@@ -143,7 +143,9 @@ export const filesResolvers: Resolvers = {
           `storix-api: could not note the upload ${node.id} as recent: ${error instanceof Error ? error.message : error}`,
         ),
       );
-      return nodeView(node) as never;
+      const view = nodeView(node);
+      if (view.__typename !== "File") throw notAFile();
+      return view;
     },
     copyNodes: async (_, { ids, parentId }, ctx) => {
       const { principal, scope } = await requireWorkspacePermission(

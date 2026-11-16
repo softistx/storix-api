@@ -4,6 +4,7 @@ import {
   depthOf,
   freeName,
   lockTree,
+  MAX_DEPTH,
   type NodeDoc,
   named,
   ownedFolder,
@@ -16,7 +17,6 @@ import type { FilesMongo } from "./files.service";
 
 // The most nodes one copy makes: a copied folder and everything under it.
 export const MAX_COPY_NODES = 5_000;
-const MAX_DEPTH = 16;
 
 // The caps a copy keeps; a spec passes lower ones to reach them cheaply.
 export interface CopyLimits {

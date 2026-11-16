@@ -12,7 +12,7 @@ export {
   type OnConflict,
 } from "./nodes.file";
 export { nodesMongo } from "./nodes.handle";
-export { checkName } from "./nodes.rules";
+export { checkName, MAX_DEPTH } from "./nodes.rules";
 export {
   cycle,
   depthOf,

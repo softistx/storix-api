@@ -1,5 +1,8 @@
 import { defineMigration } from "@softistx/mongo/migrations";
-import { DEFAULT_QUOTA_BYTES } from "../workspaces.collection";
+
+// The default quota as of this migration, frozen on purpose: it must not
+// change meaning if the live default changes later.
+const DEFAULT_QUOTA_BYTES = 10 * 1024 ** 3;
 
 // A workspace made before the quota existed gets the default quota (10 GiB)
 // and empty counters. The counters are the reconcile job's to fill

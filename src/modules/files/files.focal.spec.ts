@@ -83,6 +83,19 @@ describe("focal point and crops", () => {
     expect(centre.etag).toBe(before.etag);
   });
 
+  test("a move before the first job is done still ends READY with its previews", async () => {
+    const a = await area();
+    const file = await a.record("early.png");
+    const moved = await a.send(FOCAL, {
+      id: file.id,
+      focalPoint: { x: 0.05, y: 0.5 },
+    });
+    expect(moved.errors).toBeUndefined();
+    expect(await settled(a.workspace.id, file.key)).toBe("READY");
+    const left = await crop(a, file.key, "square");
+    expect(left).toMatchObject({ left: "red", right: "red" });
+  });
+
   test("a revalidation with the old ETag is answered with the new crop", async () => {
     const a = await area();
     const file = await a.record("etag.png");

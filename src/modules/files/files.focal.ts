@@ -17,7 +17,8 @@ export const isFocal = (focal: Focal) =>
 // point is the blob's: every node that shares it (a copy) takes it. With a
 // queue the file is `PROCESSING` until the crops are stored (`READY`, or
 // `FAILED` when only they failed); without one the point is recorded and the
-// crops stay as they were. Answers the file as it is now and as it was.
+// crops stay as they were. A file that is not `READY` (still `PROCESSING`, or
+// `FAILED`) gets the full job, so its previews are made too. Answers the file as it is now and as it was.
 export async function setFocalPoint(
   mongo: FilesMongo,
   renditions: RenditionsQueue | undefined,
@@ -54,7 +55,11 @@ export async function setFocalPoint(
   const queued = await enqueue(
     mongo,
     renditions,
-    { workspaceId: input.workspaceId, key: before.blobKey, crops: true },
+    {
+      workspaceId: input.workspaceId,
+      key: before.blobKey,
+      ...(before.status === "READY" && { crops: true }),
+    },
     node,
     crypto.randomUUID(),
   );

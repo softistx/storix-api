@@ -5,8 +5,8 @@ import { z } from "zod";
 // the media key (`workspaces/<id>/files/<key>` in the bucket); `size` and
 // `mimeType` are the storage's, never the caller's. `refs` counts the nodes
 // (and, later, versions and copies) that hold the object: a copy shares the
-// blob, and the orphan sweep removes it once `refs` is 0 and `releasedAt` is
-// set.
+// blob, and the orphan sweep removes it once `refs` is 0 (`releasedAt` is
+// set for E3 to use).
 export const blobs = defineCollection({
   name: "blobs",
   schema: z.object({
