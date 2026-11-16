@@ -263,7 +263,7 @@ mutation { confirmStepUp(challenge: "...", code: "123456") }
 
 **When:** a sibling holds the name in any case (`name-taken`, field `name`); the folder would pass 16 levels (`too-deep`); a folder is moved or copied into itself or its own subtree (`cycle`); the moved folder holds more than 5,000 nodes (`move-too-large`); a root is renamed or moved (`root-locked`).
 
-**Fix:** pick another name or destination. `too-deep`: flatten the destination. `move-too-large`: move the folder's sub-folders in turn (a batched move is planned).
+**Fix:** pick another name or destination. `too-deep`: flatten the destination. `move-too-large`: move the folder's sub-folders in turn (`moveNodes` takes up to 100 ids and applies all or nothing).
 
 ## `files.errors.key-unknown` (400) on `addFile`
 
@@ -367,7 +367,7 @@ the centre.
 **Why and fix:**
 - `PROCESSING` for long: no worker consumes the `renditions` queue. Run `bun run worker` (dev) or `bun --no-install dist/worker.js` (production) with the API's `REDIS_URL`, `S3_*` and `MONGO_URI` setting. The job waits in Redis and runs once a worker starts.
 - The worker exits 1 at boot: `REDIS_URL` or the `S3_*` settings are missing. Set them like the API's.
-- `FAILED`: the previews could not be made. A picture that is corrupt or has too many pixels (over 50 million) fails at once; a transient error (bucket or database down) is retried 4 times with backoff first. The original is untouched and downloadable at `/media/files/<key>`. Fix the cause, then upload the file again.
+- `FAILED`: the previews could not be made. A size stored before the failure (the store failed midway, or the crops of an earlier focal point) is still served at `/media/files/<key>/<size>`: it is a valid rendition of the same original, kept on purpose, while `renditions` lists nothing until the file is `READY`. A picture that is corrupt or has too many pixels (over 50 million) fails at once; a transient error (bucket or database down) is retried 4 times with backoff first. The original is untouched and downloadable at `/media/files/<key>`. Fix the cause, then upload the file again.
 - `FAILED` right after `addFile`: Redis refused the job, so no preview will come; the file itself is recorded and downloadable.
 - Without `REDIS_URL` a file stays `READY` with no previews: that is the setting, not a fault.
 

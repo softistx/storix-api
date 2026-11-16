@@ -6,16 +6,14 @@ import { store } from "@/config/tenancy";
 import { setQuota, type WorkspacesMongo } from "@/core/workspaces";
 import { workspacesQuota } from "@/core/workspaces/migrations/2026-11-20-workspaces-quota.migration";
 import { ADD, BUCKET, COPY, filesWorld } from "../../../test/files.harness";
-import type { FilesMongo } from "../files/public";
-import { recountStorage } from "../files/public";
+import { filesMongo, recountStorage } from "../files/public";
 import { setup } from "../nodes/nodes.harness";
 import { reconcileAll, reconcileUsage } from "./public";
 
 const files = filesWorld();
 
 const core = () => store.core as unknown as WorkspacesMongo;
-const databaseOf = async (id: string) =>
-  (await store.databaseOf(id)) as unknown as FilesMongo;
+const databaseOf = async (id: string) => filesMongo(await store.databaseOf(id));
 
 const code = (r: {
   errors?: readonly { extensions?: unknown }[] | undefined;

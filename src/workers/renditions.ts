@@ -2,7 +2,7 @@ import type { MediaBucket } from "@alxia/media";
 import type { AppRedis } from "../config/redis";
 import { store } from "../config/tenancy";
 import {
-  type FilesMongo,
+  filesMongo,
   markRenditionsFailed,
   renditionsHandler,
 } from "../modules/files/public";
@@ -20,11 +20,8 @@ export function startRenditionsWorker(
   const log = options.log ?? ((message: string) => console.warn(message));
   const deps = {
     bucket,
-    // The registry types the slot (`Register`), the store's databases are
-    // plain records: the one cast of this file, as in files.resolver.ts
-    // (debt #85, item 3).
     mongoOf: async (workspaceId: string) =>
-      (await store.databaseOf(workspaceId)) as unknown as FilesMongo,
+      filesMongo(await store.databaseOf(workspaceId)),
   };
   const worker = redis.queues.renditions.work(renditionsHandler(deps), {
     concurrency: options.concurrency ?? RENDITIONS_CONCURRENCY,

@@ -4,8 +4,8 @@ import { Collection } from "mongodb";
 import { store } from "@/config/tenancy";
 import { ADD, filesWorld } from "../../../test/files.harness";
 import { setup } from "../nodes/nodes.harness";
+import { filesMongo } from "./files.handle";
 import { recountStorage } from "./files.recount";
-import type { FilesMongo } from "./files.service";
 import { sweepWorkspace } from "./files.sweep";
 import type { SweepBucket } from "./files.sweep.run";
 
@@ -16,8 +16,7 @@ const files = filesWorld();
 const HOUR = 60 * 60_000;
 const later = () => new Date(Date.now() + 2 * HOUR);
 
-const databaseOf = async (id: string) =>
-  (await store.databaseOf(id)) as unknown as FilesMongo;
+const databaseOf = async (id: string) => filesMongo(await store.databaseOf(id));
 
 async function area() {
   const s = await setup(files.ctx.w);

@@ -11,6 +11,7 @@ export {
   type NewFile,
   type OnConflict,
 } from "./nodes.file";
+export { nodesMongo } from "./nodes.handle";
 export { checkName } from "./nodes.rules";
 export {
   cycle,
@@ -26,4 +27,4 @@ export {
   rootLocked,
   tooDeep,
 } from "./nodes.service";
-export { type FileNode, nodeView } from "./nodes.tree";
+export { type FileNode, fileView, nodeView } from "./nodes.tree";

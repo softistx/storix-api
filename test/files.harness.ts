@@ -6,7 +6,7 @@ import { RedisClient } from "bun";
 import { store } from "@/config/tenancy";
 import { createUploadLimit, openBucket } from "@/core/storage";
 import {
-  type FilesMongo,
+  filesMongo,
   type RenditionsQueue,
   renditionsHandler,
 } from "@/modules/files/public";
@@ -195,8 +195,7 @@ async function openRenditions(ctx: {
   appRedis.queues.renditions.work(
     renditionsHandler({
       bucket: ctx.bucket,
-      mongoOf: async (id) =>
-        (await store.databaseOf(id)) as unknown as FilesMongo,
+      mongoOf: async (id) => filesMongo(await store.databaseOf(id)),
     }),
     { concurrency: 2 },
   );

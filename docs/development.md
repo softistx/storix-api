@@ -45,6 +45,7 @@ replica set.
 - `context:check`: every error code declared with `defineCodes` has a row in `CONTEXT.md`.
 - `deps:check`: no file outside `src/core/identity/**` and `src/config/auth.ts` imports a
   `@softistx/janus*` package (the identity seam, plan §3.11).
+- `workspace:quota <slug> <bytes|20GiB|default>` sets a quota; `quota:reconcile` recounts every workspace's usage and fixes any drift; `storage:sweep` removes unreferenced storage (see the orphan sweep below).
 - `verify:pr` selects the specs that are, or import, a changed file (`src/scripts/affected-tests.ts`);
   a change to shared infrastructure runs them all.
 
@@ -125,7 +126,7 @@ An admin invites an address into the request's workspace; the invitee accepts wi
 
 - `PUT /media/<kind>` stores the raw body (send `Content-Length`) and answers `{ key, contentType, size }`; `GET /media/<kind>/<key>` streams it with `Range`, `ETag` and `If-None-Match` (206, 304, 416).
 - Kinds (`storage.kinds.ts`): `files` takes any type up to 95 MiB (known signatures sniffed; a type outside the inline-safe list is served as a download) and `avatars` takes JPEG, PNG and WebP up to 10 MiB, stores only its `64` and `256` px squares (EXIF dropped, `keepOriginal: false`). Both use `Cache-Control: private, no-cache`, so a reader who lost access is refused on the next use.
-- Every object is stored at `workspaces/<workspaceId>/<kind>/<key>` (`keyPrefix`): the `x-storix-workspace` header picks the prefix, so a key of another workspace is a 404. Any member may upload; a `files` object is read only while a live node of the caller's own tree holds its key (the `files` module registers `onFileRead`, so the kernel stays free of business modules; `avatars` stay readable by members). A personal API key is refused until keys are bound to workspaces.
+- Every object is stored at `workspaces/<workspaceId>/<kind>/<key>` (`keyPrefix`): the `x-storix-workspace` header picks the prefix, so a key of another workspace is a 404. Any member may upload; a `files` object is read only while a live node of the caller's own tree holds its key (the app hands the routes the `files` module's `fileReader`, so the kernel stays free of business modules and holds no global state; `avatars` stay readable by members). A personal API key is refused until keys are bound to workspaces.
 - Uploads are limited per account and workspace, 30 a minute with a burst of 60 (`@softistx/redis`, `storage.limit.ts`); unlike the sign-in limits it fails closed when Redis does not answer. Unset `REDIS_URL` limits nothing.
 - Every refusal is `/graphql`'s error shape with a `storage.errors.*` code (CONTEXT.md, docs/troubleshooting.md).
 - The specs go through `app.fetch` on a real SeaweedFS (`@softistx/s3/testing`, downloaded once, no Docker) and a real Redis.

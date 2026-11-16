@@ -2,7 +2,7 @@
 // this folder is private.
 export { storageModule } from "./module";
 export { openBucket } from "./storage.bucket";
-export { type FileReader, onFileRead } from "./storage.keys";
+export type { FileRead, FileReader } from "./storage.keys";
 export { FILES_MAX_BYTES } from "./storage.kinds";
 export {
   createUploadLimit,

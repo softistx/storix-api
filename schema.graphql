@@ -302,6 +302,12 @@ enum FileFamily {
   VIDEO
 }
 
+"""
+Where a file stands in its renditions. READY: nothing is pending (also the
+status of every file when no worker runs). PROCESSING: a worker is making the
+thumbnail and crops. FAILED: only the previews failed; the original stays
+downloadable, and a size stored before the failure may still be served.
+"""
 enum FileStatus {
   FAILED
   PROCESSING
@@ -643,7 +649,8 @@ type Mutation {
   `files.errors.key-unknown` (field `key`) for a key of another workspace or
   kind, a malformed or never uploaded key, and one a file already holds; 404
   `nodes.errors.not-found`; 400 `nodes.errors.not-a-folder`; 409
-  `nodes.errors.name-taken` (field `name`, REFUSE only); 409
+  `nodes.errors.name-taken` (field `name`, REFUSE only); 413 `quotas.errors.exceeded` when the
+  workspace quota would be passed; 409
   `nodes.errors.too-deep`; 400 `validation.errors.invalid-input` for a bad
   name; 503 `storage.errors.unavailable` when no bucket is configured.
   """
@@ -1079,9 +1086,9 @@ type Query {
   """
   starred(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): NodePage!
   """
-  The workspace's storage: its quota, what is used and the split. Any member
-  may read it. 400 `workspaces.errors.workspace-required`, 404
-  `workspaces.errors.not-found`; 401 `auth.errors.api-key-not-accepted`.
+  The workspace's storage: its quota, what is used and the split. Needs the
+  `workspace:read` permission, which every member holds. 400
+  `workspaces.errors.workspace-required`, 404 `workspaces.errors.not-found`; 401 `auth.errors.api-key-not-accepted`.
   """
   storage: Storage!
   """

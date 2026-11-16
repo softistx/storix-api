@@ -5,8 +5,8 @@ import { nodeView } from "@/modules/nodes/public";
 import { recordFileFocal } from "./files.audit";
 import { notAFile } from "./files.errors";
 import { setFocalPoint as moveFocalPoint } from "./files.focal";
+import { filesMongo } from "./files.handle";
 import { renditionsOf } from "./files.renditions.list";
-import type { FilesMongo } from "./files.service";
 
 // `File.renditions` and `File.rendition(preset)`: derived from the node.
 export const fileRenditionResolvers: NonNullable<Resolvers["File"]> = {
@@ -23,9 +23,7 @@ export const setFocalPoint: NonNullable<
     ctx,
     "nodes:manage",
   );
-  // The registry types the slot, the scope's database is a plain record: as
-  // files.resolver.ts's `filesDb` (debt #85).
-  const mongo = scope.mongo as unknown as FilesMongo;
+  const mongo = filesMongo(scope.mongo);
   const { node } = await moveFocalPoint(mongo, ctx.renditions, {
     id,
     accountId: principal.accountId,

@@ -10,11 +10,7 @@ import {
 } from "../../../test/files.harness";
 import { setup } from "../nodes/nodes.harness";
 import type { RenditionsQueue } from "./public";
-import {
-  type FilesMongo,
-  markRenditionsFailed,
-  renditionsHandler,
-} from "./public";
+import { filesMongo, markRenditionsFailed, renditionsHandler } from "./public";
 
 // What fails: Redis refusing a job, and the store failing under a job. The
 // queue the app gets is a switch over the real one, so a spec picks.
@@ -27,8 +23,7 @@ const queue: RenditionsQueue = {
 };
 const files = filesWorld({ renditions: queue });
 
-const databaseOf = async (id: string) =>
-  (await store.databaseOf(id)) as unknown as FilesMongo;
+const databaseOf = async (id: string) => filesMongo(await store.databaseOf(id));
 
 let opens = 0;
 let closeRedis: (() => Promise<void>) | undefined;

@@ -1,10 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { store } from "@/config/tenancy";
+import { nodesMongo } from "./nodes.handle";
 import { MOVE, type NodeView, PATH, setup } from "./nodes.harness";
-import type { NodesMongo } from "./nodes.service";
 
-const databaseOf = async (id: string) =>
-  (await store.databaseOf(id)) as unknown as NodesMongo;
+const databaseOf = async (id: string) => nodesMongo(await store.databaseOf(id));
 
 // A world with a tree: root > a > b > c, root > t, root > u.
 async function tree() {

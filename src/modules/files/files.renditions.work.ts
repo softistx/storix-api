@@ -18,6 +18,14 @@ import type { FilesMongo } from "./files.service";
 // store or the database is away) is retried with the queue's backoff and
 // `FAILED` when the last attempt is spent. `FAILED` covers the previews only:
 // the original stays readable and downloadable.
+//
+// A `FAILED` file may still serve a size that was stored before the failure
+// (the sizes are rendered first, then stored one after the other, so a store
+// that fails midway leaves the first ones; a crops job that fails leaves the
+// previous crops). That is kept on purpose: each stored size is a valid
+// rendition of this very original, `/media` serves it, and deleting it would
+// only add a second way to fail. `renditions` (GraphQL) lists nothing while
+// the file is not `READY`.
 
 export interface RenditionsWorkDeps {
   // The workspace's database, typed for the files module.

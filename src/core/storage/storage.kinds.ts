@@ -8,6 +8,7 @@ import {
   authorizeWrite,
 } from "./storage.access";
 import type { MediaRequires } from "./storage.context";
+import type { FileReader } from "./storage.keys";
 import type { UploadLimit } from "./storage.limit";
 
 const MIB = 1024 * 1024;
@@ -36,6 +37,8 @@ export const AVATARS_MAX_BYTES = 10 * MIB;
 // `GET /media/files/<key>/<size>` once one is stored, a 404 before.
 export function mediaKinds(options: {
   limit: UploadLimit;
+  // Who may read a `files` key (the `files` module's check).
+  fileReader: FileReader;
   // False when no bucket is configured: every route answers 503.
   available: boolean;
 }) {
@@ -44,7 +47,9 @@ export function mediaKinds(options: {
   const read = async (ctx: MediaRequires) =>
     options.available ? authorizeRead(ctx) : { code: "unavailable" };
   const readFile = async (ctx: MediaRequires, key: string) =>
-    options.available ? authorizeFileRead(ctx, key) : { code: "unavailable" };
+    options.available
+      ? authorizeFileRead(ctx, key, options.fileReader)
+      : { code: "unavailable" };
   // The workspace quota, from the declared length and before the body is read
   // (so nothing is stored). A body that declares no length is counted at the
   // kind's largest. `addFile` decides for good; this only spares the upload.
