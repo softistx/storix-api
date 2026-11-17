@@ -52,7 +52,7 @@ when a code lacks a message in English or French.
 | `auth.errors.client-header-required` | A `/graphql` request lacks the `x-storix-client` header (403, cross-site request protection). |
 | `auth.errors.step-up-required` | The operation needs a recent re-authentication. |
 | `auth.errors.second-factor-required` | The sign-in needs the account's second factor. |
-| `auth.errors.rate-limited` | Too many attempts; `params.minutes` says when to retry. |
+| `auth.errors.rate-limited` | Too many attempts; `params.minutes` says when to retry (`extensions.retryAfter`, in seconds). It also answers a second-factor code past janus's per-account limit (`reason: throttled`), 429. |
 | `auth.errors.api-key-not-accepted` | An API key reached a path or an account operation it may not (401). |
 | `identity.errors.invalid-credentials` | A sign-in failed: a wrong password, an unknown address or a deactivated account, which are never told apart (401). |
 | `identity.errors.email-unverified` | The operation needs a verified e-mail address (403). |
