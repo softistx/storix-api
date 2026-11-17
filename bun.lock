@@ -6,12 +6,12 @@
       "name": "storix-api",
       "dependencies": {
         "@alxia/access": "^0.2.3",
-        "@alxia/core": "^0.24.0",
+        "@alxia/core": "^0.25.0",
         "@alxia/env": "^0.5.0",
-        "@alxia/graphql": "^0.16.3",
-        "@alxia/i18n": "^0.6.0",
-        "@alxia/language": "^0.3.20",
-        "@alxia/media": "^0.10.0",
+        "@alxia/graphql": "^0.16.4",
+        "@alxia/i18n": "^0.6.1",
+        "@alxia/language": "^0.3.21",
+        "@alxia/media": "^0.10.1",
         "@alxia/modules": "^0.4.0",
         "@alxia/tenancy": "^0.6.0",
         "@graphql-tools/merge": "^10.0.6",
@@ -60,17 +60,17 @@
   "packages": {
     "@alxia/access": ["@alxia/access@0.2.3", "", { "peerDependencies": { "@alxia/modules": "^0.4.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-YRnLOqqCdsQRqVJlNcwV5fkh0OezTWCgKDfy+I7SKOQTQ4MTtGtJtMGXirkVNy61nH4YjcIRiofwNF8ReD0Sew=="],
 
-    "@alxia/core": ["@alxia/core@0.24.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-RaOi0d5zT7voX0Oml7z8Z9MCFhGMgZQ4L1GwSoO33Azm682x9JW18T4n3m4+0F6ni2JWKi3jA9DaDDPQ0nsrRQ=="],
+    "@alxia/core": ["@alxia/core@0.25.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-rVDfFPaHPY1OAB+3yzGkD6RHwola/eG9+Ygzw8UhVQr2/vqY3Z7xSjX3Wo6koeonAoA+NB+wfJoRl1SXD9tOEQ=="],
 
     "@alxia/env": ["@alxia/env@0.5.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" }, "bin": { "alxia-env": "dist/cli/index.js" } }, "sha512-DhZMLwIFJUA3LZ/BzYKQQm+7O9nMH2DXfvKfkt01WcKccDySAsiHg735irOT0ymehxuRa22EzJzalX3n/fjN+w=="],
 
-    "@alxia/graphql": ["@alxia/graphql@0.16.3", "", { "peerDependencies": { "@alxia/core": "^0.24.0", "graphql": "^16.11.0 || ^17.0.0", "graphql-ws": "^6.1.0", "graphql-yoga": "^5.16.0 || ^6.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["graphql-ws"] }, "sha512-WGnYmN1CoJ3kHqzzYB2VN5qfkZM/fuEI/kOWhIvtkFv9xtSmFDS5AmdCLnbqGkRjl6tOLn8qxK+euA8O01Ol4g=="],
+    "@alxia/graphql": ["@alxia/graphql@0.16.4", "", { "peerDependencies": { "@alxia/core": "^0.25.0", "graphql": "^16.11.0 || ^17.0.0", "graphql-ws": "^6.1.0", "graphql-yoga": "^5.16.0 || ^6.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["graphql-ws"] }, "sha512-RZsr1JWhsIpQoOCUyiiAdfiNXuuXEPAWqUmWYpKGrJBlbBsEbnYKM1Jz8UK8YDoxGpd/T2hmo3gnZ299JMnbLQ=="],
 
-    "@alxia/i18n": ["@alxia/i18n@0.6.0", "", { "peerDependencies": { "@alxia/core": "^0.24.0", "@alxia/language": "^0.3.20", "@softistx/i18n": "^3.2.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-npPJCcojdFSIPf8Z4dpK05/Xst28qvKZgFe1NFFufIuoSKPOvFikYZtfwBWU+Okat7l3uG+mHX93HwFkKEweTQ=="],
+    "@alxia/i18n": ["@alxia/i18n@0.6.1", "", { "peerDependencies": { "@alxia/core": "^0.25.0", "@alxia/language": "^0.3.21", "@softistx/i18n": "^3.2.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-mRuBtUdNhxHa8c0i4yo2RXd2UL3Kk3eNjvgM2eV6DoESpY/NHVxE7tIsIM7/UM5+q8vaFP7VMbI2CXB47fUFWQ=="],
 
-    "@alxia/language": ["@alxia/language@0.3.20", "", { "peerDependencies": { "@alxia/core": "^0.24.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-7ywMtPXt5Inv3mQXLgZTBVTc3coJ/gW1pzBoDxN8fFoDiytyrOmJtg752fB1ZiCw4cckgsXHolXNCJIQEE1lCA=="],
+    "@alxia/language": ["@alxia/language@0.3.21", "", { "peerDependencies": { "@alxia/core": "^0.25.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-Ez+OVPIzUJnrJdSYBwu1/4x1sDw0vlG0Uuacg/kLcfwiekQlRj3MTmnN8ixZgkPY9TDk/FXz2SyqT+8u57VzVA=="],
 
-    "@alxia/media": ["@alxia/media@0.10.0", "", { "peerDependencies": { "@alxia/core": "^0.24.0", "@softistx/image": "^0.5.0", "@softistx/s3": "^0.13.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/image"] }, "sha512-uMRtsnj2R0Fl5kUoFtO2OX2D2SJd6bFeK/P5P8qPcpLl01G5tk/1bndb9tJa7gKIzCPNWzIKDf0t0NSNYGSg7w=="],
+    "@alxia/media": ["@alxia/media@0.10.1", "", { "peerDependencies": { "@alxia/core": "^0.25.0", "@softistx/image": "^0.5.0", "@softistx/s3": "^0.13.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/image"] }, "sha512-rtuFxQsqQW066OMryB0yfvIrce9zYpuuXBmfXhVzDo8VwvXaptlpT5Uh0av8g1+ijQh+Jzl63gIYAjv5tbLNTg=="],
 
     "@alxia/modules": ["@alxia/modules@0.4.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-kzmHJpf9ZzhFhNvH/LoQJSaQ+xOMzbSffnV+F6zkvmOkLUZJzPa3t7/47cQ5mzGfC1InimCMystRP9VFqK26gg=="],
 
