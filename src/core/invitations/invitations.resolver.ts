@@ -1,4 +1,3 @@
-import { GraphQLError } from "graphql";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import type { Context } from "@/http/context";
 import { fail } from "@/i18n/fail";
@@ -59,44 +58,11 @@ interface Previewed {
   organization: string | null;
 }
 
-// janus refuses every unusable code as one `invitations.errors.invalid`; this
-// says why when the code names a real invitation: past its 7 days, already
-// accepted, or withdrawn. A code that names none stays `invalid`.
-const REFUSALS = {
-  expired: "invitations.errors.expired",
-  accepted: "invitations.errors.already-accepted",
-  revoked: "invitations.errors.revoked",
-} as const;
-
-async function whyRefused(
-  ctx: Context,
-  args: unknown,
-  error: unknown,
-): Promise<unknown> {
-  const code = (args as { code?: unknown } | null)?.code;
-  if (
-    !(error instanceof GraphQLError) ||
-    error.extensions["code"] !== "invitations.errors.invalid" ||
-    typeof code !== "string"
-  ) {
-    return error;
-  }
-  const state = await ctx.identity.invitations.stateOf(code);
-  return state === "expired" || state === "accepted" || state === "revoked"
-    ? fail(REFUSALS[state], { status: 400 })
-    : error;
-}
-
 const preview: Field = async (parent, args, ctx, info) => {
   const resolve = resolversOf(ctx)["Query"]?.["invitationPreview"];
   if (!resolve)
     throw new Error("no invitation resolver Query.invitationPreview");
-  let answer: Previewed;
-  try {
-    answer = (await resolve(parent, args, ctx, info)) as Previewed;
-  } catch (error) {
-    throw await whyRefused(ctx, args, error);
-  }
+  const answer = (await resolve(parent, args, ctx, info)) as Previewed;
   if (answer.organization === null) throw closed();
   return answer;
 };

@@ -661,7 +661,7 @@ type Mutation {
   with no password yet (given one) is signed in (the session cookie, or `token`
   with `answerToken`); a proved user who already has a password (the password
   given is ignored), or who has none and gave none, is answered
-  `InvitationSignIn` and is not. INVITATION_INVALID (400) for a code that names no pending
+  `InvitationSignIn` and is not. INVITATION_INVALID (400, `extensions.reason`: unknown, expired, accepted or revoked) for a code that names no pending
   invitation, PASSWORD_REQUIRED (400) when a password is needed and absent.
   INVITATION_REFUSED (403) when the application's `beforeAccept` refused, with
   nothing written. A `code` over 43 characters or a `password` over 1024 is
@@ -1136,8 +1136,9 @@ type Query {
   """
   folders(parentId: ID): [Node!]!
   """
-  What `code` names, without spending it. INVITATION_INVALID (400) for
-  any code that names no pending, unlapsed invitation. Open to anybody: the
+  What `code` names, without spending it. INVITATION_INVALID (400, `extensions.reason`: unknown,
+  expired, accepted or revoked) for any code that names no pending, unlapsed
+  invitation. Open to anybody: the
   code is a secret (send it in the variables of a POST, never in a URL), and
   the field is not throttled here. A `code` longer than 43 characters is
   BAD_USER_INPUT (400, `field: 'code'`).

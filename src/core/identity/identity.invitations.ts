@@ -25,12 +25,27 @@ import type { Mail } from "./janus.mail";
 export const invitationTypeDefs: string = `${janusTypeDefs}\n${janusInvitationTypeDefs.replace(/\brole: String\b/g, "role: WorkspaceRole")}`;
 
 // janus-graphql's refusals as the API answers them: the code says what the
-// client can act on. janus refuses every unusable code as one INVITATION_INVALID:
-// it is `invitations.errors.invalid` here, and the invitations module refines it
-// (`expired`, `already-accepted`, `revoked`) from the code's stored state.
+// client can act on. janus refuses every unusable code as INVITATION_INVALID
+// and names why in `extensions.reason` (`unknown`, `expired`, `accepted`,
+// `revoked`): `invitationRefusal` maps it with `INVITATION_REASONS`.
+const INVITATION_REASONS = {
+  expired: "invitations.errors.expired",
+  accepted: "invitations.errors.already-accepted",
+  revoked: "invitations.errors.revoked",
+} as const;
+
 export function invitationRefusal(error: GraphQLError): GraphQLError {
   const code = error.extensions["code"];
   const field = error.extensions["field"];
+  const reason = error.extensions["reason"];
+  const refused =
+    reason === "expired" || reason === "accepted" || reason === "revoked"
+      ? INVITATION_REASONS[reason]
+      : undefined;
+  // `unknown`, or a field other than the code, is the plain refusal below.
+  if (code === "INVITATION_INVALID" && refused) {
+    return fail(refused, { status: 400 });
+  }
   switch (code) {
     case "UNAUTHENTICATED":
       return unauthenticated();

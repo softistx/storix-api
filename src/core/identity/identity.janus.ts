@@ -17,7 +17,6 @@ import {
 } from "@softistx/janus-mongo";
 import type { Mailer } from "@softistx/mail";
 import type { Db } from "mongodb";
-import { invitationStateReader } from "./identity.invitation-state";
 import { createInvitationResolvers } from "./identity.invitations";
 import type { Account, Identity } from "./identity.port";
 import { type Accepted, createAccounts } from "./janus.accounts";
@@ -94,12 +93,11 @@ function assemble(options: IdentityOptions) {
       onAccepted: options.onAcceptedInvitation,
     },
   });
-  return { accounts, mail, runner, hasher, invitationStore, clock };
+  return { accounts, mail, runner, hasher, clock };
 }
 
 export function createJanusIdentity(options: IdentityOptions): Identity {
-  const { accounts, mail, runner, hasher, invitationStore, clock } =
-    assemble(options);
+  const { accounts, mail, runner, hasher, clock } = assemble(options);
   const deps = { accounts, mail, background: runner, clock };
 
   return {
@@ -142,7 +140,6 @@ export function createJanusIdentity(options: IdentityOptions): Identity {
     invitations: {
       resolvers: (hooks) =>
         createInvitationResolvers(accounts, mail, options.uiOrigin, hooks),
-      stateOf: invitationStateReader(invitationStore, () => clock.now()),
     },
 
     // The keys and the invitations are opt-in ports: not part of
