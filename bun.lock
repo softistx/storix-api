@@ -24,7 +24,7 @@
         "@softistx/ai-ollama": "^0.3.1",
         "@softistx/ai-telemetry": "^0.3.1",
         "@softistx/image": "^0.6.0",
-        "@softistx/janus": "^0.68.0",
+        "@softistx/janus": "^0.68.2",
         "@softistx/janus-graphql": "^0.29.1",
         "@softistx/janus-mail": "^0.26.11",
         "@softistx/janus-mongo": "^0.29.2",
@@ -336,7 +336,7 @@
 
     "@softistx/image": ["@softistx/image@0.6.0", "https://npm.softistx.com/@softistx/image/-/image-0.6.0.tgz", { "peerDependencies": { "@napi-rs/canvas": "^1.1.0", "@softistx/s3": "^0.13.0", "pdfjs-dist": "^6.5.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-YFgHQ2m1GZrdsh3SUhAU/xDurUNXqAHPJ5Ea7OTB4kmaZbLcj7D1CjnLRklDy8fkKFlaMzERB+qTn3ZJ/XtYZQ=="],
 
-    "@softistx/janus": ["@softistx/janus@0.68.0", "https://npm.softistx.com/@softistx/janus/-/janus-0.68.0.tgz", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-Pw7zHLmeFogCV+sBhkWmRDwcldJp0ZeP7sogm0R3EH+SF+NlZOt3u/dVsk09J+dbtj2YipoB8PO+o2cXx0YhCA=="],
+    "@softistx/janus": ["@softistx/janus@0.68.2", "https://npm.softistx.com/@softistx/janus/-/janus-0.68.2.tgz", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-dfVXDkbeVrDhADM3Kt8GQJyuI0JnEcmouJq4gmE7HMeVKTBY3ci4mc5D8XRgIyNUO8twIE3IM4FeXlmPcamUDQ=="],
 
     "@softistx/janus-graphql": ["@softistx/janus-graphql@0.29.1", "https://npm.softistx.com/@softistx/janus-graphql/-/janus-graphql-0.29.1.tgz", { "peerDependencies": { "@envelop/core": "^5.0.0 || ^6.0.0", "@graphql-tools/utils": ">=10.0.0 <14", "@softistx/janus": "^0.68.0", "graphql": "^16.9.0 || ^17.0.0", "graphql-ws": "^6.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["graphql-ws"] }, "sha512-MVaCU+uGdCC2I1naalXo6dtV4mR8dQiFmGPsonb75I6VdSLSUBqtRCLvekA+Uu8hVmalBUNxGIzUvpqgNsE9lg=="],
 
