@@ -8,7 +8,9 @@
 # Mailpit: SMTP smtp://localhost:1027, messages at http://localhost:8027.
 # SeaweedFS: S3 API http://localhost:8333, storix-dev / storix-dev-secret (docker/seaweedfs-s3.json).
 # Every service has CPU and memory limits, and its healthcheck is light (30 s, a TCP probe or a ping;
-# `start_interval` keeps start-up fast).
+# `start_interval`, Compose 2.20+ and Engine 25+, keeps start-up fast). Start the stack with
+# `bun run services:up`, not a bare `docker compose up`: it also runs the one-shots of the `init`
+# profile (`mongo-init` starts the replica set, `media-bucket` creates the bucket).
 # Images are pinned (mongo 8.0, SeaweedFS 4.47 by multi-arch index digest, the bucket client by digest): bump them on purpose.
 name: storix-api
 services:
@@ -40,11 +42,11 @@ services:
         condition: service_healthy
     command:
       - mongosh
+      - "mongodb://mongo:27017/?directConnection=true"
       - --quiet
-      - --host
-      - mongo
       - --eval
-      - "try { rs.status() } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] }) }; while (!db.hello().isWritablePrimary) sleep(500)"
+      - "try { rs.status() } catch (e) { rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: 'localhost:27017' }] }) }; const end = Date.now() + 60000; while (!db.hello().isWritablePrimary) { if (Date.now() > end) throw new Error('no primary after 60 s'); sleep(500) }"
+    profiles: [init]
     restart: "no"
     deploy:
       resources:
@@ -97,6 +99,7 @@ services:
 
   # One-shot: creates the private bucket and exits.
   media-bucket:
+    profiles: [init]
     image: cgr.dev/chainguard/minio-client@sha256:59f1924e417b6fcfdc0aca321e3bdebe8a56fd0efa7da80037d5eb65a203d687
     depends_on:
       seaweedfs:

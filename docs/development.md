@@ -17,7 +17,8 @@ bun install
 one), Redis, Mailpit and SeaweedFS, waits until they are healthy, runs the one-shot
 `mongo-init` (it starts the replica set and waits for its primary), then starts the API in watch
 mode. Each service has CPU and memory limits and a light healthcheck (every 30 s, a TCP probe or a
-ping), so the stack stays cheap while it idles. `GET /health` answers 200; `GET /ready` answers 503 while MongoDB does not.
+ping), so the stack stays cheap while it idles. Start it with `bun run services:up`, not a bare
+`docker compose up`: the one-shots `mongo-init` and `media-bucket` sit in the `init` profile. `GET /health` answers 200; `GET /ready` answers 503 while MongoDB does not.
 The services keep running when the API stops: `bun run services:down` stops them.
 
 | Service   | Host port               | Use                                                               |
