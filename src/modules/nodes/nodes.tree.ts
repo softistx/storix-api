@@ -58,6 +58,7 @@ const commonOf = (node: NodeDoc) => ({
   name: node.name,
   parentId: node.parentId?.toHexString() ?? null,
   ancestors: node.ancestors.map((a) => a.toHexString()),
+  ownerId: node.ownerId ?? null,
   depth: node.ancestors.length + 1,
   version: node.version,
   createdAt: node.createdAt,

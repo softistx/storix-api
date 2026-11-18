@@ -3,7 +3,7 @@ import { memberActor } from "@/core/audit";
 import type { WorkspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { invalidInput } from "@/i18n/fail";
-import { checkName, fileView, nodeView } from "@/modules/nodes/public";
+import { checkName, fileView, nodeView, ownerOf } from "@/modules/nodes/public";
 import {
   recordCopy,
   recordFileAdd,
@@ -68,7 +68,11 @@ export const filesResolvers: Resolvers = {
       return pageOf(page, after);
     },
   },
-  File: { ...fileRenditionResolvers, ...fileVersionResolvers },
+  File: {
+    ...fileRenditionResolvers,
+    ...fileVersionResolvers,
+    owner: (node, _, ctx) => ownerOf(node, ctx),
+  },
   Mutation: {
     ...versionMutations,
     setFocalPoint,

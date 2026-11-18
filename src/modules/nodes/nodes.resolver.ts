@@ -6,6 +6,7 @@ import { recordFolderCreate, recordMove, recordRename } from "./nodes.audit";
 import { nodesMongo } from "./nodes.handle";
 import { listNodes } from "./nodes.list";
 import { moveNodes } from "./nodes.move";
+import { ownerOf } from "./nodes.owner";
 import { checkName } from "./nodes.rules";
 import { createFolder, ownedNode, renameNode } from "./nodes.service";
 import { foldersOf, nodeView, pathTo, rootsOf } from "./nodes.tree";
@@ -32,6 +33,7 @@ function nameOf(raw: string): string {
 }
 
 export const nodesResolvers: Resolvers = {
+  Folder: { owner: (node, _, ctx) => ownerOf(node, ctx) },
   Query: {
     roots: async (_, __, ctx) => {
       const { principal, scope } = await requireWorkspacePermission(
