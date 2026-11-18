@@ -1,5 +1,6 @@
 import { bucket } from "../config/bucket";
 import { closeDatabases, core } from "../config/db";
+import { appRedis, closeQueues } from "../config/redis";
 import { store } from "../config/tenancy";
 import { sweepAll } from "../modules/files/public";
 
@@ -22,6 +23,7 @@ try {
       core,
       (id) => store.databaseOf(id),
       bucket,
+      appRedis ? { renditions: appRedis.queues.renditions } : {},
     );
     for (const f of failed) {
       console.error(`workspace ${f.workspaceId}: not swept:`, f.error);
@@ -29,10 +31,11 @@ try {
     const total = (pick: (r: (typeof done)[number]) => number) =>
       done.reduce((sum, r) => sum + pick(r), 0);
     console.log(
-      `swept ${done.length} workspaces: ${total((r) => r.released)} released blobs, ${total((r) => r.orphans)} orphan objects, ${total((r) => r.failed)} not removed, ${failed.length} workspaces failed`,
+      `swept ${done.length} workspaces: ${total((r) => r.released)} released blobs, ${total((r) => r.orphans)} orphan objects, ${total((r) => r.failed)} not removed, ${total((r) => r.stuck?.requeued ?? 0)} stuck files queued again, ${total((r) => r.stuck?.failed ?? 0)} given up, ${failed.length} workspaces failed`,
     );
     if (failed.length > 0 || total((r) => r.failed) > 0) process.exitCode = 1;
   }
 } finally {
   await closeDatabases();
+  await closeQueues();
 }

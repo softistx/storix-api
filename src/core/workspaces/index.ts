@@ -4,6 +4,7 @@ export {
   DEFAULT_SETTINGS,
   GIB,
 } from "./workspaces.collection";
+export { workspacesMongo } from "./workspaces.handle";
 export {
   type Workspace,
   workspaceOf,

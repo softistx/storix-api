@@ -1,5 +1,5 @@
 import { addUsage, type WorkspacesMongo } from "@/core/workspaces";
-import type { FilesMongo } from "./files.service";
+import type { FilesMongo } from "./files.handle";
 
 // Where a blob stands in the workspace's counters (plan §3.9): held by a live
 // node (`live`, the current files), held only by trashed nodes (`trash`), held

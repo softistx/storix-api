@@ -1,6 +1,4 @@
 import type { MediaBucket } from "@alxia/media";
-import type { CollectionsOf, ModuleHandle } from "@alxia/modules";
-import type { Mongo } from "@softistx/mongo";
 import { addUsage, type WorkspacesMongo } from "@/core/workspaces";
 import {
   insertFile,
@@ -11,20 +9,14 @@ import {
   type OnConflict,
   sameNameSibling,
 } from "@/modules/nodes/public";
-import { type RenditionJob, renditionJobId } from "@/queues/renditions";
 import { KeyRecorded, recordBlob } from "./files.blob";
+import { enqueue } from "./files.enqueue";
 import { keyUnknown } from "./files.errors";
+import type { FilesMongo } from "./files.handle";
 import { discardObject, storedObject } from "./files.object";
 import { type RenditionsQueue, renditionKindOf } from "./files.renditions";
 import { makeFirstVersion } from "./files.versions.first";
 import { pushVersion } from "./files.versions.push";
-
-// The module's handle on a workspace's database: its own collection, and the
-// nodes it records files in.
-export type FilesMongo = ModuleHandle<
-  "files",
-  Mongo<{ collections: CollectionsOf }>
->;
 
 // Tries `KEEP_BOTH` again when a writer took the free name first.
 const ATTEMPTS = 3;
@@ -153,37 +145,6 @@ async function record(
   };
 }
 
-// Adds the node's `renditions` job (`redo` names a repeat of the same blob's
-// job, see `renditionJobId`). When Redis refuses it, the previews are given
-// up: the node is `FAILED` (logged), never left `PROCESSING` for ever.
-export async function enqueue(
-  mongo: FilesMongo,
-  queue: RenditionsQueue,
-  job: RenditionJob,
-  node: NodeDoc,
-  redo?: string,
-): Promise<NodeDoc> {
-  try {
-    await queue.add(job, { id: renditionJobId(job, redo) });
-    return node;
-  } catch (error) {
-    console.error(
-      `storix-api: could not queue the renditions of ${job.key} in workspace ${job.workspaceId}: ${error instanceof Error ? error.message : error}`,
-    );
-    // The file is recorded either way: a second failure is logged, not thrown.
-    await mongo.db.nodes
-      .updateMany(
-        { blobKey: job.key, status: "PROCESSING" },
-        { status: "FAILED" },
-        { audit: false },
-      )
-      .catch((cause) =>
-        console.error(`storix-api: could not mark ${job.key} FAILED: ${cause}`),
-      );
-    return { ...node, status: "FAILED" };
-  }
-}
-
 // Whether `error` is a GraphQL error carrying the catalogue code.
 const hasCode = (code: string) => (error: unknown) =>
   (error as { extensions?: { code?: string } }).extensions?.code === code;
@@ -191,25 +152,3 @@ const hasCode = (code: string) => (error: unknown) =>
 export const isQuotaExceeded = hasCode("quotas.errors.exceeded");
 
 const isNameTaken = hasCode("nodes.errors.name-taken");
-
-// Whether the account may read a `files` object: a live node of their own
-// tree holds the key, as its blob or as one of its versions' (sharing widens
-// this one question later).
-export async function mayRead(
-  mongo: FilesMongo,
-  read: { key: string; accountId: string },
-): Promise<boolean> {
-  const own = { ownerId: read.accountId, trashedAt: null };
-  if (await mongo.db.nodes.findFirst({ blobKey: read.key, ...own })) {
-    return true;
-  }
-  const fileIds = await mongo.db.versions.raw.distinct("fileId", {
-    blobKey: read.key,
-  });
-  if (fileIds.length === 0) return false;
-  const node = await mongo.db.nodes.findFirst({
-    _id: { $in: fileIds },
-    ...own,
-  });
-  return node !== undefined;
-}

@@ -1,5 +1,5 @@
 import type { NodeDoc } from "@/modules/nodes/public";
-import type { FilesMongo } from "./files.service";
+import type { FilesMongo } from "./files.handle";
 
 // The row for the blob a file holds now, as its version 1, made in the caller's transaction. A file that
 // `addFile` recorded gets it at once; a file recorded before versions existed,

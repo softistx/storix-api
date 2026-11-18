@@ -4,9 +4,10 @@ import { requireAccountSession, requireWorkspacePermission } from "../access";
 import { audit, memberActor } from "../audit";
 import { membershipsOfAccount, type WorkspaceRole } from "../members";
 import { isObjectIdLike } from "./workspaces.collection";
+import { workspacesMongo } from "./workspaces.handle";
 import { type Workspace, workspaceOf } from "./workspaces.registry";
 import { renameWorkspace } from "./workspaces.rename";
-import { createWorkspace, type WorkspacesMongo } from "./workspaces.service";
+import { createWorkspace } from "./workspaces.service";
 import { settingsOf, updateSettings } from "./workspaces.settings";
 
 const view = (workspace: Workspace, myRole: WorkspaceRole) => ({
@@ -23,7 +24,7 @@ export const workspacesResolvers: Resolvers = {
   Workspace: {
     settings: async (workspace, _, ctx) => {
       const settings = await settingsOf(
-        ctx.tenancy.core as WorkspacesMongo,
+        workspacesMongo(ctx.tenancy.core),
         workspace.id,
       );
       if (!settings) throw notFound();
@@ -37,7 +38,7 @@ export const workspacesResolvers: Resolvers = {
     },
     myWorkspaces: async (_, __, ctx) => {
       const { accountId } = requireAccountSession(ctx);
-      const mongo = ctx.tenancy.core as WorkspacesMongo;
+      const mongo = workspacesMongo(ctx.tenancy.core);
       const memberships = await membershipsOfAccount(mongo, accountId);
       const roles = new Map(
         memberships.map((m) => [m.workspaceId.toHexString(), m.role]),
@@ -75,7 +76,7 @@ export const workspacesResolvers: Resolvers = {
         ]);
       }
       const workspace = await createWorkspace(
-        ctx.tenancy.core as WorkspacesMongo,
+        workspacesMongo(ctx.tenancy.core),
         ctx.tenancy,
         {
           slug: input.slug,
@@ -108,7 +109,7 @@ export const workspacesResolvers: Resolvers = {
           },
         ]);
       }
-      const core = ctx.tenancy.core as WorkspacesMongo;
+      const core = workspacesMongo(ctx.tenancy.core);
       if (!(await renameWorkspace(core, scope.tenant.id, name))) {
         throw notFound();
       }
@@ -127,7 +128,7 @@ export const workspacesResolvers: Resolvers = {
         ctx,
         "workspace:manage",
       );
-      const core = ctx.tenancy.core as WorkspacesMongo;
+      const core = workspacesMongo(ctx.tenancy.core);
       const patch = {
         ...(input.trashDays != null && { trashDays: input.trashDays }),
         ...(input.versionsMax != null && { versionsMax: input.versionsMax }),

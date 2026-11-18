@@ -3,7 +3,7 @@ import { S3Client } from "bun";
 import { connection } from "@/config/db";
 import { env } from "@/config/env";
 import { store } from "@/config/tenancy";
-import { setQuota, type WorkspacesMongo } from "@/core/workspaces";
+import { setQuota, workspacesMongo } from "@/core/workspaces";
 import { workspacesQuota } from "@/core/workspaces/migrations/2026-11-20-workspaces-quota.migration";
 import { ADD, BUCKET, COPY, filesWorld } from "../../../test/files.harness";
 import { filesMongo, recountStorage } from "../files/public";
@@ -12,7 +12,7 @@ import { reconcileAll, reconcileUsage } from "./public";
 
 const files = filesWorld();
 
-const core = () => store.core as unknown as WorkspacesMongo;
+const core = () => workspacesMongo(store.core);
 const databaseOf = async (id: string) => filesMongo(await store.databaseOf(id));
 
 const code = (r: {

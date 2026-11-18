@@ -1,5 +1,7 @@
 import type { BoundBucket } from "@softistx/s3";
-import type { FilesMongo } from "./files.service";
+import type { FilesMongo } from "./files.handle";
+import type { RenditionsQueue } from "./files.renditions";
+import type { StuckOptions, StuckReport } from "./files.sweep.stuck";
 
 // What the sweep needs of the bucket: the listing, and the delete that
 // `@alxia/media`'s routes use.
@@ -15,7 +17,9 @@ export const SWEEP_BATCH = 100;
 /** Objects removed per workspace and run (the rest waits for the next one). */
 export const SWEEP_MAX_DELETES = 1_000;
 
-export interface SweepOptions {
+export interface SweepOptions extends StuckOptions {
+  // Given, the sweep also queues the files stuck `PROCESSING` again.
+  renditions?: RenditionsQueue;
   log?: (message: string) => void;
   now?: () => Date;
   orphanMarginMs?: number;
@@ -30,6 +34,8 @@ export interface SweepReport {
   orphans: number;
   // Objects or blobs whose removal failed, left for the next run.
   failed: number;
+  // Present when the sweep was given the renditions queue.
+  stuck?: StuckReport;
 }
 
 export interface Sweep {

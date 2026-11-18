@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import { connection } from "@/config/db";
 import { env } from "@/config/env";
 import { store } from "@/config/tenancy";
+import { nodesListingDescIndexes } from "../files/migrations/2026-11-24-nodes-listing-desc-indexes.migration";
 import { nodesListingCollation } from "./migrations/2026-11-15-nodes-listing-collation.migration";
 import { nodesMongo } from "./nodes.handle";
 import { setup } from "./nodes.harness";
@@ -23,7 +24,7 @@ function stages(plan: Record<string, unknown> | undefined): string[] {
 }
 
 describe("the listing indexes", () => {
-  test("sorting a folder by name, size or kind reads an index, no sort in memory", async () => {
+  test("sorting a folder by name, date, size or kind, either way, reads an index, no sort in memory", async () => {
     const { workspace, owner } = await setup();
     const root = await owner.root();
     const db = nodesMongo(await store.databaseOf(workspace.id));
@@ -46,13 +47,14 @@ describe("the listing indexes", () => {
       bypassDocumentValidation: true,
     });
 
-    // The ascending sorts; a descending one (folders still first) reads the
-    // same range and sorts it in memory, bounded by one folder.
-    const sorts = [
-      { type: -1, name: 1, _id: 1 },
-      { type: -1, size: 1, name: 1, _id: 1 },
-      { type: -1, family: 1, name: 1, _id: 1 },
-    ];
+    // Every sort of the listing (`nodes.list.ts`), both directions, folders
+    // first: each reads an index and sorts nothing in memory.
+    const sorts = [1, -1].flatMap((d) => [
+      { type: -1, name: d, _id: d },
+      { type: -1, updatedAt: d, _id: d },
+      { type: -1, size: d, name: d, _id: d },
+      { type: -1, family: d, name: d, _id: d },
+    ]);
     for (const sort of sorts) {
       const explained = (await db.db.nodes.raw
         .find({ $and: [{ parentId: new ObjectId(root.id), trashedAt: null }] })
@@ -101,6 +103,42 @@ describe("the listing indexes", () => {
     // A second run changes nothing: no index is dropped and built again.
     const before = JSON.stringify(built);
     await nodesListingCollation.up(context);
+    expect(JSON.stringify(await nodes.indexes())).toBe(before);
+  });
+
+  test("the desc-indexes migration rebuilds the date index with its collation, adds the twins, and is idempotent", async () => {
+    const { workspace } = await setup();
+    const database = connection.client.db(WORKSPACE_DB(workspace.id));
+    const nodes = database.collection("nodes");
+    const names = [
+      "nodes_listing_date",
+      "nodes_listing_desc",
+      "nodes_listing_date_desc",
+      "nodes_listing_size_desc",
+      "nodes_listing_kind_desc",
+      "nodes_processing",
+    ];
+    for (const name of names) await nodes.dropIndex(name);
+    await nodes.createIndex(
+      { parentId: 1, type: -1, updatedAt: 1, _id: 1 },
+      { name: "nodes_listing_date" },
+    );
+    const context = {
+      db: database,
+      client: connection.client,
+      session: undefined,
+    };
+    await nodesListingDescIndexes.up(context);
+    const built = await nodes.indexes();
+    for (const name of names) {
+      const index = built.find((i) => i.name === name);
+      expect(index, name).toBeDefined();
+      if (name !== "nodes_processing") {
+        expect(index?.collation?.["locale"], name).toBe("en");
+      }
+    }
+    const before = JSON.stringify(built);
+    await nodesListingDescIndexes.up(context);
     expect(JSON.stringify(await nodes.indexes())).toBe(before);
   });
 });
