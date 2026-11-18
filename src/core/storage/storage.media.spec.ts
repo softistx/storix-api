@@ -18,6 +18,10 @@ let s3: TestS3;
 let redis: TestRedis;
 let client: RedisClient;
 let w: Awaited<ReturnType<typeof world>>;
+// Two workspaces with their own owners, made once: provisioning a workspace
+// database costs about a second, and the tests only need one that is theirs.
+let wsA: Awaited<ReturnType<typeof w.workspaceOf>>;
+let wsB: Awaited<ReturnType<typeof w.workspaceOf>>;
 
 beforeAll(async () => {
   s3 = await startTestS3();
@@ -36,6 +40,7 @@ beforeAll(async () => {
       limit: createUploadLimit(client, { limit: 3, per: 60_000, burst: 3 }),
     },
   });
+  [wsA, wsB] = [await w.workspaceOf(), await w.workspaceOf()];
 }, 300_000);
 afterAll(async () => {
   client?.close();
@@ -112,7 +117,7 @@ async function stored(
 
 describe("/media on SeaweedFS", () => {
   test("stores any type and serves it with ETag, type and size", async () => {
-    const ws = await w.workspaceOf();
+    const ws = wsA;
     const up = await stored(ws.owner, ws.id);
     expect(up).toMatchObject({ contentType: "text/plain", size: 20 });
     const res = await call(ws.owner, ws.id, `/media/files/${up.key}`);
@@ -125,7 +130,7 @@ describe("/media on SeaweedFS", () => {
   });
 
   test("a type with no known signature is stored as declared and served as a download", async () => {
-    const ws = await w.workspaceOf();
+    const ws = wsA;
     const { key } = await stored(ws.owner, ws.id, text, "application/x-custom");
     const got = await call(ws.owner, ws.id, `/media/files/${key}`);
     expect(got.headers.get("content-type")).toBe("application/octet-stream");
@@ -133,7 +138,7 @@ describe("/media on SeaweedFS", () => {
   });
 
   test("Range answers 206, a range past the end 416 in the error shape", async () => {
-    const ws = await w.workspaceOf();
+    const ws = wsA;
     const { key } = await stored(ws.owner, ws.id);
     const part = await call(ws.owner, ws.id, `/media/files/${key}`, {
       headers: { range: "bytes=2-5" },
@@ -149,7 +154,7 @@ describe("/media on SeaweedFS", () => {
   });
 
   test("If-None-Match with the ETag is a 304", async () => {
-    const ws = await w.workspaceOf();
+    const ws = wsA;
     const { key } = await stored(ws.owner, ws.id);
     const first = await call(ws.owner, ws.id, `/media/files/${key}`);
     const etag = first.headers.get("etag") ?? "";
@@ -160,7 +165,7 @@ describe("/media on SeaweedFS", () => {
   });
 
   test("an empty upload is 400 storage.errors.empty, an oversized one 413 too-large", async () => {
-    const ws = await w.workspaceOf();
+    const ws = wsA;
     const empty = await put(ws.owner, ws.id, "");
     expect(empty.status).toBe(400);
     expect(await codeOf(empty)).toBe("storage.errors.empty");
@@ -181,15 +186,15 @@ describe("/media on SeaweedFS", () => {
   });
 
   test("avatars refuse a type outside JPEG, PNG and WebP", async () => {
-    const ws = await w.workspaceOf();
+    const ws = wsA;
     const res = await put(ws.owner, ws.id, text, "text/plain", "avatars");
     expect(res.status).toBe(415);
     expect(await codeOf(res)).toBe("storage.errors.unsupported-type");
   });
 
   test("another workspace's key is a 404, even for a member of both", async () => {
-    const a = await w.workspaceOf();
-    const b = await w.workspaceOf();
+    const a = wsA;
+    const b = wsB;
     const { key } = await stored(a.owner, a.id);
     const other = await call(b.owner, b.id, `/media/files/${key}`);
     expect(other.status).toBe(404);
@@ -201,7 +206,7 @@ describe("/media on SeaweedFS", () => {
   });
 
   test("the object lives under workspaces/<id>/files/<key>", async () => {
-    const ws = await w.workspaceOf();
+    const ws = wsA;
     const { key } = await stored(ws.owner, ws.id);
     const direct = await fetchObject(`workspaces/${ws.id}/files/${key}`);
     expect(direct).toBe(200);
@@ -209,7 +214,7 @@ describe("/media on SeaweedFS", () => {
   });
 
   test("no session is 401, no workspace header 400, a key 401, in the error shape", async () => {
-    const ws = await w.workspaceOf();
+    const ws = wsA;
     const anon = await put(null, ws.id, text);
     expect(anon.status).toBe(401);
     expect(await codeOf(anon)).toBe("auth.errors.unauthenticated");
@@ -225,14 +230,14 @@ describe("/media on SeaweedFS", () => {
   });
 
   test("the fourth upload in a minute is 429 rate-limited with Retry-After", async () => {
-    const ws = await w.workspaceOf();
+    const ws = wsA;
     for (let i = 0; i < 3; i++) await stored(ws.owner, ws.id);
     const res = await put(ws.owner, ws.id, text, "text/plain");
     expect(res.status).toBe(429);
     expect(await codeOf(res.clone())).toBe("storage.errors.rate-limited");
     expect(Number(res.headers.get("retry-after"))).toBeGreaterThan(0);
     // Another account is not limited by it.
-    const b = await w.workspaceOf();
+    const b = wsB;
     expect((await put(b.owner, b.id, text, "text/plain")).status).toBe(200);
   });
 });

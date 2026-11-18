@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { store } from "@/config/tenancy";
 import { nodesMongo } from "./nodes.handle";
 import { CREATE, MOVE, RENAME, setup } from "./nodes.harness";
@@ -30,10 +30,24 @@ async function assertSound(workspaceId: string, accountId: string) {
   }
 }
 
+// One workspace for the file (provisioning a workspace database costs about a
+// second). Each test, and each round of a test, works under a folder of its
+// own, so names and versions never meet across rounds.
+let shared: Awaited<ReturnType<typeof setup>>;
+beforeAll(async () => {
+  shared = await setup();
+});
+
+async function arena() {
+  const { w, owner, workspace, at } = shared;
+  const root = await owner.root();
+  const home = await owner.folder(root.id, `arena-${crypto.randomUUID()}`);
+  return { w, owner, workspace, at, root: home };
+}
+
 describe("concurrent tree writes", () => {
   test("two creates of one name leave one folder and one refusal", async () => {
-    const { w, owner, workspace, at } = await setup();
-    const root = await owner.root();
+    const { w, owner, workspace, at, root } = await arena();
     const results = await Promise.all(
       ["Invoices", "invoices"].map((name) =>
         w.send(workspace.owner, CREATE, {
@@ -52,8 +66,7 @@ describe("concurrent tree writes", () => {
   });
 
   test("many creates at once, of one name and of different names", async () => {
-    const { w, owner, workspace, at } = await setup();
-    const root = await owner.root();
+    const { w, owner, workspace, at, root } = await arena();
     const same = Array.from({ length: 6 }, () => "Same");
     const different = Array.from({ length: 6 }, (_, i) => `Own ${i}`);
     const results = await Promise.all(
@@ -74,8 +87,7 @@ describe("concurrent tree writes", () => {
 
   test("a move against a rename to the name the target holds: exactly one wins", async () => {
     for (let round = 0; round < 4; round++) {
-      const { w, owner, workspace, at } = await setup();
-      const root = await owner.root();
+      const { w, owner, workspace, at, root } = await arena();
       const folder = await owner.folder(root.id, "draft");
       const target = await owner.folder(root.id, "target");
       await owner.folder(target.id, "final");
@@ -106,8 +118,7 @@ describe("concurrent tree writes", () => {
   });
 
   test("a rename at the version read before a move is refused as a conflict", async () => {
-    const { w, owner, workspace, at } = await setup();
-    const root = await owner.root();
+    const { w, owner, workspace, at, root } = await arena();
     const folder = await owner.folder(root.id, "a");
     const target = await owner.folder(root.id, "t");
     const moved = await w.send(workspace.owner, MOVE, {
@@ -124,8 +135,7 @@ describe("concurrent tree writes", () => {
 
   test("two moves that would close a cycle: one is refused, the tree stays a tree", async () => {
     for (let round = 0; round < 4; round++) {
-      const { w, owner, workspace, at } = await setup();
-      const root = await owner.root();
+      const { w, owner, workspace, at, root } = await arena();
       const a = await owner.folder(root.id, "a");
       const b = await owner.folder(root.id, "b");
       const [one, two] = await Promise.all([
@@ -147,8 +157,7 @@ describe("concurrent tree writes", () => {
 
   test("a create under a folder that is being moved keeps its ancestors right", async () => {
     for (let round = 0; round < 4; round++) {
-      const { w, owner, workspace, at } = await setup();
-      const root = await owner.root();
+      const { w, owner, workspace, at, root } = await arena();
       const parent = await owner.folder(root.id, "parent");
       const target = await owner.folder(root.id, "target");
       const [made, moved] = await Promise.all([
