@@ -1,11 +1,11 @@
 import { type NodeDoc, nodeNotFound, ownedNode } from "@/modules/nodes/public";
 import { notAFile } from "./files.errors";
+import type { FilesMongo } from "./files.handle";
 import {
   afterPosition,
   type PersonalPage,
   personalPage,
 } from "./files.personal";
-import type { FilesMongo } from "./files.service";
 
 // The most recents one account keeps: the oldest go first.
 export const MAX_RECENTS = 200;

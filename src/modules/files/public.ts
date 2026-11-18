@@ -4,6 +4,7 @@
 
 export { accounted } from "./files.accounting";
 export { releaseBlobs } from "./files.blob";
+export type { FilesMongo } from "./files.handle";
 export { filesMongo } from "./files.handle";
 export { fileReader } from "./files.reader";
 export { recountStorage } from "./files.recount";
@@ -15,13 +16,17 @@ export {
   markRenditionsFailed,
   renditionsHandler,
 } from "./files.renditions.work";
-export type { FilesMongo } from "./files.service";
 export { sweepAll, sweepWorkspace } from "./files.sweep";
 export type {
   SweepBucket,
   SweepOptions,
   SweepReport,
 } from "./files.sweep.run";
+export {
+  MAX_REQUEUES,
+  requeueStuck,
+  STUCK_AFTER_MS,
+} from "./files.sweep.stuck";
 export {
   type RetentionOptions,
   type RetentionReport,

@@ -1,6 +1,6 @@
 import { defineMediaKind, type MediaUploadIntent } from "@alxia/media";
 import { withImageRendition } from "@alxia/media/image";
-import { hasRoom, type WorkspacesMongo } from "@/core/workspaces";
+import { hasRoom, workspacesMongo } from "@/core/workspaces";
 import {
   accessOf,
   authorizeFileRead,
@@ -58,7 +58,7 @@ export function mediaKinds(options: {
     if (!access.ok) return true;
     const needed = upload.declared ?? FILES_MAX_BYTES;
     const fits = await hasRoom(
-      ctx.tenancy.core as WorkspacesMongo,
+      workspacesMongo(ctx.tenancy.core),
       access.workspaceId,
       needed,
     );
@@ -84,6 +84,10 @@ export function mediaKinds(options: {
       quota,
       cacheControl: "private, no-cache",
     }),
+    // Not recorded: no node, no sweep, no quota (storix-api#94). Do not mount
+    // this kind until a slice records avatars (or sweeps and counts them);
+    // storage.media.spec.ts, files.add.refusals.spec.ts and
+    // storage.access.ts still use it, so it stays mounted for now.
     defineMediaKind<MediaRequires>({
       name: "avatars",
       accept: ["image/jpeg", "image/png", "image/webp"],

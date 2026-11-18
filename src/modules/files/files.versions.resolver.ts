@@ -1,6 +1,6 @@
 import { requireWorkspacePermission } from "@/core/access";
 import { type Auditor, memberActor } from "@/core/audit";
-import type { WorkspacesMongo } from "@/core/workspaces";
+import { workspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { nodeView } from "@/modules/nodes/public";
 import { recordVersion } from "./files.audit";
@@ -72,7 +72,7 @@ export const versionMutations: Pick<
     const mongo = filesMongo(scope.mongo);
     const { node, number } = await addVersion(
       mongo,
-      ctx.tenancy.core as WorkspacesMongo,
+      workspacesMongo(ctx.tenancy.core),
       ctx.media,
       ctx.renditions,
       {
@@ -102,7 +102,7 @@ export const versionMutations: Pick<
     );
     const { node, from, number } = await restoreVersion(
       filesMongo(scope.mongo),
-      ctx.tenancy.core as WorkspacesMongo,
+      workspacesMongo(ctx.tenancy.core),
       ctx.renditions,
       {
         workspaceId: scope.tenant.id,
@@ -127,7 +127,7 @@ export const versionMutations: Pick<
     );
     const { node, number } = await deleteVersion(
       filesMongo(scope.mongo),
-      ctx.tenancy.core as WorkspacesMongo,
+      workspacesMongo(ctx.tenancy.core),
       {
         workspaceId: scope.tenant.id,
         accountId: principal.accountId,
