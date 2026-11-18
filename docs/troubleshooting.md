@@ -211,7 +211,7 @@ Any operation can answer 403 with this code.
 
 ## `teams.errors.name-taken` (409) and `member-unknown` (400)
 
-**When:** `createTeam` or `renameTeam` with a name another team of the workspace already has (`name-taken`, field `name`); `setTeamMembers` with an id that is not a current member of the request's workspace (`member-unknown`, field `memberIds`).
+**When:** `createTeam`, `renameTeam` or `updateTeam` with a name another team of the workspace already has (`name-taken`, field `name`); `setTeamMembers` or `updateTeam` with an id that is not a current member of the request's workspace (`member-unknown`, field `memberIds`).
 
 **Why:** names are compared ignoring case (`Design` and `design` are one). Member ids are `Member.id`s (not account ids), and a member who left, a member of another workspace or a malformed id is unknown.
 

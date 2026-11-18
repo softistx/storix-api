@@ -115,7 +115,8 @@ An admin invites an address into the request's workspace; the invitee accepts wi
 
 ## Teams
 
-`src/modules/teams` keeps the workspace's teams in its own database (`teams`: `name`, `memberIds`). The fields: `teams`, `team(id)`, `createTeam`, `renameTeam`, `setTeamMembers`, `deleteTeam`.
+`src/modules/teams` keeps the workspace's teams in its own database (`teams`: `name`, `memberIds`). The fields: `teams`, `team(id)`, `createTeam`, `renameTeam`, `setTeamMembers`, `updateTeam`, `deleteTeam`.
+- `updateTeam(id, input: { name, memberIds })` saves the name and the members in ONE Mongo transaction (a field left out is kept). A refusal (`name-taken`, `member-unknown`, `not-found`) changes nothing; it audits `team.rename` when the name changed and `team.set-members` when the list was sent. `renameTeam` and `setTeamMembers` stay for single changes.
 
 - `teams:read` is held by every role; `teams:manage` (every mutation) by `OWNER` and `ADMIN`, granted by the module's `defaultGrants` like `members:manage`. No step-up. A personal API key is refused (401 `auth.errors.api-key-not-accepted`).
 - A name is trimmed, 1 to 100 characters, and unique in the workspace ignoring case (a unique index with collation `en`, strength 2): 409 `teams.errors.name-taken`. A team may be renamed to its own name in another case.

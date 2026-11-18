@@ -979,6 +979,15 @@ type Mutation {
   """
   updateFile(id: ID!, input: UpdateFileInput!): File!
   """
+  Changes a team's name and its members in ONE transaction, so a save is all or
+  nothing. Needs `teams:manage`. 404 `teams.errors.not-found`; 409
+  `teams.errors.name-taken` (field `name`); 400 `teams.errors.member-unknown`
+  (field `memberIds`). A refusal changes nothing: neither the name nor the
+  members. Records `team.rename` when the name changed and `team.set-members`
+  when the list was sent.
+  """
+  updateTeam(id: ID!, input: UpdateTeamInput!): Team!
+  """
   Changes the workspace's settings. Needs `workspace:manage` (OWNER and ADMIN).
   Audited as `workspace.settings`. 400 `validation.errors.invalid-input` for a
   value out of range.
@@ -1494,6 +1503,18 @@ input UpdateFileInput {
   tags: [String!] @constraint(maxItems: 20)
   """The version the file is expected to be at (`File.version`)."""
   version: Int
+}
+
+"""
+The changes of `updateTeam`: each field left out (or null) is kept as it is.
+"""
+input UpdateTeamInput {
+  """
+  The new members (`Member.id`, repeats ignored; an empty list empties the team).
+  """
+  memberIds: [ID!] @constraint(maxItems: 1000)
+  """The new name, 1 to 100 characters."""
+  name: String @constraint(minLength: 1, maxLength: 100)
 }
 
 """A UTC offset from -12:00 to +14:00, such as +05:30."""
