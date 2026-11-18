@@ -97,6 +97,21 @@ extend type Query {
   viewer: Viewer
   "Whether the caller's second factor is on and how many recovery codes are left. 401 `auth.errors.unauthenticated`."
   secondFactorStatus: SecondFactorStatus!
+  "The caller's standing sessions, newest first, the current one marked. 401 `auth.errors.unauthenticated`; 401 `auth.errors.api-key-not-accepted`."
+  sessions: [AccountSession!]!
+}
+
+"One standing session of the caller's account. The token is never shown."
+type AccountSession {
+  id: ID!
+  "What the client said it was (its User-Agent): show it, never trust it. Null when none was recorded."
+  device: String
+  createdAt: DateTime!
+  "When the session was last opened or renewed (at most once a day); null before it was recorded."
+  lastUsedAt: DateTime
+  expiresAt: DateTime!
+  "Whether this is the session the request came in with."
+  current: Boolean!
 }
 
 type SecondFactorStatus {
@@ -166,4 +181,20 @@ type Mutation {
   ): RecoveryCodes!
   "Turns the factor off on a current code of the app, or on a recovery code when the phone is lost. Needs a fresh session."
   disableSecondFactor(code: String! @constraint(maxLength: 40)): Boolean!
+  """
+  Changes the password: the current one and the new one (at most 1024
+  characters). Needs a fresh session (403 `auth.errors.step-up-required`; see
+  requestStepUp). 400 `identity.errors.current-password-wrong` and nothing
+  changes; 400 `validation.errors.invalid-input` (`too-short` on `next`); 429
+  `auth.errors.rate-limited` past the password-guessing limit. Ends the
+  account's other sessions; the current one stays.
+  """
+  changePassword(
+    current: String! @constraint(maxLength: 1024)
+    next: String! @constraint(maxLength: 1024)
+  ): Boolean!
+  "Ends one session of the account by its id (the current one signs the caller out). Needs a fresh session. 404 `identity.errors.session-not-found` for another account's session, an unknown id and an ended one alike."
+  revokeSession(id: ID!): Boolean!
+  "Ends every session of the account but the current one and answers how many ended. Needs a fresh session."
+  revokeOtherSessions: Int!
 }

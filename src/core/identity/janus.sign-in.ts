@@ -18,19 +18,21 @@ export function signInFlows(deps: Deps): Flows {
   const users = accounts.user;
 
   return {
-    signIn: (input) =>
-      signInCall(async () => resultOf(await users.signIn(input))),
+    signIn: (input, options = {}) =>
+      signInCall(async () => resultOf(await users.signIn(input, options))),
 
     // The code of the authenticator app, for the challenge a sign-in answered.
-    confirmSecondFactor: (challenge, code) =>
+    confirmSecondFactor: (challenge, code, options = {}) =>
       signInCall(async () =>
-        resultOf(await users.secondFactor.confirm(challenge, code)),
+        resultOf(await users.secondFactor.confirm(challenge, code, options)),
       ),
 
     // A recovery code instead of the app's, for a lost phone.
-    recoverSecondFactor: (challenge, recoveryCode) =>
+    recoverSecondFactor: (challenge, recoveryCode, options = {}) =>
       signInCall(async () =>
-        resultOf(await users.secondFactor.recover(challenge, recoveryCode)),
+        resultOf(
+          await users.secondFactor.recover(challenge, recoveryCode, options),
+        ),
       ),
 
     signOut: (request) => authCall(() => accounts.signOut(request)),

@@ -59,6 +59,8 @@ when a code lacks a message in English or French.
 | `identity.errors.token-invalid` | A link or challenge token is unknown, spent, expired or stale (400). |
 | `identity.errors.second-factor-invalid` | A second-factor or step-up code is wrong or already used; `extensions.attemptsLeft` says how many tries remain (400). |
 | `identity.errors.second-factor-state` | The second factor is not in the state the operation needs: not enrolled, or already active (409). |
+| `identity.errors.current-password-wrong` | The current password of `changePassword` is wrong; nothing changed (400). |
+| `identity.errors.session-not-found` | `revokeSession` named no standing session of the caller's account: another account's, unknown or ended, never told apart (404). |
 | `identity.errors.unavailable` | The identity store cannot answer; try again (503). |
 | `workspaces.errors.not-found` | The workspace does not exist, is not open yet, or the caller is not a member: the three are never told apart (404). |
 | `workspaces.errors.workspace-required` | A workspace operation came without the `x-storix-workspace` header (400). |

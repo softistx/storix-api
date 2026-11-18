@@ -88,7 +88,7 @@ export function signUpFlows(deps: Deps): Flows {
     // short password costs the visitor nothing; then the token proves the
     // address, the password is set and the session opens (or asks for the
     // second factor of an account that has one).
-    completeSignUp: (token, password): Promise<SignInResult> =>
+    completeSignUp: (token, password, options = {}): Promise<SignInResult> =>
       signInCall(async () => {
         if (password.length < PASSWORD_MIN_LENGTH) {
           throw tooShort(PASSWORD_MIN_LENGTH);
@@ -97,7 +97,7 @@ export function signUpFlows(deps: Deps): Flows {
           firstProof: true,
         });
         await users.setPassword(user, password);
-        return resultOf(await users.signInProven(user));
+        return resultOf(await users.signInProven(user, options));
       }),
   };
 }
