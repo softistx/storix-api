@@ -1,7 +1,6 @@
 import { closeDatabases, core } from "../config/db";
 import { store } from "../config/tenancy";
-import { retainAll } from "../modules/files/public";
-import { retainTrashAll } from "../modules/trash/public";
+import { runRetention } from "./retention.run";
 
 // The hourly `retention` job (plan §3.9, §3.14): per active workspace, purges
 // what has been in the trash longer than its `trashDays`, then drops the file
@@ -12,22 +11,11 @@ import { retainTrashAll } from "../modules/trash/public";
 //
 //   bun run retention
 try {
-  const databaseOf = (id: string) => store.databaseOf(id);
-  const trash = await retainTrashAll(core, databaseOf);
-  const versions = await retainAll(core, databaseOf);
-  for (const f of [...trash.failed, ...versions.failed]) {
-    console.error(`workspace ${f.workspaceId}: not settled:`, f.error);
-  }
-  const entriesFailed =
-    trash.done.reduce((sum, r) => sum + r.failed, 0) +
-    versions.done.reduce((sum, r) => sum + r.failed, 0);
-  const purged = trash.done.reduce((sum, r) => sum + r.removed, 0);
-  const dropped = versions.done.reduce((sum, r) => sum + r.removed, 0);
-  console.log(
-    `trash: ${purged} nodes purged; versions: ${dropped} removed; ${trash.failed.length + versions.failed.length} workspaces and ${entriesFailed} trash entries or files failed`,
+  const { summary, exitCode } = await runRetention(core, (id) =>
+    store.databaseOf(id),
   );
-  if (trash.failed.length + versions.failed.length + entriesFailed > 0)
-    process.exitCode = 1;
+  console.log(summary);
+  process.exitCode = exitCode;
 } finally {
   await closeDatabases();
 }

@@ -7,7 +7,7 @@ import {
 } from "@softistx/mongo";
 import { fail } from "@/i18n/fail";
 import { NAME_COLLATION } from "./nodes.collection";
-import { MAX_DEPTH, ROOT_NAME } from "./nodes.rules";
+import { MAX_DEPTH, MAX_MOVE_NODES, ROOT_NAME } from "./nodes.rules";
 
 // The module's handle on a workspace's database: its own collection only.
 export type NodesMongo = ModuleHandle<
@@ -121,6 +121,14 @@ export async function lockTree(tx: NodesMongo, accountId: string) {
     { ownerId: accountId, parentId: null },
     { $inc: { treeRev: 1 } },
   );
+}
+
+// Refuses a folder with more than `MAX_MOVE_NODES` nodes under it
+// (`nodes.errors.move-too-large`): the size a move, a trash and a restore
+// all keep within, so what is trashed can always be restored.
+export async function assertMovable(tx: NodesMongo, folder: NodeDoc) {
+  const below = await tx.db.nodes.count({ ancestors: folder._id });
+  if (below > MAX_MOVE_NODES) throw moveTooLarge();
 }
 
 export const depthOf = (node: NodeDoc) => node.ancestors.length + 1;
