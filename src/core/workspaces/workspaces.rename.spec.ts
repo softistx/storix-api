@@ -1,13 +1,21 @@
-import { describe, expect, test } from "bun:test";
+import { beforeAll, describe, expect, test } from "bun:test";
 import { world } from "../../../test/workspaces.harness";
 
 const RENAME = `mutation($name: String!) { renameWorkspace(name: $name) { id slug name myRole } }`;
 const READ = "{ workspace { name slug } }";
 
+// One world and one workspace for the file: provisioning a workspace database
+// costs about a second, and every test sets the name it reads back itself.
+let w: Awaited<ReturnType<typeof world>>;
+let workspace: Awaited<ReturnType<typeof w.workspaceOf>>;
+beforeAll(async () => {
+  w = await world();
+  workspace = await w.workspaceOf();
+});
+
 describe("renameWorkspace", () => {
   test("an owner renames: the name changes, the slug and id do not, and it is audited", async () => {
-    const w = await world();
-    const { id, slug, owner } = await w.workspaceOf();
+    const { id, slug, owner } = workspace;
     const at = { workspace: id };
     const renamed = await w.send(owner, RENAME, {
       ...at,
@@ -36,8 +44,6 @@ describe("renameWorkspace", () => {
   });
 
   test("an admin renames; a member does not", async () => {
-    const w = await world();
-    const workspace = await w.workspaceOf();
     const at = { workspace: workspace.id };
     const admin = await w.join(workspace, "ADMIN");
     const member = await w.join(workspace, "MEMBER");
@@ -58,8 +64,7 @@ describe("renameWorkspace", () => {
   });
 
   test("a blank or over-long name is refused as input, anonymous is 401, no header is 400", async () => {
-    const w = await world();
-    const { id, owner } = await w.workspaceOf();
+    const { id, owner } = workspace;
     for (const name of ["   ", "x".repeat(101)]) {
       const refused = await w.send(owner, RENAME, {
         workspace: id,
