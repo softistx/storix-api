@@ -19,6 +19,7 @@ import {
   setTeamMembers,
   type TeamDoc,
   type TeamsMongo,
+  updateTeam,
 } from "./teams.service";
 
 // The module's handles on the request's databases (the scope's, typed by the
@@ -150,6 +151,40 @@ export const teamsResolvers: Resolvers = {
         actorId: principal.accountId,
       });
       await recordTeamMembers(auditOf(ctx, scope, principal), team, before);
+      return view(scope, team);
+    },
+    updateTeam: async (_, { id, input }, ctx) => {
+      const { principal, scope } = await requireWorkspacePermission(
+        ctx,
+        "teams:manage",
+      );
+      const mongo = workspaceDb(scope);
+      await getTeam(mongo, id);
+      const name = input.name == null ? undefined : nameOf(input.name);
+      const wanted = input.memberIds
+        ? [...new Set(input.memberIds)]
+        : undefined;
+      if (wanted) {
+        const known = await activeMemberIds(
+          coreDb(scope),
+          scope.tenant.id,
+          wanted,
+        );
+        if (wanted.some((memberId) => !known.has(memberId))) {
+          throw memberUnknown();
+        }
+      }
+      const { team, before } = await updateTeam(mongo, {
+        id,
+        name,
+        memberIds: wanted,
+        actorId: principal.accountId,
+      });
+      const done = auditOf(ctx, scope, principal);
+      if (name !== undefined && name !== before.name) {
+        await recordTeamRename(done, team, before);
+      }
+      if (wanted) await recordTeamMembers(done, team, before);
       return view(scope, team);
     },
     deleteTeam: async (_, { id }, ctx) => {
