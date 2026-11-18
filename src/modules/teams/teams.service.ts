@@ -26,7 +26,10 @@ export const memberUnknown = () =>
 // The team with this id in this workspace's database, or 404: a malformed id
 // and an id of another workspace's team are the same answer, and the database
 // is the request's own, so no other workspace's team can be reached.
-async function teamOf(mongo: TeamsMongo, id: string): Promise<TeamDoc> {
+async function teamOf(
+  mongo: Pick<TeamsMongo, "db">,
+  id: string,
+): Promise<TeamDoc> {
   const objectId = tryObjectId(id);
   const team = objectId && (await mongo.db.teams.findById(objectId));
   if (!team) throw teamNotFound();
@@ -76,6 +79,41 @@ export async function setTeamMembers(
     .as(input.actorId)
     .update(before._id, { memberIds: unique.map((id) => toObjectId(id)) });
   return { team, before };
+}
+
+// Changes the name and/or the members of a team in ONE transaction: the team
+// is read and written inside it, so a refusal (`name-taken`, `not-found`)
+// changes nothing. `memberIds` are checked by the caller against the
+// workspace's members (`member-unknown`); repeats are dropped here. Answers
+// the team as changed and as it was.
+export async function updateTeam(
+  mongo: TeamsMongo,
+  input: {
+    id: string;
+    name?: string | undefined;
+    memberIds?: readonly string[] | undefined;
+    actorId: string;
+  },
+) {
+  return named(() =>
+    mongo.transaction(async (tx) => {
+      const before = await teamOf(tx, input.id);
+      const changes: {
+        name?: string;
+        memberIds?: ReturnType<typeof toObjectId>[];
+      } = {};
+      if (input.name !== undefined) changes.name = input.name;
+      if (input.memberIds !== undefined) {
+        changes.memberIds = [...new Set(input.memberIds)].map((id) =>
+          toObjectId(id),
+        );
+      }
+      const team = await tx.db.teams
+        .as(input.actorId)
+        .update(before._id, changes);
+      return { team, before };
+    }),
+  );
 }
 
 // Answers the team that was deleted.
