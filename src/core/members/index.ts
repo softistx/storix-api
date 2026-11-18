@@ -7,6 +7,7 @@ export {
   memberJoined,
   onMemberJoined,
 } from "./members.joined";
+export { activeMemberIds, membershipsOfAccount } from "./members.queries";
 export {
   handOver,
   type MemberHandover,
@@ -15,12 +16,10 @@ export {
   onMemberRemoved,
 } from "./members.removal";
 export {
-  activeMemberIds,
   addMember,
   type MemberDoc,
   type MembersMongo,
   membershipOf,
-  membershipsOfAccount,
 } from "./members.service";
 export { membersModule } from "./module";
 export { type WorkspaceRole, workspaceRoles } from "./roles";

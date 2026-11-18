@@ -2,7 +2,7 @@ import type { ModuleCoreHandle } from "@alxia/modules";
 import type { Membership } from "@alxia/tenancy";
 import { toObjectId, tryObjectId } from "@softistx/mongo";
 import type { core } from "@/config/db";
-import { fail, forbidden } from "@/i18n/fail";
+import { fail, forbidden, invalidInput } from "@/i18n/fail";
 import type { WorkspaceRole } from "./roles";
 
 // The module's handle on the core database: its own collection only.
@@ -95,7 +95,7 @@ async function assertAnotherOwner(
   if (others === 0) throw lastOwner();
 }
 
-async function activeMember(
+async function findActive(
   tx: MembersMongo,
   workspaceId: ReturnType<typeof toObjectId>,
   filter: { _id: string } | { accountId: string },
@@ -107,14 +107,42 @@ async function activeMember(
           return id ? { _id: id } : undefined;
         })()
       : filter;
-  if (!key) throw memberNotFound();
-  const member = await tx.db.members.findFirst({
-    ...key,
-    workspaceId,
-    removedAt: null,
-  });
+  if (!key) return undefined;
+  return (
+    (await tx.db.members.findFirst({ ...key, workspaceId, removedAt: null })) ??
+    undefined
+  );
+}
+
+async function activeMember(
+  tx: MembersMongo,
+  workspaceId: ReturnType<typeof toObjectId>,
+  filter: { _id: string } | { accountId: string },
+) {
+  const member = await findActive(tx, workspaceId, filter);
   if (!member) throw memberNotFound();
   return member;
+}
+
+// The receiver of a handover, read in the transaction and touched so that a
+// concurrent removal or role change of it conflicts with this one.
+async function lockReceiver(
+  tx: MembersMongo,
+  workspaceId: ReturnType<typeof toObjectId>,
+  id: string,
+  leaving: MemberDoc,
+) {
+  const receiver = await findActive(tx, workspaceId, { _id: id });
+  if (!receiver || receiver._id.equals(leaving._id)) {
+    throw invalidInput([
+      { path: "transferTo", code: "validation.errors.invalid" },
+    ]);
+  }
+  await tx.db.members.updateMany(
+    { _id: receiver._id },
+    { updatedAt: new Date() },
+  );
+  return receiver;
 }
 
 interface Change {
@@ -159,10 +187,20 @@ export async function endMembership(
   mongo: MembersMongo,
   input: Change &
     ({ memberId: string } | { accountId: string }) & {
+      // The member who receives what the leaver made (`removeMember(transferTo:)`).
+      // Read inside the transaction and write-locked like the owners, so a
+      // receiver who leaves or changes concurrently aborts one of the two
+      // instead of slipping in between the check and the handover. 422
+      // `validation.errors.invalid` (field `transferTo`) when it is not a
+      // current member or is the leaver.
+      transferTo?: string;
       // Runs inside the transaction once the membership is marked ended: when it
       // throws, the membership stays (`removeMember(transferTo:)` hands the files
       // over here, so a failed handover removes nobody).
-      beforeCommit?: (target: MemberDoc) => Promise<unknown>;
+      beforeCommit?: (
+        target: MemberDoc,
+        receiver: MemberDoc | undefined,
+      ) => Promise<unknown>;
     },
 ): Promise<MemberDoc> {
   const workspaceId = toObjectId(input.workspaceId);
@@ -175,6 +213,9 @@ export async function endMembership(
         ? { _id: input.memberId }
         : { accountId: input.accountId },
     );
+    const receiver = input.transferTo
+      ? await lockReceiver(tx, workspaceId, input.transferTo, target)
+      : undefined;
     const leaving = target.accountId === input.actorId;
     if (target.role === "OWNER") {
       if (!leaving && !input.canManageOwners) throw forbidden();
@@ -183,71 +224,7 @@ export async function endMembership(
     await tx.db.members
       .as(input.actorId)
       .update(target._id, { removedAt: new Date(), version: target.version });
-    await input.beforeCommit?.(target);
+    await input.beforeCommit?.(target, receiver);
     return target;
   });
-}
-
-// The current member of this workspace with this id, or undefined (malformed,
-// unknown, of another workspace, or who left).
-export async function findActiveMember(
-  mongo: MembersMongo,
-  workspaceId: string,
-  id: string,
-): Promise<MemberDoc | undefined> {
-  const memberId = tryObjectId(id);
-  if (!memberId) return undefined;
-  return (
-    (await mongo.db.members.findFirst({
-      _id: memberId,
-      workspaceId: toObjectId(workspaceId),
-      removedAt: null,
-    })) ?? undefined
-  );
-}
-
-// A page of a workspace's current members, oldest first.
-export async function listMembers(
-  mongo: MembersMongo,
-  input: { workspaceId: string; first: number; after: string | null },
-) {
-  const workspaceId = toObjectId(input.workspaceId);
-  const filter = { workspaceId, removedAt: null };
-  const [page, totalCount] = await Promise.all([
-    mongo.db.members.paginateByCursor({
-      filter,
-      limit: input.first,
-      after: input.after,
-      orderBy: "createdAt",
-      direction: "asc",
-      scope: `members:${input.workspaceId}`,
-    }),
-    mongo.db.members.count(filter),
-  ]);
-  return { items: page.items, endCursor: page.nextCursor, totalCount };
-}
-
-// The memberships of an account, in active workspaces or not (the caller
-// filters by the workspaces it loads).
-export const membershipsOfAccount = (mongo: MembersMongo, accountId: string) =>
-  mongo.db.members.findMany({ filter: { accountId, removedAt: null } });
-
-// The ids among `ids` that are current members of the workspace, as strings.
-// An id that is malformed, unknown, of another workspace or of a member who
-// left is simply not in the answer.
-export async function activeMemberIds(
-  mongo: MembersMongo,
-  workspaceId: string,
-  ids: readonly string[],
-): Promise<Set<string>> {
-  const objectIds = ids.flatMap((id) => tryObjectId(id) ?? []);
-  if (objectIds.length === 0) return new Set();
-  const found = await mongo.db.members.findMany({
-    filter: {
-      workspaceId: toObjectId(workspaceId),
-      _id: { $in: objectIds },
-      removedAt: null,
-    },
-  });
-  return new Set(found.map((member) => member.id));
 }
