@@ -4,7 +4,8 @@ import type { Db } from "mongodb";
 import { modules } from "../modules/registry";
 
 // The core database's migrations: every module's `coreMigrations`, in id order
-// (ids start with their date). The runner refuses a pending migration listed
+// (ids start with their date; the store sorts its own copy the same way, this
+// one serves the boot check). The runner refuses a pending migration listed
 // before an applied one, so a migration a later module adds must sort after
 // the ones a database already ran: grouping by module would put it mid-list.
 export const migrations: readonly Migration[] = coreMigrationsOf(
