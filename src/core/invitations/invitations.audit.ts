@@ -1,5 +1,5 @@
 import type { Context } from "@/http/context";
-import { audit, memberActor } from "../audit";
+import { memberActor } from "../audit";
 
 // What janus-graphql answers of an invitation: never the code (that is
 // `JanusIssuedInvitation.code`, which this file never reads).
@@ -35,7 +35,7 @@ export async function recordInvitationWrite(
   if (!ctx.viewer) return;
   const invitation = invitationOf(answer);
   if (!invitation) return;
-  await audit.record({
+  await ctx.audit.record({
     workspaceId: invitation.scope,
     actor: memberActor(ctx.viewer),
     action: `invitation.${action}`,
@@ -67,7 +67,7 @@ export async function recordInvitationAccept(
     }
   }
   if (!accountId) return;
-  await audit.record({
+  await ctx.audit.record({
     workspaceId: invitation.scope,
     actor: { type: "MEMBER", id: accountId, label: invitation.name ?? null },
     action: "invitation.accept",

@@ -1,7 +1,12 @@
 import type { ModuleCoreHandle } from "@alxia/modules";
 import { ConflictError, toObjectId } from "@softistx/mongo";
 import type { core } from "@/config/db";
-import { addMember, type MemberDoc, memberJoined } from "../members";
+import {
+  addMember,
+  type MemberDoc,
+  type MemberJoinWiring,
+  memberJoined,
+} from "../members";
 import { slugTaken } from "./slug-taken";
 import { type Workspace, workspaceOf } from "./workspaces.registry";
 
@@ -23,6 +28,7 @@ export async function createWorkspace(
   mongo: WorkspacesMongo,
   provisioner: Provisioner,
   input: { slug: string; name: string; accountId: string },
+  wiring: MemberJoinWiring,
 ): Promise<Workspace> {
   if (await mongo.db.workspaces.exists({ slug: input.slug })) {
     throw slugTaken();
@@ -53,7 +59,7 @@ export async function createWorkspace(
     await takeBack(mongo, created.id);
     throw error;
   }
-  if (owner) await memberJoined(owner);
+  if (owner) await memberJoined(wiring, owner);
   return workspaceOf(await mongo.db.workspaces.getById(created.id));
 }
 

@@ -1,4 +1,5 @@
 import { tenancy, WORKSPACE_HEADER } from "@/config/tenancy";
+import { members } from "@/config/wiring";
 import { harness } from "@/core/identity/identity.harness";
 import { joinWorkspace } from "@/core/invitations";
 import {
@@ -29,14 +30,23 @@ export async function world(
     limits?: Limits;
     media?: HarnessOptions["media"];
     renditions?: HarnessOptions["renditions"];
+    // A wiring other than the server's (specs: a listener that fails).
+    members?: HarnessOptions["members"];
+    audit?: HarnessOptions["audit"];
   } = {},
 ) {
   const h = await harness({
     ...(options.limits && { limits: options.limits }),
     ...(options.media && { media: options.media }),
     ...(options.renditions && { renditions: options.renditions }),
+    ...(options.members && { members: options.members }),
+    ...(options.audit && { audit: options.audit }),
     onAcceptedInvitation: (accepted) =>
-      joinWorkspace(tenancy.core as MembersMongo, accepted),
+      joinWorkspace(
+        tenancy.core as MembersMongo,
+        accepted,
+        options.members ?? members,
+      ),
   });
   let sequence = 0;
   const slug = () => `ws-${++sequence}-${crypto.randomUUID().slice(0, 6)}`;
@@ -88,7 +98,7 @@ export async function world(
       role,
       actorId: workspace.owner.principal.accountId,
     });
-    await memberJoined(row);
+    await memberJoined(options.members ?? members, row);
     return { user, memberId: row.id };
   }
 

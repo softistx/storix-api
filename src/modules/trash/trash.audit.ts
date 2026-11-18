@@ -1,10 +1,11 @@
-import { type AuditActor, audit } from "@/core/audit";
+import type { AuditActor, Auditor } from "@/core/audit";
 import type { NodeDoc } from "@/modules/nodes/public";
 
 interface Done {
   workspaceId: string;
   actor: AuditActor;
   ip: string | null | undefined;
+  auditor: Auditor;
 }
 
 const targetOf = (node: NodeDoc) => ({
@@ -14,14 +15,14 @@ const targetOf = (node: NodeDoc) => ({
 });
 
 // The events of the trash writes, recorded after each has committed
-// (`audit.record` never throws): one per top node trashed, restored or purged,
+// (`auditor.record` never throws): one per top node trashed, restored or purged,
 // and one for an emptied trash.
 export const recordTrash = (
   done: Done,
   action: "node.trash" | "node.restore" | "node.purge",
   node: NodeDoc,
 ) =>
-  audit.record({
+  done.auditor.record({
     ...done,
     action,
     target: targetOf(node),
@@ -33,7 +34,7 @@ export const recordEmpty = (
   accountId: string,
   counts: { entries: number; nodes: number },
 ) =>
-  audit.record({
+  done.auditor.record({
     ...done,
     action: "trash.empty",
     target: { type: "TRASH", id: accountId, name: "trash" },

@@ -101,6 +101,7 @@ export const membersResolvers: Resolvers = {
           workspaceId: scope.tenant.id,
           actor: memberActor(principal),
           ip: ctx.ip,
+          auditor: ctx.audit,
           member,
           name: view.name,
           from,
@@ -136,7 +137,7 @@ export const membersResolvers: Resolvers = {
                 if (!receiver) return;
                 name = await nameOf(ctx, target);
                 if (
-                  await handOver(scope, {
+                  await handOver(ctx.members, scope, {
                     workspaceId: scope.tenant.id,
                     from: {
                       memberId: target.id,
@@ -156,11 +157,12 @@ export const membersResolvers: Resolvers = {
           : {}),
       });
       name = name === undefined ? await nameOf(ctx, removed) : name;
-      await memberRemoved(scope, removed);
+      await memberRemoved(ctx.members, scope, removed);
       await recordRemoval({
         workspaceId: scope.tenant.id,
         actor: memberActor(principal),
         ip: ctx.ip,
+        auditor: ctx.audit,
         member: removed,
         name,
         transferredTo,
@@ -175,11 +177,12 @@ export const membersResolvers: Resolvers = {
         actorId: principal.accountId,
         canManageOwners: true,
       });
-      await memberRemoved(scope, left);
+      await memberRemoved(ctx.members, scope, left);
       await recordLeave({
         workspaceId: scope.tenant.id,
         actor: memberActor(principal),
         ip: ctx.ip,
+        auditor: ctx.audit,
         member: left,
         name: principal.name,
       });

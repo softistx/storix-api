@@ -1,5 +1,5 @@
 import { requireWorkspacePermission } from "@/core/access";
-import { memberActor } from "@/core/audit";
+import { type Auditor, memberActor } from "@/core/audit";
 import type { WorkspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { nodeView } from "@/modules/nodes/public";
@@ -23,10 +23,15 @@ const fileOf = (node: Parameters<typeof nodeView>[0]) => {
 };
 
 const doneBy = (
-  ctx: { ip?: string | null | undefined },
+  ctx: { ip?: string | null | undefined; audit: Auditor },
   workspaceId: string,
   principal: { accountId: string; name: string },
-) => ({ workspaceId, actor: memberActor(principal), ip: ctx.ip });
+) => ({
+  workspaceId,
+  actor: memberActor(principal),
+  ip: ctx.ip,
+  auditor: ctx.audit,
+});
 
 // `File.versions`: newest first (needs `nodes:read`).
 export const fileVersionResolvers: NonNullable<Resolvers["File"]> = {

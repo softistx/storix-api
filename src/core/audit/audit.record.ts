@@ -39,7 +39,7 @@ export const memberActor = (principal: {
   label: principal.name,
 });
 
-// Where events go and what hashes the address: bound once by the server's
+// Where events go and what hashes the address: handed in by the server's
 // wiring (src/config/tenancy.ts), because the kernel cannot reach the
 // databases itself.
 export interface AuditSink {
@@ -47,10 +47,10 @@ export interface AuditSink {
   ipKey: string;
 }
 
-let sink: AuditSink | undefined;
-
-export function bindAudit(next: AuditSink): void {
-  sink = next;
+// The port every module calls (`done.auditor.record`): the request's context
+// carries it (`ctx.audit`).
+export interface Auditor {
+  record(event: AuditEventInput): Promise<void>;
 }
 
 // A key of `meta` that names a secret is dropped, whatever its value: tokens,
@@ -72,36 +72,37 @@ export function scrub(meta: AuditMeta | undefined): AuditMeta {
   return clean;
 }
 
-// Records an event in the workspace's audit log, AFTER the write it describes
-// has committed. A failure to record is logged and never thrown: an audit
-// outage must not undo, or refuse, the work it describes.
-async function record(event: AuditEventInput): Promise<void> {
-  try {
-    if (!sink) throw new Error("the audit log is not bound");
-    const mongo = (await sink.databaseOf(event.workspaceId)) as AuditMongo;
-    await mongo.db.auditEvents.create({
-      at: new Date(),
-      actor: {
-        type: event.actor.type,
-        id: event.actor.id,
-        label: event.actor.label ?? null,
-      },
-      action: event.action,
-      target: {
-        type: event.target.type,
-        id: event.target.id,
-        name: event.target.name ?? null,
-      },
-      ipHash: event.ip ? hashAddress(sink.ipKey, event.ip) : null,
-      meta: scrub(event.meta),
-    });
-  } catch (error) {
-    console.error(
-      `storix-api: could not record audit event ${event.action} in workspace ${event.workspaceId}:`,
-      error,
-    );
-  }
+// The auditor over a sink. Its `record` writes an event in the workspace's
+// audit log, AFTER the write it describes has committed. A failure to record is
+// logged and never thrown: an audit outage must not undo, or refuse, the work
+// it describes.
+export function createAuditor(sink: AuditSink): Auditor {
+  return {
+    async record(event) {
+      try {
+        const mongo = (await sink.databaseOf(event.workspaceId)) as AuditMongo;
+        await mongo.db.auditEvents.create({
+          at: new Date(),
+          actor: {
+            type: event.actor.type,
+            id: event.actor.id,
+            label: event.actor.label ?? null,
+          },
+          action: event.action,
+          target: {
+            type: event.target.type,
+            id: event.target.id,
+            name: event.target.name ?? null,
+          },
+          ipHash: event.ip ? hashAddress(sink.ipKey, event.ip) : null,
+          meta: scrub(event.meta),
+        });
+      } catch (error) {
+        console.error(
+          `storix-api: could not record audit event ${event.action} in workspace ${event.workspaceId}:`,
+          error,
+        );
+      }
+    },
+  };
 }
-
-// The port every module calls (`audit.record`), through `@/core/audit`.
-export const audit = { record };

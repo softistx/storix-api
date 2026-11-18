@@ -18,53 +18,40 @@ export interface MemberHandover {
   to: { memberId: string; accountId: string };
 }
 
-// Answers whether it moved something.
-type HandoverListener = (
+// Answers whether it moved something. It runs before the removal commits and
+// its failure fails the call: the membership stays.
+export type HandoverListener = (
   scope: WorkspaceScope,
   handover: MemberHandover,
 ) => Promise<boolean>;
 
-const handovers = new Set<HandoverListener>();
-
-// A business module that owns what a member made asks to receive it when
-// `removeMember` names a receiver. Unlike `onMemberRemoved`, it runs before the
-// removal commits and its failure fails the call: the membership stays.
-export function onMemberHandover(listener: HandoverListener): () => void {
-  handovers.add(listener);
-  return () => {
-    handovers.delete(listener);
-  };
-}
-
-// Runs the handovers; answers whether any moved something.
-export async function handOver(
-  scope: WorkspaceScope,
-  handover: MemberHandover,
-): Promise<boolean> {
-  let moved = false;
-  for (const listener of handovers) {
-    if (await listener(scope, handover)) moved = true;
-  }
-  return moved;
-}
-
-type Listener = (
+// Told once the membership has ended, so that a module's own data stops naming
+// the member.
+export type RemovalListener = (
   scope: WorkspaceScope,
   removal: MemberRemoval,
 ) => Promise<unknown>;
 
-const listeners = new Set<Listener>();
+// What a removal tells the business modules that own data per member, handed in
+// by the app's wiring (src/config/members.ts): the kernel cannot import them
+// (the layers of test/boundaries.spec.ts). `nodes` receives a leaver's tree
+// (`onHandover`), `teams` takes the member out of its teams (`onRemoved`).
+export interface MemberRemovalWiring {
+  onHandover: readonly HandoverListener[];
+  onRemoved: readonly RemovalListener[];
+}
 
-// A business module (src/modules) asks to be told when a member leaves, so that
-// its own data stops naming them: the kernel cannot import it (the layers of
-// test/boundaries.spec.ts), so the module registers itself when its manifest
-// loads. `teams` takes the member out of its teams.
-// It returns the function that unregisters the listener.
-export function onMemberRemoved(listener: Listener): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
+// Runs the handovers; answers whether any moved something.
+export async function handOver(
+  wiring: MemberRemovalWiring,
+  scope: WorkspaceScope,
+  handover: MemberHandover,
+): Promise<boolean> {
+  let moved = false;
+  for (const listener of wiring.onHandover) {
+    if (await listener(scope, handover)) moved = true;
+  }
+  return moved;
 }
 
 // Tells every listener, after the membership ended (the core database
@@ -73,6 +60,7 @@ export function onMemberRemoved(listener: Listener): () => void {
 // module's reads ignore a member who is gone, so a missed clean-up only leaves
 // an id that no longer shows.
 export async function memberRemoved(
+  wiring: MemberRemovalWiring,
   scope: WorkspaceScope,
   member: MemberDoc,
 ): Promise<void> {
@@ -81,7 +69,7 @@ export async function memberRemoved(
     memberId: member.id,
     accountId: member.accountId,
   };
-  for (const listener of listeners) {
+  for (const listener of wiring.onRemoved) {
     try {
       await listener(scope, removal);
     } catch (error) {

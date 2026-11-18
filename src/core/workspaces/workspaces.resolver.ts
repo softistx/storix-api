@@ -1,7 +1,7 @@
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { fail, invalidInput } from "@/i18n/fail";
 import { requireAccountSession, requireWorkspacePermission } from "../access";
-import { audit, memberActor } from "../audit";
+import { memberActor } from "../audit";
 import { membershipsOfAccount, type WorkspaceRole } from "../members";
 import { isObjectIdLike } from "./workspaces.collection";
 import { type Workspace, workspaceOf } from "./workspaces.registry";
@@ -82,8 +82,9 @@ export const workspacesResolvers: Resolvers = {
           name,
           accountId,
         },
+        ctx.members,
       );
-      await audit.record({
+      await ctx.audit.record({
         workspaceId: workspace.id,
         actor: memberActor(principal),
         action: "workspace.create",
@@ -112,7 +113,7 @@ export const workspacesResolvers: Resolvers = {
       if (!(await renameWorkspace(core, scope.tenant.id, name))) {
         throw notFound();
       }
-      await audit.record({
+      await ctx.audit.record({
         workspaceId: scope.tenant.id,
         actor: memberActor(principal),
         action: "workspace.rename",
@@ -135,7 +136,7 @@ export const workspacesResolvers: Resolvers = {
       };
       const settings = await updateSettings(core, scope.tenant.id, patch);
       if (!settings) throw notFound();
-      await audit.record({
+      await ctx.audit.record({
         workspaceId: scope.tenant.id,
         actor: memberActor(principal),
         action: "workspace.settings",

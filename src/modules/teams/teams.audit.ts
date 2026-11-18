@@ -1,10 +1,11 @@
-import { type AuditActor, audit } from "@/core/audit";
+import type { AuditActor, Auditor } from "@/core/audit";
 import type { TeamDoc } from "./teams.service";
 
 interface Done {
   workspaceId: string;
   actor: AuditActor;
   ip: string | null | undefined;
+  auditor: Auditor;
 }
 
 const targetOf = (team: TeamDoc) => ({
@@ -14,16 +15,16 @@ const targetOf = (team: TeamDoc) => ({
 });
 
 // The events of the team writes, recorded after each has committed
-// (`audit.record` never throws).
+// (`auditor.record` never throws).
 export const recordTeamCreate = (done: Done, team: TeamDoc) =>
-  audit.record({
+  done.auditor.record({
     ...done,
     action: "team.create",
     target: targetOf(team),
   });
 
 export const recordTeamRename = (done: Done, team: TeamDoc, before: TeamDoc) =>
-  audit.record({
+  done.auditor.record({
     ...done,
     action: "team.rename",
     target: targetOf(team),
@@ -38,7 +39,7 @@ export const recordTeamMembers = (
 ) => {
   const was = new Set(before.memberIds.map((id) => id.toHexString()));
   const is = new Set(team.memberIds.map((id) => id.toHexString()));
-  return audit.record({
+  return done.auditor.record({
     ...done,
     action: "team.set-members",
     target: targetOf(team),
@@ -51,7 +52,7 @@ export const recordTeamMembers = (
 };
 
 export const recordTeamDelete = (done: Done, team: TeamDoc) =>
-  audit.record({
+  done.auditor.record({
     ...done,
     action: "team.delete",
     target: targetOf(team),

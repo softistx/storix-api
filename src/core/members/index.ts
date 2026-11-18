@@ -1,19 +1,26 @@
 // The members surface: the roles, the membership check `@alxia/tenancy` asks
 // for, and the module. Everything else in this folder is private.
 
+import type { MemberJoinWiring } from "./members.joined";
+import type { MemberRemovalWiring } from "./members.removal";
+
+// What the app's wiring hands the members surface (src/config/members.ts).
+export type MemberWiring = MemberJoinWiring & MemberRemovalWiring;
+
 export {
-  bindMemberDatabases,
+  type JoinListener,
   type MemberJoined,
+  type MemberJoinWiring,
   memberJoined,
-  onMemberJoined,
 } from "./members.joined";
 export { activeMemberIds, membershipsOfAccount } from "./members.queries";
 export {
+  type HandoverListener,
   handOver,
   type MemberHandover,
   type MemberRemoval,
-  onMemberHandover,
-  onMemberRemoved,
+  type MemberRemovalWiring,
+  type RemovalListener,
 } from "./members.removal";
 export {
   addMember,

@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { store } from "@/config/tenancy";
+import { members } from "@/config/wiring";
 import { actionsOf, storedEvents } from "@/core/audit/audit.harness";
-import { onMemberHandover } from "@/core/members";
+import type { MemberWiring } from "@/core/members";
+import { world } from "../../../test/workspaces.harness";
 import { nodesMongo } from "./nodes.handle";
 import { setup } from "./nodes.harness";
 import { transferLabel, transferTree } from "./nodes.transfer";
@@ -9,8 +11,8 @@ import { transferLabel, transferTree } from "./nodes.transfer";
 const REMOVE = `mutation($memberId: ID!, $transferTo: ID) { removeMember(memberId: $memberId, transferTo: $transferTo) }`;
 const MEMBERS = "{ members(first: 50) { nodes { id } } }";
 
-async function scene() {
-  const s = await setup();
+async function scene(wiring?: MemberWiring) {
+  const s = await setup(await world(wiring && { members: wiring }));
   const { w, workspace } = s;
   const admin = await w.join(workspace, "ADMIN");
   const leaver = await w.join(workspace, "MEMBER");
@@ -108,16 +110,20 @@ describe("removeMember with transferTo", () => {
   });
 
   test("a failed handover fails the call: nobody is removed and no transferredTo is audited", async () => {
-    const t = await scene();
-    const off = onMemberHandover(async () => {
-      throw new Error("files are down");
+    let down = true;
+    const t = await scene({
+      ...members,
+      onHandover: [
+        ...members.onHandover,
+        async () => {
+          if (down) throw new Error("files are down");
+          return false;
+        },
+      ],
     });
-    try {
-      const failed = await t.remove(t.admin.memberId);
-      expect(failed.errors).toBeDefined();
-    } finally {
-      off();
-    }
+    const failed = await t.remove(t.admin.memberId);
+    expect(failed.errors).toBeDefined();
+    down = false;
     expect(await t.memberIds()).toContain(t.leaver.memberId);
     // Handover listeners are not atomic with each other: the nodes listener
     // ran first, so the files stay moved; only the removal and its audit hold.
