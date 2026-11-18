@@ -11,9 +11,9 @@
         "@alxia/graphql": "^0.16.4",
         "@alxia/i18n": "^0.6.1",
         "@alxia/language": "^0.3.21",
-        "@alxia/media": "^0.10.1",
+        "@alxia/media": "^0.11.0",
         "@alxia/modules": "^0.4.0",
-        "@alxia/tenancy": "^0.6.0",
+        "@alxia/tenancy": "^0.7.0",
         "@graphql-tools/merge": "^10.0.6",
         "@napi-rs/canvas": "^1.1.0",
         "@nxgt/graphql-client": "^0.7.0",
@@ -71,11 +71,11 @@
 
     "@alxia/language": ["@alxia/language@0.3.21", "", { "peerDependencies": { "@alxia/core": "^0.25.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-Ez+OVPIzUJnrJdSYBwu1/4x1sDw0vlG0Uuacg/kLcfwiekQlRj3MTmnN8ixZgkPY9TDk/FXz2SyqT+8u57VzVA=="],
 
-    "@alxia/media": ["@alxia/media@0.10.1", "", { "peerDependencies": { "@alxia/core": "^0.25.0", "@softistx/image": "^0.5.0", "@softistx/s3": "^0.13.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/image"] }, "sha512-rtuFxQsqQW066OMryB0yfvIrce9zYpuuXBmfXhVzDo8VwvXaptlpT5Uh0av8g1+ijQh+Jzl63gIYAjv5tbLNTg=="],
+    "@alxia/media": ["@alxia/media@0.11.0", "", { "peerDependencies": { "@alxia/core": "^0.25.0", "@softistx/image": "^0.5.0", "@softistx/s3": "^0.13.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/image"] }, "sha512-DbkIwEMNVNFriXkrI+tNRVztILAFAsa2sD9E4buoYWBXzEGcI31PGMlBK3asGBY3U1hxCDLulu2jM23fBRNN3w=="],
 
     "@alxia/modules": ["@alxia/modules@0.4.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-kzmHJpf9ZzhFhNvH/LoQJSaQ+xOMzbSffnV+F6zkvmOkLUZJzPa3t7/47cQ5mzGfC1InimCMystRP9VFqK26gg=="],
 
-    "@alxia/tenancy": ["@alxia/tenancy@0.6.0", "", { "peerDependencies": { "@alxia/modules": "^0.4.0", "@softistx/mongo": "^0.27.0", "mongodb": "^7.7.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-FpzkZs8zOutrFh6O8XIxPH0xd7v6d/Zv4lhGrWL/HYSsQVwJFJBjSb103S6FLiiE6MOexQ2JM5BnwY54fsx+yw=="],
+    "@alxia/tenancy": ["@alxia/tenancy@0.7.0", "", { "peerDependencies": { "@alxia/modules": "^0.4.0", "@softistx/mongo": "^0.27.0", "mongodb": "^7.7.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-fXbdEi42ZTXAughSunlD0g6nmCmcEbD9xTX3damQghbfGszD0GhEnVA8FpHvGIL+zJnIyTAoHZglq1BAG49Sww=="],
 
     "@ardatan/relay-compiler": ["@ardatan/relay-compiler@13.0.3", "", { "dependencies": { "@babel/runtime": "^8.1.0", "immutable": "^5.1.9", "invariant": "^2.2.4" }, "peerDependencies": { "graphql": "*" } }, "sha512-ESuRrAASIZbih3pSypvNhL32dXTnt9tnOv8gPINRgE7AE5seCqssvEy6+cYf3jWXOD+6Y7877VTJsNpUz2JEtA=="],
 
