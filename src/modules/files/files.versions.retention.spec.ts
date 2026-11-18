@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import { tenancy } from "@/config/tenancy";
-import type { WorkspacesMongo } from "@/core/workspaces";
+import { workspacesMongo } from "@/core/workspaces";
 import { failDeleteOn } from "../../../test/fail-delete";
 import { filesWorld } from "../../../test/files.harness";
 import { versionsArea } from "../../../test/versions.harness";
@@ -12,7 +12,7 @@ afterEach(() => {
   for (const spy of spies) spy.mockRestore();
   spies = [];
 });
-const core = () => tenancy.core as unknown as WorkspacesMongo;
+const core = () => workspacesMongo(tenancy.core);
 
 describe("version retention", () => {
   test("keeps the newest `max` versions and never the current one", async () => {

@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import { fail } from "@/i18n/fail";
 import type { NodeDoc } from "@/modules/nodes/public";
 import { decodeCursor, encodeCursor } from "@/modules/nodes/public";
-import type { FilesMongo } from "./files.service";
+import type { FilesMongo } from "./files.handle";
 
 // What a member's personal lists (favourites, recents) have in common: a row
 // points at a node and sits at a position `[date, _id]`, newest first. A row
@@ -25,6 +25,12 @@ export interface PersonalPage {
 // How many rows one read looks at. Rows that no longer count are skipped, so
 // a page may take several reads; each is bounded.
 const BATCH = 100;
+
+// How many reads one page takes at most (so `BATCH * MAX_READS` rows looked
+// at). A list buried under dead rows (trashed, gone) answers a short page with
+// a cursor at the last row looked at, instead of scanning them all; the next
+// page goes on from there.
+export const MAX_READS = 20;
 
 // The newest-first rows of an account after a position (`null` is the start),
 // at most `limit`.
@@ -58,7 +64,13 @@ export async function personalPage(
     position = { date, _id: id };
   }
   const items: { node: NodeDoc; row: Row }[] = [];
-  for (;;) {
+  // Set when the scan stopped on its cap with rows maybe left.
+  let resume: { date: Date; _id: ObjectId } | null = null;
+  for (let reads = 0; ; reads++) {
+    if (reads === MAX_READS) {
+      resume = position;
+      break;
+    }
     const rows = await input.fetch(position, BATCH);
     if (rows.length === 0) break;
     const nodes = await mongo.db.nodes.findMany({
@@ -86,7 +98,9 @@ export async function personalPage(
     endCursor:
       items.length > input.first && tail
         ? encodeCursor(input.scope, [tail.row.date, tail.row._id])
-        : null,
+        : resume && items.length <= input.first
+          ? encodeCursor(input.scope, [resume.date, resume._id])
+          : null,
   };
 }
 
