@@ -1,10 +1,10 @@
-import { MAX_DEPTH, MAX_MOVE_NODES } from "./nodes.rules";
+import { MAX_DEPTH } from "./nodes.rules";
 import {
+  assertMovable,
   cycle,
   depthOf,
   ensureRoot,
   lockTree,
-  moveTooLarge,
   type NodeDoc,
   type NodesMongo,
   named,
@@ -61,8 +61,7 @@ export async function moveOne(
   if (node.parentId.equals(target._id)) return node;
   const ancestors = [...target.ancestors, target._id];
   if (node.type === "FOLDER") {
-    const below = await tx.db.nodes.count({ ancestors: node._id });
-    if (below > MAX_MOVE_NODES) throw moveTooLarge();
+    await assertMovable(tx, node);
     const deepest = await deepestBelow(tx, node);
     if (depthOf(target) + 1 + (deepest - depthOf(node)) > MAX_DEPTH) {
       throw tooDeep();

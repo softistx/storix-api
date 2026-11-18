@@ -1,12 +1,11 @@
 import type { WorkspacesMongo } from "@/core/workspaces";
 import { accounted, type FilesMongo } from "@/modules/files/public";
 import {
+  assertMovable,
   ensureRoot,
   freeName,
   lockTree,
-  MAX_MOVE_NODES,
   moveOne,
-  moveTooLarge,
   type NodeDoc,
   named,
   nodeNotFound,
@@ -58,8 +57,7 @@ export async function trashNodes(
       // so what goes to the trash can always be restored.
       for (const top of tops) {
         if (top.type !== "FOLDER") continue;
-        const below = await tx.db.nodes.count({ ancestors: top._id });
-        if (below > MAX_MOVE_NODES) throw moveTooLarge();
+        await assertMovable(nodes, top);
       }
       const at = new Date();
       for (const top of tops) {
