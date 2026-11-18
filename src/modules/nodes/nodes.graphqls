@@ -30,6 +30,13 @@ enum FileStatus {
   FAILED
 }
 
+"The account that owns a node, as its name is read from the identity store."
+type NodeOwner {
+  accountId: ID!
+  "The account's display name."
+  name: String!
+}
+
 """
 A folder or a file of the workspace's tree. Only the caller's own tree is
 readable until sharing lands: another member's node is a 404, like an unknown
@@ -53,6 +60,14 @@ interface Node {
   trashedAt: DateTime
   "The account id of whoever trashed it."
   trashedBy: String
+  "The account id of whoever owns it; null when none is recorded."
+  ownerId: ID
+  """
+  Who owns it: the account's id and name. Null when no owner is recorded or
+  the account no longer exists (never an error). Readable by every role that
+  can read the node.
+  """
+  owner: NodeOwner
 }
 
 type Folder implements Node {
@@ -67,6 +82,8 @@ type Folder implements Node {
   updatedAt: DateTime!
   trashedAt: DateTime
   trashedBy: String
+  ownerId: ID
+  owner: NodeOwner
 }
 
 "A file: a node that holds a stored object (`addFile` records it)."
@@ -82,6 +99,8 @@ type File implements Node {
   updatedAt: DateTime!
   trashedAt: DateTime
   trashedBy: String
+  ownerId: ID
+  owner: NodeOwner
   "The media key of the object: `GET /media/files/<key>` reads it. Never a URL."
   key: String!
   "The content type the storage reported when the file was uploaded."

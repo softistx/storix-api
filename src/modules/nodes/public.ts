@@ -14,6 +14,7 @@ export {
 } from "./nodes.file";
 export { nodesMongo } from "./nodes.handle";
 export { moveOne } from "./nodes.move";
+export { ownerOf } from "./nodes.owner";
 export { checkName, MAX_DEPTH, MAX_MOVE_NODES } from "./nodes.rules";
 export {
   cycle,

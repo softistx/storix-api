@@ -269,6 +269,8 @@ type File implements Node {
   """The content type the storage reported when the file was uploaded."""
   mimeType: String!
   name: String!
+  owner: NodeOwner
+  ownerId: ID
   parentId: ID
   """One of the renditions, or null when the file does not have it (yet)."""
   rendition(preset: RenditionPreset!): Rendition
@@ -363,6 +365,8 @@ type Folder implements Node {
   depth: Int!
   id: ID!
   name: String!
+  owner: NodeOwner
+  ownerId: ID
   parentId: ID
   trashedAt: DateTime
   trashedBy: String
@@ -1004,6 +1008,14 @@ interface Node {
   depth: Int!
   id: ID!
   name: String!
+  """
+  Who owns it: the account's id and name. Null when no owner is recorded or
+  the account no longer exists (never an error). Readable by every role that
+  can read the node.
+  """
+  owner: NodeOwner
+  """The account id of whoever owns it; null when none is recorded."""
+  ownerId: ID
   """Null for a root (a member's "My files")."""
   parentId: ID
   """
@@ -1025,6 +1037,15 @@ input NodeFilter {
   name: String @constraint(maxLength: 255)
   """Files that carry all of these tags. Leaves the folders out."""
   tags: [String!] @constraint(maxItems: 20)
+}
+
+"""
+The account that owns a node, as its name is read from the identity store.
+"""
+type NodeOwner {
+  accountId: ID!
+  """The account's display name."""
+  name: String!
 }
 
 """A page of a folder's nodes."""
