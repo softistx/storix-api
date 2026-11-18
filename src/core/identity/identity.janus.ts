@@ -19,6 +19,7 @@ import type { Mailer } from "@softistx/mail";
 import type { Db } from "mongodb";
 import { createInvitationResolvers } from "./identity.invitations";
 import type { Account, Identity } from "./identity.port";
+import { accountSecurityFlows } from "./janus.account-security";
 import { type Accepted, createAccounts } from "./janus.accounts";
 
 import { authCall } from "./janus.errors";
@@ -135,6 +136,7 @@ export function createJanusIdentity(options: IdentityOptions): Identity {
     ...signUpFlows(deps),
     ...signInFlows(deps),
     ...stepUpFlows(deps),
+    ...accountSecurityFlows(deps),
     ...secondFactorFlows(deps),
 
     invitations: {

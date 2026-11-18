@@ -14,9 +14,15 @@ export const unavailable = () =>
 export const stepUpRequired = () =>
   fail("auth.errors.step-up-required", { status: 403 });
 
-export const tooShort = (min: number) =>
+export const currentPasswordWrong = () =>
+  fail("identity.errors.current-password-wrong", { status: 400 });
+
+export const sessionNotFound = () =>
+  fail("identity.errors.session-not-found", { status: 404 });
+
+export const tooShort = (min: number, path = "password") =>
   invalidInput([
-    { path: "password", code: "validation.errors.too-short", params: { min } },
+    { path, code: "validation.errors.too-short", params: { min } },
   ]);
 
 // janus's error as the API answers it, or undefined for one it does not

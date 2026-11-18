@@ -184,6 +184,28 @@ curl -s localhost:3000/graphql -H 'content-type: application/json' -H 'x-storix-
 
 **Fix:** promote another member to OWNER first, then demote, remove or leave.
 
+## `identity.errors.current-password-wrong` (400) on `changePassword`
+
+**When:** `current` is not the account's password.
+
+**Why:** the caller is signed in, so it is a 400, not the 401 of a sign-in; nothing changed. Wrong guesses count in janus's password-guessing budget, shared with `signIn`: past ten in 15 minutes the answer is 429 `auth.errors.rate-limited` (`extensions.retryAfter`), the right password included.
+
+**Fix:** ask for the current password again; on 429 wait `retryAfter` seconds.
+
+## `identity.errors.session-not-found` (404) on `revokeSession`
+
+**When:** the id is not a standing session of the caller's account: another account's, unknown, malformed, or already ended.
+
+**Why:** the four are never told apart, so an id cannot be used to probe other accounts. Nothing is revoked.
+
+**Fix:** list again with `sessions` and revoke an id it returns.
+
+## `auth.errors.step-up-required` (403) on `changePassword`, `revokeSession` or `revokeOtherSessions`
+
+**When:** the session proved who it is more than 10 minutes ago, or the call came with a key.
+
+**Fix:** step up (`requestStepUp`, then `confirmStepUp`), then retry the same mutation; a key cannot, use the session.
+
 ## `auth.errors.step-up-required` (403) on a role change or a member removal
 
 `changeMemberRole` and `removeMember` answer 403 with this code.

@@ -4,6 +4,7 @@ import { fail, unauthenticated } from "@/i18n/fail";
 import {
   FRESH_FOR_MS,
   type Principal,
+  type SignInOptions,
   type SignInResult,
 } from "./identity.port";
 
@@ -29,6 +30,12 @@ export function requireSession(ctx: Context): Principal {
   refuseKey(ctx);
   return requireViewer(ctx);
 }
+
+// What the session list shows for the sign-in: the client's User-Agent.
+const deviceOf = (ctx: Context): SignInOptions => {
+  const agent = ctx.request.headers.get("user-agent")?.trim();
+  return agent ? { deviceLabel: agent } : {};
+};
 
 export const viewerOf = (principal: Principal) => ({
   id: principal.accountId,
@@ -73,6 +80,7 @@ export const identityResolvers: Resolvers = {
     viewer: (_, __, ctx) => (ctx.viewer ? viewerOf(ctx.viewer) : null),
     secondFactorStatus: (_, __, ctx) =>
       ctx.identity.secondFactorStatus(requireSession(ctx)),
+    sessions: (_, __, ctx) => ctx.identity.sessions(requireSession(ctx)),
   },
   Mutation: {
     signUp: async (_, { input }, ctx) => {
@@ -87,23 +95,31 @@ export const identityResolvers: Resolvers = {
     },
     completeSignUp: async (_, { token, password }, ctx) => {
       refuseKey(ctx);
-      return payloadOf(await ctx.identity.completeSignUp(token, password));
+      return payloadOf(
+        await ctx.identity.completeSignUp(token, password, deviceOf(ctx)),
+      );
     },
     signIn: async (_, { input }, ctx) => {
       refuseKey(ctx);
       await ctx.limits.signIn(ctx.ip);
-      return payloadOf(await ctx.identity.signIn(input));
+      return payloadOf(await ctx.identity.signIn(input, deviceOf(ctx)));
     },
     confirmSecondFactor: async (_, { challenge, code }, ctx) => {
       refuseKey(ctx);
       await ctx.limits.signIn(ctx.ip);
-      return payloadOf(await ctx.identity.confirmSecondFactor(challenge, code));
+      return payloadOf(
+        await ctx.identity.confirmSecondFactor(challenge, code, deviceOf(ctx)),
+      );
     },
     recoverSecondFactor: async (_, { challenge, recoveryCode }, ctx) => {
       refuseKey(ctx);
       await ctx.limits.signIn(ctx.ip);
       return payloadOf(
-        await ctx.identity.recoverSecondFactor(challenge, recoveryCode),
+        await ctx.identity.recoverSecondFactor(
+          challenge,
+          recoveryCode,
+          deviceOf(ctx),
+        ),
       );
     },
     signOut: (_, __, ctx) => {
@@ -134,6 +150,17 @@ export const identityResolvers: Resolvers = {
       ctx.identity.activateSecondFactor(requireSession(ctx), code),
     regenerateRecoveryCodes: (_, { code }, ctx) =>
       ctx.identity.regenerateRecoveryCodes(requireSession(ctx), code),
+    changePassword: async (_, { current, next }, ctx) => {
+      const principal = requireSession(ctx);
+      // The current password is guessable here: count the address like a
+      // sign-in (janus counts the account's wrong guesses too).
+      await ctx.limits.signIn(ctx.ip);
+      return ctx.identity.changePassword(principal, { current, next });
+    },
+    revokeSession: (_, { id }, ctx) =>
+      ctx.identity.revokeSession(requireSession(ctx), id),
+    revokeOtherSessions: (_, __, ctx) =>
+      ctx.identity.revokeOtherSessions(requireSession(ctx)),
     disableSecondFactor: async (_, { code }, ctx) => {
       const principal = requireSession(ctx);
       // janus throttles the account's code tries; the per-address limit stays too.

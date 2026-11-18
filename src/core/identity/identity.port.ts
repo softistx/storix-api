@@ -52,6 +52,26 @@ export type SignInResult =
   // A sign-up was accepted: no session, whether or not the address was taken.
   | { status: "VERIFICATION_SENT" };
 
+// One standing session of an account, as its owner sees it. The token never
+// leaves the sign-in that made it. `device` is the client's own word (its
+// User-Agent): show it, never trust it.
+export interface SessionInfo {
+  id: string;
+  device: string | null;
+  createdAt: Date;
+  // When the session last opened or renewed; null before it was recorded.
+  lastUsedAt: Date | null;
+  expiresAt: Date;
+  // The session the request came in with.
+  current: boolean;
+}
+
+// What a sign-in step may say about the client: what to show for its session
+// in the account's session list.
+export interface SignInOptions {
+  deviceLabel?: string;
+}
+
 export interface StepUpChallenge {
   method: "AUTHENTICATOR" | "EMAIL";
   challenge: string;
@@ -119,12 +139,24 @@ export interface Identity {
     name: string;
     locale: Locale;
   }): Promise<SignInResult>;
-  completeSignUp(token: string, password: string): Promise<SignInResult>;
-  signIn(input: { email: string; password: string }): Promise<SignInResult>;
-  confirmSecondFactor(challenge: string, code: string): Promise<SignInResult>;
+  completeSignUp(
+    token: string,
+    password: string,
+    options?: SignInOptions,
+  ): Promise<SignInResult>;
+  signIn(
+    input: { email: string; password: string },
+    options?: SignInOptions,
+  ): Promise<SignInResult>;
+  confirmSecondFactor(
+    challenge: string,
+    code: string,
+    options?: SignInOptions,
+  ): Promise<SignInResult>;
   recoverSecondFactor(
     challenge: string,
     recoveryCode: string,
+    options?: SignInOptions,
   ): Promise<SignInResult>;
   signOut(request: Request): Promise<boolean>;
   requestPasswordReset(request: Request, email: string): Promise<true>;
@@ -160,6 +192,25 @@ export interface Identity {
     code: string,
   ): Promise<true>;
   secondFactorStatus(principal: Principal): Promise<SecondFactorStatus>;
+
+  // Changes the password of the signed-in account. Needs a fresh session
+  // (403 `auth.errors.step-up-required`); a wrong `current` is 400
+  // `identity.errors.current-password-wrong` and changes nothing, a short
+  // `next` 400 `validation.errors.invalid-input` (field `next`), and past
+  // janus's password-guessing throttle 429. Ends the account's OTHER sessions.
+  changePassword(
+    principal: Principal,
+    input: { current: string; next: string },
+  ): Promise<true>;
+  // The account's standing sessions, newest first.
+  sessions(principal: Principal): Promise<SessionInfo[]>;
+  // Ends one session of the account (the current one signs the caller out).
+  // Needs a fresh session. A session that is another account's, unknown or
+  // already ended is 404 `identity.errors.session-not-found`.
+  revokeSession(principal: Principal, sessionId: string): Promise<true>;
+  // Ends every session of the account but the current one; how many ended.
+  // Needs a fresh session.
+  revokeOtherSessions(principal: Principal): Promise<number>;
 
   // The resolvers of the invitation fields (`invitations`, `issueInvitation`,
   // `resendInvitation`, `revokeInvitation`, `invitationPreview`,

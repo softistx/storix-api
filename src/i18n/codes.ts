@@ -39,6 +39,12 @@ export const identity = defineCodes("identity", [
   "second-factor-invalid",
   "second-factor-state",
   "unavailable",
+  // 400: the current password of a password change is wrong (not a 401: the
+  // caller is signed in).
+  "current-password-wrong",
+  // 404: no session of the caller's account has this id (another account's,
+  // unknown or already ended, all alike).
+  "session-not-found",
 ]);
 
 // The workspaces (src/core/workspaces). `not-found` is also the answer for a
