@@ -18,7 +18,9 @@ const targetOf = (node: NodeDoc) => ({
 // (`auditor.record` never throws).
 export const recordFolderCreate = (done: Done, node: NodeDoc) =>
   done.auditor.record({
-    ...done,
+    workspaceId: done.workspaceId,
+    actor: done.actor,
+    ip: done.ip,
     action: "node.folder-create",
     target: targetOf(node),
     meta: { parentId: node.parentId?.toHexString() ?? "" },
@@ -26,7 +28,9 @@ export const recordFolderCreate = (done: Done, node: NodeDoc) =>
 
 export const recordRename = (done: Done, node: NodeDoc, before: NodeDoc) =>
   done.auditor.record({
-    ...done,
+    workspaceId: done.workspaceId,
+    actor: done.actor,
+    ip: done.ip,
     action: "node.rename",
     target: targetOf(node),
     meta: { from: before.name, to: node.name },
@@ -34,7 +38,9 @@ export const recordRename = (done: Done, node: NodeDoc, before: NodeDoc) =>
 
 export const recordMove = (done: Done, node: NodeDoc, from: string | null) =>
   done.auditor.record({
-    ...done,
+    workspaceId: done.workspaceId,
+    actor: done.actor,
+    ip: done.ip,
     action: "node.move",
     target: targetOf(node),
     meta: { from: from ?? "", to: node.parentId?.toHexString() ?? "" },

@@ -18,14 +18,18 @@ const targetOf = (team: TeamDoc) => ({
 // (`auditor.record` never throws).
 export const recordTeamCreate = (done: Done, team: TeamDoc) =>
   done.auditor.record({
-    ...done,
+    workspaceId: done.workspaceId,
+    actor: done.actor,
+    ip: done.ip,
     action: "team.create",
     target: targetOf(team),
   });
 
 export const recordTeamRename = (done: Done, team: TeamDoc, before: TeamDoc) =>
   done.auditor.record({
-    ...done,
+    workspaceId: done.workspaceId,
+    actor: done.actor,
+    ip: done.ip,
     action: "team.rename",
     target: targetOf(team),
     meta: { from: before.name, to: team.name },
@@ -40,7 +44,9 @@ export const recordTeamMembers = (
   const was = new Set(before.memberIds.map((id) => id.toHexString()));
   const is = new Set(team.memberIds.map((id) => id.toHexString()));
   return done.auditor.record({
-    ...done,
+    workspaceId: done.workspaceId,
+    actor: done.actor,
+    ip: done.ip,
     action: "team.set-members",
     target: targetOf(team),
     meta: {
@@ -53,7 +59,9 @@ export const recordTeamMembers = (
 
 export const recordTeamDelete = (done: Done, team: TeamDoc) =>
   done.auditor.record({
-    ...done,
+    workspaceId: done.workspaceId,
+    actor: done.actor,
+    ip: done.ip,
     action: "team.delete",
     target: targetOf(team),
   });

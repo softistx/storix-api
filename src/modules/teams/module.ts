@@ -24,6 +24,6 @@ export const teamsModule = defineModule({
   resolvers: teamsResolvers,
 });
 
-// The app's wiring (src/config/members.ts) hands it to the members kernel.
+// The app's wiring (src/config/wiring.ts) hands it to the members kernel.
 export const teamsOnRemoved: RemovalListener = (scope, removal) =>
   removeMemberFromTeams(scope.mongo as unknown as TeamsMongo, removal.memberId);

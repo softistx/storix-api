@@ -33,7 +33,7 @@ export type RemovalListener = (
 ) => Promise<unknown>;
 
 // What a removal tells the business modules that own data per member, handed in
-// by the app's wiring (src/config/members.ts): the kernel cannot import them
+// by the app's wiring (src/config/wiring.ts): the kernel cannot import them
 // (the layers of test/boundaries.spec.ts). `nodes` receives a leaver's tree
 // (`onHandover`), `teams` takes the member out of its teams (`onRemoved`).
 export interface MemberRemovalWiring {

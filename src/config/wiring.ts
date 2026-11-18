@@ -8,8 +8,8 @@ import { store } from "./tenancy";
 // What the app hands down to the kernel, which cannot reach the workspaces'
 // databases nor import the business modules (the layers of
 // test/boundaries.spec.ts). Plain values, built once here and carried by the
-// request context (`createApp`), by the identity (`src/config/auth.ts`) and
-// by the scripts: no module of the kernel keeps a registry of its own.
+// request context (`createApp`), and by the identity
+// (`src/config/auth.ts`): no module of the kernel keeps a registry of its own.
 
 // Who is told when a member joins (their root folder is made) or leaves (their
 // teams drop them, their files go to a receiver), and where a workspace's

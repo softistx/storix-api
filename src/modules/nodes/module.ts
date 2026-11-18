@@ -30,7 +30,7 @@ export const nodesModule = defineModule({
 });
 
 // What a member who joins gets in the workspace's database: their root folder.
-// The app's wiring (src/config/members.ts) hands it to the members kernel.
+// The app's wiring (src/config/wiring.ts) hands it to the members kernel.
 export const nodesOnJoin: JoinListener = (database, joined) =>
   ensureRoot(nodesMongo(database), joined.accountId);
 

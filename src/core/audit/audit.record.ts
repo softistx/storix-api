@@ -40,7 +40,7 @@ export const memberActor = (principal: {
 });
 
 // Where events go and what hashes the address: handed in by the server's
-// wiring (src/config/tenancy.ts), because the kernel cannot reach the
+// wiring (src/config/wiring.ts), because the kernel cannot reach the
 // databases itself.
 export interface AuditSink {
   databaseOf(workspaceId: string): Promise<unknown>;

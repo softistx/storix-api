@@ -16,7 +16,7 @@ export type JoinListener = (
   joined: MemberJoined,
 ) => Promise<unknown>;
 
-// What `memberJoined` needs, handed in by the app's wiring (src/config/members.ts):
+// What `memberJoined` needs, handed in by the app's wiring (src/config/wiring.ts):
 // the kernel cannot reach the workspaces' databases, nor import the business
 // modules that keep something per member (`nodes`: their root folder).
 export interface MemberJoinWiring {

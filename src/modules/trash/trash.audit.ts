@@ -23,7 +23,9 @@ export const recordTrash = (
   node: NodeDoc,
 ) =>
   done.auditor.record({
-    ...done,
+    workspaceId: done.workspaceId,
+    actor: done.actor,
+    ip: done.ip,
     action,
     target: targetOf(node),
     meta: { parentId: node.parentId?.toHexString() ?? "" },
@@ -35,7 +37,9 @@ export const recordEmpty = (
   counts: { entries: number; nodes: number },
 ) =>
   done.auditor.record({
-    ...done,
+    workspaceId: done.workspaceId,
+    actor: done.actor,
+    ip: done.ip,
     action: "trash.empty",
     target: { type: "TRASH", id: accountId, name: "trash" },
     meta: counts,

@@ -4,7 +4,7 @@
 import type { MemberJoinWiring } from "./members.joined";
 import type { MemberRemovalWiring } from "./members.removal";
 
-// What the app's wiring hands the members surface (src/config/members.ts).
+// What the app's wiring hands the members surface (src/config/wiring.ts).
 export type MemberWiring = MemberJoinWiring & MemberRemovalWiring;
 
 export {
