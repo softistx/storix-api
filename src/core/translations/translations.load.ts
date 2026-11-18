@@ -19,12 +19,6 @@ interface Served {
   version: string;
 }
 
-// What `errorCatalogue` serves per language, built by `loadTranslations`:
-// every code's message (each missing one filled from the fallback language)
-// and the version of the chain. In memory: a request reads nothing.
-const served = new Map<string, Served>();
-let loaded = false;
-
 // What `Query.errorCatalogue` resolves to: the language and its version;
 // `messages` is read when selected.
 export interface CatalogueView {
@@ -32,23 +26,31 @@ export interface CatalogueView {
   version: string;
 }
 
-export const catalogueOfLanguage = (language: string): CatalogueView => {
-  const entry = servedOf(language);
-  return { language, version: entry.version };
-};
-
-export const errorMessages = (language: string): MessageView[] =>
-  servedOf(language).messages;
-
-function servedOf(language: string): Served {
-  if (!loaded) throw new Error("the translations are not loaded");
-  const entry = served.get(language);
-  if (entry === undefined) throw new RangeError(`no language "${language}"`);
-  return entry;
+// What `errorCatalogue` serves per language, built by `loadTranslations`:
+// every code's message (each missing one filled from the fallback language)
+// and the version of the chain. In memory: a request reads nothing. The app
+// holds it and hands it to the requests (`ctx.translations`).
+export interface Translations {
+  catalogueOfLanguage(language: string): CatalogueView;
+  errorMessages(language: string): MessageView[];
 }
 
-// Whether `loadTranslations` has run.
-export const translationsLoaded = () => loaded;
+export function translationsOf(
+  served: ReadonlyMap<string, Served>,
+): Translations {
+  const servedOf = (language: string): Served => {
+    const entry = served.get(language);
+    if (entry === undefined) throw new RangeError(`no language "${language}"`);
+    return entry;
+  };
+  return {
+    catalogueOfLanguage: (language) => ({
+      language,
+      version: servedOf(language).version,
+    }),
+    errorMessages: (language) => servedOf(language).messages,
+  };
+}
 
 // Builds what is served from the rows (a pure step, specs use it directly):
 // one catalogue per language the rows hold, the fallback's the last step of
@@ -78,11 +80,12 @@ export function buildServed(
 
 // Reads the translations once, at startup, and gives them to @alxia/i18n
 // (`setResources`, atomic: a request in flight keeps its snapshot) and to what
-// `errorCatalogue` serves. The texts change by migration, which comes with a
-// restart, so there is no reload. The fallback language must have rows.
+// `errorCatalogue` serves, which it returns. The texts change by migration,
+// which comes with a restart, so there is no reload. The fallback language must
+// have rows.
 export async function loadTranslations(
   mongo: TranslationsMongo,
-): Promise<void> {
+): Promise<Translations> {
   const rows = (await mongo.db.translations.raw.find({}).toArray()).map(
     ({ code, language, text }): TextRow => ({ key: code, language, text }),
   );
@@ -96,7 +99,5 @@ export async function loadTranslations(
     language: FALLBACK_LANGUAGE,
   });
   i18n.setResources(built.trees as Record<Language, never>);
-  served.clear();
-  for (const [language, entry] of built.served) served.set(language, entry);
-  loaded = true;
+  return translationsOf(built.served);
 }

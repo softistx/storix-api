@@ -1,5 +1,5 @@
 import { requireWorkspacePermission } from "@/core/access";
-import { memberActor } from "@/core/audit";
+import { type Auditor, memberActor } from "@/core/audit";
 import { workspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { filesMongo } from "@/modules/files/public";
@@ -10,10 +10,15 @@ import { emptyTrash, purgeNodes } from "./trash.purge";
 import { restoreNodes, trashNodes } from "./trash.service";
 
 const doneBy = (
-  ctx: { ip?: string | null | undefined },
+  ctx: { ip?: string | null | undefined; audit: Auditor },
   workspaceId: string,
   principal: { accountId: string; name: string },
-) => ({ workspaceId, actor: memberActor(principal), ip: ctx.ip });
+) => ({
+  workspaceId,
+  actor: memberActor(principal),
+  ip: ctx.ip,
+  auditor: ctx.audit,
+});
 
 export const trashResolvers: Resolvers = {
   Query: {

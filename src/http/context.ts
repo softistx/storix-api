@@ -6,7 +6,10 @@ import { GraphQLError } from "graphql";
 import { access } from "../config/access";
 import { env } from "../config/env";
 import { tenancy } from "../config/tenancy";
+import type { Auditor } from "../core/audit";
 import type { Identity, Principal } from "../core/identity";
+import type { MemberWiring } from "../core/members";
+import type { Translations } from "../core/translations/translations.load";
 import { i18n } from "../i18n";
 import type { RenditionsQueue } from "../modules/files/public";
 import { clientIp } from "./client-ip";
@@ -87,6 +90,12 @@ export type Base = ReturnType<typeof createBase>;
 export interface Extras {
   media: MediaBucket | undefined;
   renditions: RenditionsQueue | undefined;
+  // What the app hands down to the kernel (src/config/wiring.ts): who is told
+  // of a member joining or leaving, the audit log's port, and the translations
+  // `boot` loaded (`undefined` until then).
+  members: MemberWiring;
+  audit: Auditor;
+  translations: Translations | undefined;
 }
 
 // A resolver's context: Yoga's and the base's, plus `Extras`. The generated

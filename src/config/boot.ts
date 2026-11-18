@@ -1,7 +1,10 @@
 import { migrate } from "@softistx/mongo/migrations";
 import type { Db } from "mongodb";
 import type { Identity } from "../core/identity";
-import { loadTranslations } from "../core/translations/translations.load";
+import {
+  loadTranslations,
+  type Translations,
+} from "../core/translations/translations.load";
 import { core } from "./db";
 import { assertMigrated, migrationState, migrations } from "./migrations";
 
@@ -25,7 +28,7 @@ export async function boot(
     // than a migration's fields would refuse its backfill.
     identity?: Pick<Identity, "syncStores">;
   },
-): Promise<void> {
+): Promise<Translations> {
   const list = options.list ?? migrations;
   await options.identity?.syncStores();
   const { missing } = await migrationState(db, list);
@@ -37,5 +40,5 @@ export async function boot(
     await migrate(db, [...list]);
   }
   await assertMigrated(db, list);
-  await loadTranslations(core);
+  return loadTranslations(core);
 }

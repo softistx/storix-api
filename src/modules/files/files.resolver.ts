@@ -122,6 +122,7 @@ export const filesResolvers: Resolvers = {
         workspaceId: scope.tenant.id,
         actor: memberActor(principal),
         ip: ctx.ip,
+        auditor: ctx.audit,
       };
       let added: Awaited<ReturnType<typeof addFile>>;
       try {
@@ -181,6 +182,7 @@ export const filesResolvers: Resolvers = {
         workspaceId: scope.tenant.id,
         actor: memberActor(principal),
         ip: ctx.ip,
+        auditor: ctx.audit,
       };
       for (const { node, from } of copies) {
         await recordCopy(done, node, from);
@@ -227,6 +229,7 @@ export const filesResolvers: Resolvers = {
           workspaceId: scope.tenant.id,
           actor: memberActor(principal),
           ip: ctx.ip,
+          auditor: ctx.audit,
         },
         node,
         [

@@ -1,10 +1,11 @@
-import { type AuditActor, audit } from "@/core/audit";
+import type { AuditActor, Auditor } from "@/core/audit";
 import type { TeamDoc } from "./teams.service";
 
 interface Done {
   workspaceId: string;
   actor: AuditActor;
   ip: string | null | undefined;
+  auditor: Auditor;
 }
 
 const targetOf = (team: TeamDoc) => ({
@@ -14,17 +15,21 @@ const targetOf = (team: TeamDoc) => ({
 });
 
 // The events of the team writes, recorded after each has committed
-// (`audit.record` never throws).
+// (`auditor.record` never throws).
 export const recordTeamCreate = (done: Done, team: TeamDoc) =>
-  audit.record({
-    ...done,
+  done.auditor.record({
+    workspaceId: done.workspaceId,
+    actor: done.actor,
+    ip: done.ip,
     action: "team.create",
     target: targetOf(team),
   });
 
 export const recordTeamRename = (done: Done, team: TeamDoc, before: TeamDoc) =>
-  audit.record({
-    ...done,
+  done.auditor.record({
+    workspaceId: done.workspaceId,
+    actor: done.actor,
+    ip: done.ip,
     action: "team.rename",
     target: targetOf(team),
     meta: { from: before.name, to: team.name },
@@ -38,8 +43,10 @@ export const recordTeamMembers = (
 ) => {
   const was = new Set(before.memberIds.map((id) => id.toHexString()));
   const is = new Set(team.memberIds.map((id) => id.toHexString()));
-  return audit.record({
-    ...done,
+  return done.auditor.record({
+    workspaceId: done.workspaceId,
+    actor: done.actor,
+    ip: done.ip,
     action: "team.set-members",
     target: targetOf(team),
     meta: {
@@ -51,8 +58,10 @@ export const recordTeamMembers = (
 };
 
 export const recordTeamDelete = (done: Done, team: TeamDoc) =>
-  audit.record({
-    ...done,
+  done.auditor.record({
+    workspaceId: done.workspaceId,
+    actor: done.actor,
+    ip: done.ip,
     action: "team.delete",
     target: targetOf(team),
   });

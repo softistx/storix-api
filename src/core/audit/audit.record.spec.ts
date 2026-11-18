@@ -6,12 +6,20 @@ import { world } from "../../../test/workspaces.harness";
 import { AUDIT_RETENTION_SECONDS } from "./audit.collection";
 import { storedEvents } from "./audit.harness";
 import { hashAddress } from "./audit.ip-hash";
-import { audit, bindAudit } from "./index";
+import { createAuditor } from "./index";
 
 const ADDRESS = "203.0.113.77";
 
-const bound = () => ({
+const audit = createAuditor({
   databaseOf: (id: string) => store.databaseOf(id),
+  ipKey: env.AUDIT_IP_KEY,
+});
+
+// An auditor whose database is gone.
+const broken = createAuditor({
+  databaseOf: async () => {
+    throw new Error("the database is gone");
+  },
   ipKey: env.AUDIT_IP_KEY,
 });
 
@@ -66,34 +74,21 @@ describe("audit.record", () => {
   test("a failure to record is logged and never throws", async () => {
     const logged = spyOn(console, "error").mockImplementation(() => {});
     try {
-      bindAudit({
-        databaseOf: async () => {
-          throw new Error("the database is gone");
-        },
-        ipKey: env.AUDIT_IP_KEY,
-      });
       await expect(
-        audit.record(event("64b7f0c2a1d3e4f5a6b7c8d9")),
+        broken.record(event("64b7f0c2a1d3e4f5a6b7c8d9")),
       ).resolves.toBeUndefined();
       expect(logged).toHaveBeenCalledTimes(1);
       expect(String(logged.mock.calls[0]?.[0])).toContain("team.create");
     } finally {
-      bindAudit(bound());
       logged.mockRestore();
     }
   });
 
   test("a write whose event cannot be recorded still stands", async () => {
     const logged = spyOn(console, "error").mockImplementation(() => {});
-    const w = await world();
+    const w = await world({ audit: broken });
     const workspace = await w.workspaceOf();
     try {
-      bindAudit({
-        databaseOf: async () => {
-          throw new Error("the database is gone");
-        },
-        ipKey: env.AUDIT_IP_KEY,
-      });
       const made = await w.send(
         workspace.owner,
         'mutation { createTeam(name: "Still here") { id name } }',
@@ -102,7 +97,6 @@ describe("audit.record", () => {
       expect(made.errors).toBeUndefined();
       expect(logged).toHaveBeenCalled();
     } finally {
-      bindAudit(bound());
       logged.mockRestore();
     }
     const teams = await w.send(workspace.owner, "{ teams { name } }", {

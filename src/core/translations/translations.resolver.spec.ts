@@ -14,7 +14,7 @@ interface Catalogue {
   messages: { code: string; message: string }[];
 }
 
-const app = createApp();
+let app: ReturnType<typeof createApp>;
 const ask = async (query: string, headers: Record<string, string> = {}) => {
   const response = await app.fetch(
     new Request("http://localhost/graphql", {
@@ -35,7 +35,7 @@ const ask = async (query: string, headers: Record<string, string> = {}) => {
 
 beforeAll(async () => {
   await migrate(connection.client.db(env.MONGO_CORE_DATABASE), [...migrations]);
-  await loadTranslations(core);
+  app = createApp({ translations: await loadTranslations(core) });
 });
 
 describe("Query.errorCatalogue", () => {
@@ -69,5 +69,18 @@ describe("Query.errorCatalogue", () => {
       "{ en: errorCatalogue(language: EN) { version } fr: errorCatalogue(language: FR) { version } }",
     );
     expect(data.en.version).not.toBe(data.fr.version);
+  });
+});
+
+describe("an app started without the loaded translations", () => {
+  test("fails the query instead of serving nothing", async () => {
+    const before = app;
+    app = createApp();
+    try {
+      const { errors } = await ask("{ errorCatalogue { version } }");
+      expect(errors).toBeDefined();
+    } finally {
+      app = before;
+    }
   });
 });

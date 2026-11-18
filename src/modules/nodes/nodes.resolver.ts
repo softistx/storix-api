@@ -112,6 +112,7 @@ export const nodesResolvers: Resolvers = {
           workspaceId: scope.tenant.id,
           actor: memberActor(principal),
           ip: ctx.ip,
+          auditor: ctx.audit,
         },
         node,
       );
@@ -133,6 +134,7 @@ export const nodesResolvers: Resolvers = {
           workspaceId: scope.tenant.id,
           actor: memberActor(principal),
           ip: ctx.ip,
+          auditor: ctx.audit,
         },
         node,
         before,
@@ -153,6 +155,7 @@ export const nodesResolvers: Resolvers = {
         workspaceId: scope.tenant.id,
         actor: memberActor(principal),
         ip: ctx.ip,
+        auditor: ctx.audit,
       };
       for (const { node, from } of moved) {
         if (from !== node.parentId?.toHexString()) {

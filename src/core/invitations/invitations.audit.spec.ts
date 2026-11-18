@@ -1,5 +1,5 @@
-import { afterAll, afterEach, describe, expect, spyOn, test } from "bun:test";
-import { audit } from "@/core/audit";
+import { afterEach, describe, expect, mock, test } from "bun:test";
+import type { AuditEventInput } from "@/core/audit";
 import type { Context } from "@/http/context";
 import {
   recordInvitationAccept,
@@ -7,16 +7,16 @@ import {
 } from "./invitations.audit";
 
 const viewer = { accountId: "a1", name: "Ada" };
+const record = mock(async (_event: AuditEventInput) => {});
 const ctx = (v: unknown) =>
   ({
+    audit: { record },
     viewer: v,
     ip: "127.0.0.1",
     identity: { accounts: { byEmail: async () => undefined } },
   }) as unknown as Context;
 
-const record = spyOn(audit, "record").mockResolvedValue(undefined as never);
 afterEach(() => record.mockClear());
-afterAll(() => record.mockRestore());
 
 describe("the invitation write events", () => {
   for (const answer of [null, undefined, "x", {}, { invitation: null }]) {
