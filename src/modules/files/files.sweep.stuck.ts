@@ -22,8 +22,9 @@ export interface StuckReport {
   requeued: number;
   // Files that spent their retries and are `FAILED`.
   failed: number;
-  // Files left for the next run: the queue refused one, so the scan stopped.
-  left?: number;
+  // Nodes left for the next run: the queue refused a job, so the scan stopped
+  // at that node (it counts the nodes of the scanned batch from there on).
+  nodesLeft?: number;
 }
 
 // A file whose renditions job was lost between the commit and `queue.add`
@@ -82,7 +83,7 @@ export async function requeueStuck(
       );
       // The queue is probably down, and the refused node keeps its old
       // `updatedAt`: going on would only retry the same oldest files.
-      report.left = stuck.length - index;
+      report.nodesLeft = stuck.length - index;
       break;
     }
     // On purpose a raw write, past the optimistic lock and the audit: the

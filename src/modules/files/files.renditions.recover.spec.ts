@@ -142,6 +142,35 @@ describe("renditions that recover or fail", () => {
     expect(await statusOf(workspace.id, file.key)).toBe("READY");
   });
 
+  test("the beat before the stores keeps a slow render out of the stuck sweep", async () => {
+    const { file, workspace } = await record(picture(), "slow2.png");
+    const db = await databaseOf(workspace.id);
+    const swept: unknown[] = [];
+    let seen = false;
+    // The read comes after the first beat: it makes the node look stuck again,
+    // as a render slower than the threshold would.
+    const slow = {
+      ...files.ctx.bucket,
+      open: async (...args: Parameters<typeof files.ctx.bucket.open>) => {
+        await db.db.nodes.raw.updateMany(
+          { blobKey: file.key },
+          { $set: { updatedAt: new Date(0) } },
+        );
+        return files.ctx.bucket.open(...args);
+      },
+      put: async (...args: Parameters<typeof files.ctx.bucket.put>) => {
+        if (!seen) {
+          seen = true;
+          swept.push(await requeueStuck(db, queue, workspace.id));
+        }
+        return files.ctx.bucket.put(...args);
+      },
+    } as typeof files.ctx.bucket;
+    await attempt(workspace.id, file.key, { attempt: 1, bucket: slow });
+    expect(swept).toEqual([{ requeued: 0, failed: 0 }]);
+    expect(await statusOf(workspace.id, file.key)).toBe("READY");
+  });
+
   test("a copy made while the file is PROCESSING shares the job's outcome", async () => {
     const { file, workspace, root, at } = await record(picture(), "shared.png");
     expect(file.status).toBe("PROCESSING");

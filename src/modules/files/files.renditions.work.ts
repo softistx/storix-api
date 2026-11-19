@@ -52,13 +52,22 @@ async function setStatus(
 
 // A job that is running keeps its nodes out of the stuck sweep (`requeueStuck`
 // looks at `updatedAt`): the handler touches them when it starts and again
-// before it stores, so a slow render is never queued a second time. A raw
-// write, as the sweep's own: no version, no audit.
+// before it stores, so a slow render is never queued a second time. The beat
+// comes at the phase boundaries only (nothing beats inside the read, the
+// render or the stores), so each phase must stay well under `STUCK_AFTER_MS`.
+// A raw write, as the sweep's own (no version, no audit), and best effort: a
+// database blip is logged and never fails the job nor sets it `FAILED`.
 async function touch(mongo: FilesMongo, key: string) {
-  await mongo.db.nodes.raw.updateMany(
-    { blobKey: key, status: "PROCESSING" },
-    { $set: { updatedAt: new Date() } },
-  );
+  try {
+    await mongo.db.nodes.raw.updateMany(
+      { blobKey: key, status: "PROCESSING" },
+      { $set: { updatedAt: new Date() } },
+    );
+  } catch (error) {
+    console.warn(
+      `renditions ${key}: heartbeat failed: ${error instanceof Error ? error.message : error}`,
+    );
+  }
 }
 
 async function readOriginal(
