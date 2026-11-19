@@ -41,7 +41,11 @@ export async function setFocalPoint(
       x: input.focalPoint.x,
       y: input.focalPoint.y,
     },
-    ...(renditions && { status: "PROCESSING" as const }),
+    ...(renditions && {
+      status: "PROCESSING" as const,
+      renditionRequeues: 0,
+      renditionsAt: new Date(),
+    }),
   };
   const node = await named(() =>
     mongo.db.nodes.as(input.accountId).update(before._id, change),

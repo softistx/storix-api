@@ -94,5 +94,6 @@ export async function insertFile(
     size: input.size,
     family: familyOf(input.mimeType),
     status: input.status ?? "READY",
+    ...(input.status === "PROCESSING" && { renditionsAt: new Date() }),
   });
 }

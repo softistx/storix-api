@@ -70,11 +70,11 @@ async function twoStuck() {
   const secondKey = await a.second();
   await a.mongo.db.nodes.raw.updateMany(
     { blobKey: a.key },
-    { $set: { updatedAt: new Date(0) } },
+    { $set: { renditionsAt: new Date(0) } },
   );
   await a.mongo.db.nodes.raw.updateMany(
     { blobKey: secondKey },
-    { $set: { updatedAt: new Date(1000) } },
+    { $set: { renditionsAt: new Date(1000) } },
   );
   const status = (key: string) =>
     a.mongo.db.nodes
@@ -104,7 +104,7 @@ describe("files stuck PROCESSING", () => {
     const age = () =>
       a.mongo.db.nodes.raw.updateMany(
         { blobKey: a.key },
-        { $set: { updatedAt: new Date(0) } },
+        { $set: { renditionsAt: new Date(0) } },
       );
     await age();
     expect(await run()).toEqual({ requeued: 1, failed: 0 });
@@ -123,7 +123,7 @@ describe("files stuck PROCESSING", () => {
     const a = await stuckFile();
     await a.mongo.db.nodes.raw.updateMany(
       { blobKey: a.key },
-      { $set: { updatedAt: new Date(0) } },
+      { $set: { renditionsAt: new Date(0) } },
     );
     refuse = true;
     try {

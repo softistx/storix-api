@@ -59,9 +59,27 @@ export const nodesListingDescIndexes = defineMigration({
       if (found) await nodes.dropIndex(name);
       await nodes.createIndex(key, { name, collation });
     }
-    if (!existing.some((index) => index.name === "nodes_processing")) {
+    // `renditionsAt` is what the sweep reads: a node already `PROCESSING`
+    // starts from its `updatedAt` (idempotent: only nodes without it).
+    await nodes.updateMany(
+      { status: "PROCESSING", renditionsAt: { $exists: false } },
+      [{ $set: { renditionsAt: "$updatedAt" } }],
+    );
+    const processing = existing.find(
+      (index) => index.name === "nodes_processing",
+    );
+    if (
+      processing &&
+      JSON.stringify(processing.key) !== JSON.stringify({ renditionsAt: 1 })
+    ) {
+      await nodes.dropIndex("nodes_processing");
+    }
+    if (
+      !processing ||
+      JSON.stringify(processing.key) !== JSON.stringify({ renditionsAt: 1 })
+    ) {
       await nodes.createIndex(
-        { updatedAt: 1 },
+        { renditionsAt: 1 },
         {
           name: "nodes_processing",
           partialFilterExpression: { status: "PROCESSING" },
