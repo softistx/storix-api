@@ -7,7 +7,7 @@ The v1 plan is split into efforts E0 to E8, each a tracking issue with its slice
 ## Run it
 
 ```sh
-bun install   # @softistx/* comes from npm.softistx.com (NPM_REGISTRY_TOKEN)
+bun install   # @softistx/* comes from npmjs, no token needed
 cp .env.example .env
 bun run dev                                  # starts the Docker services, then the API on :3000
 bun run worker                               # second terminal: thumbnails and crops (no previews without it)

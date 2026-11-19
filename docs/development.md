@@ -4,8 +4,7 @@ See [troubleshooting.md](troubleshooting.md) for the messages the server and its
 
 ## Install
 
-`@softistx/*` packages come from npm.softistx.com, mapped by the committed `.npmrc` and `bunfig.toml`,
-which read `NPM_REGISTRY_TOKEN` (exported by `~/.zshenv`). `@alxia/*` and `@nxgt/*` come from npmjs.
+`@softistx/*`, `@alxia/*` and `@nxgt/*` packages all come from npmjs; no token is needed.
 
 ```sh
 bun install
