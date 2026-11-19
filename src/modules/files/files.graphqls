@@ -114,7 +114,9 @@ extend type Query {
   """
   The caller's favourites, the most recently starred first, one page: nodes of
   their tree that are still live (a trashed node leaves the list and returns
-  with its restore). Needs `nodes:read`. 400 `validation.errors.invalid-cursor`
+  with its restore). The read is capped (a bounded number of favourites
+  per call), so a page may be short or empty while `hasNextPage` is still
+  `true`: ask for the next page until it is `false`. Needs `nodes:read`. 400 `validation.errors.invalid-cursor`
   (field `after`) for a cursor of another list.
   """
   starred(
@@ -124,7 +126,8 @@ extend type Query {
   """
   The files the caller opened or uploaded lately, the latest first, one page:
   at most 200 are kept per member, one entry per file, and a trashed file
-  leaves the list. Needs `nodes:read`. 400 `validation.errors.invalid-cursor`
+  leaves the list. As for `starred`, a page may be short or empty with
+  `hasNextPage` `true`. Needs `nodes:read`. 400 `validation.errors.invalid-cursor`
   (field `after`) for a cursor of another list.
   """
   recentFiles(
