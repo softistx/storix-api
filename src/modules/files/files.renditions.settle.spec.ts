@@ -1,6 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { createCanvas } from "@napi-rs/canvas";
-import { Collection } from "mongodb";
 import { store } from "@/config/tenancy";
 import { field } from "../../../test/files.area";
 import { ADD, type FileView, filesWorld } from "../../../test/files.harness";
@@ -161,20 +160,25 @@ describe("renditions settle by success", () => {
 
   test("a heartbeat that throws does not fail the job", async () => {
     const a = await record("beat.png");
-    const original = Collection.prototype.updateMany;
+    // The collection class of the driver the store runs on.
+    const proto = Object.getPrototypeOf(a.mongo.db.nodes.raw) as {
+      updateMany: (...args: unknown[]) => unknown;
+    };
+    const original = proto.updateMany;
     const warn = spyOn(console, "warn").mockImplementation(() => {});
-    const beat = spyOn(Collection.prototype, "updateMany").mockImplementation(
-      function (this: Collection, ...args: unknown[]) {
-        const update = args[1] as { $set?: Record<string, unknown> };
-        if (update?.$set && "renditionsAt" in update.$set) {
-          throw new Error("mongo blip");
-        }
-        return (original as (...a: unknown[]) => unknown).apply(
-          this,
-          args,
-        ) as never;
-      } as never,
-    );
+    const beat = spyOn(proto, "updateMany").mockImplementation(function (
+      this: unknown,
+      ...args: unknown[]
+    ) {
+      const update = args[1] as { $set?: Record<string, unknown> };
+      if (update?.$set && "renditionsAt" in update.$set) {
+        throw new Error("mongo blip");
+      }
+      return (original as (...a: unknown[]) => unknown).apply(
+        this,
+        args,
+      ) as never;
+    } as never);
     try {
       await a.run();
     } finally {

@@ -64,6 +64,7 @@ export const nodesListingDescIndexes = defineMigration({
     await nodes.updateMany(
       { status: "PROCESSING", renditionsAt: { $exists: false } },
       [{ $set: { renditionsAt: "$updatedAt" } }],
+      { bypassDocumentValidation: true },
     );
     const processing = existing.find(
       (index) => index.name === "nodes_processing",
