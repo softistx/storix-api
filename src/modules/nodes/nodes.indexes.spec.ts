@@ -177,6 +177,7 @@ describe("the listing indexes", () => {
     await nodes.updateOne(
       { _id: inserted.insertedId },
       { $set: { renditionsAt: new Date(9_000) } },
+      { bypassDocumentValidation: true },
     );
     await nodesListingDescIndexes.up(context);
     expect(
