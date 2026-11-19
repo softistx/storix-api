@@ -75,7 +75,19 @@ export async function sweepWorkspace(
         mongo,
         options.renditions,
         workspaceId,
-        options,
+        {
+          now: run.now,
+          log: run.log,
+          ...(options.stuckAfterMs !== undefined && {
+            stuckAfterMs: options.stuckAfterMs,
+          }),
+          ...(options.maxRequeues !== undefined && {
+            maxRequeues: options.maxRequeues,
+          }),
+          ...(options.stuckBatch !== undefined && {
+            batch: options.stuckBatch,
+          }),
+        },
       );
     } catch (error) {
       run.log(
