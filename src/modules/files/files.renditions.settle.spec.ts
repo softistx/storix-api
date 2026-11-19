@@ -179,13 +179,15 @@ describe("renditions settle by success", () => {
         args,
       ) as never;
     } as never);
+    let warned = 0;
     try {
       await a.run();
     } finally {
+      warned = warn.mock.calls.length;
       beat.mockRestore();
       warn.mockRestore();
     }
     expect((await a.node())?.status).toBe("READY");
-    expect(warn).toHaveBeenCalled();
+    expect(warned).toBeGreaterThan(0);
   });
 });
