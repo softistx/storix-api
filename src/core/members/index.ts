@@ -7,6 +7,7 @@ import type { MemberRemovalWiring } from "./members.removal";
 // What the app's wiring hands the members surface (src/config/wiring.ts).
 export type MemberWiring = MemberJoinWiring & MemberRemovalWiring;
 
+export { membersMongo } from "./members.handle";
 export {
   type JoinListener,
   type MemberJoined,

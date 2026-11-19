@@ -38,20 +38,29 @@ class OriginalMissing extends Error {}
 
 // Every node of the blob (a copy shares it) still `PROCESSING` takes the
 // status. Silent: the nodes' versions stay what a client holds.
+//
+// `authoritative` (a full job that succeeded) also settles nodes the stuck
+// sweep gave up on (`FAILED`): the sizes are stored, a backlog that outlived
+// `maxRequeues` must not leave them `FAILED` for good. A crops job keeps the
+// `PROCESSING`-only rule. `READY` resets the requeue counter.
 async function setStatus(
   mongo: FilesMongo,
   key: string,
   status: "READY" | "FAILED",
+  authoritative = false,
 ) {
   await mongo.db.nodes.updateMany(
-    { blobKey: key, status: "PROCESSING" },
-    { status },
+    {
+      blobKey: key,
+      status: authoritative ? { $in: ["PROCESSING", "FAILED"] } : "PROCESSING",
+    },
+    status === "READY" ? { status, renditionRequeues: 0 } : { status },
     { audit: false },
   );
 }
 
 // A job that is running keeps its nodes out of the stuck sweep (`requeueStuck`
-// looks at `updatedAt`): the handler touches them when it starts and again
+// looks at `renditionsAt`): the handler touches them when it starts and again
 // before it stores, so a slow render is never queued a second time. The beat
 // comes at the phase boundaries only (nothing beats inside the read, the
 // render or the stores), so each phase must stay well under `STUCK_AFTER_MS`.
@@ -61,7 +70,7 @@ async function touch(mongo: FilesMongo, key: string) {
   try {
     await mongo.db.nodes.raw.updateMany(
       { blobKey: key, status: "PROCESSING" },
-      { $set: { updatedAt: new Date() } },
+      { $set: { renditionsAt: new Date() } },
     );
   } catch (error) {
     console.warn(
@@ -134,6 +143,6 @@ export function renditionsHandler(
       }
       throw error;
     }
-    await setStatus(mongo, key, "READY");
+    await setStatus(mongo, key, "READY", crops !== true);
   };
 }

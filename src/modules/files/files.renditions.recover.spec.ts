@@ -123,7 +123,7 @@ describe("renditions that recover or fail", () => {
     const db = await databaseOf(workspace.id);
     await db.db.nodes.raw.updateMany(
       { blobKey: file.key },
-      { $set: { updatedAt: new Date(0) } },
+      { $set: { renditionsAt: new Date(0) } },
     );
     const swept: unknown[] = [];
     let seen = false;
@@ -154,7 +154,7 @@ describe("renditions that recover or fail", () => {
       open: async (...args: Parameters<typeof files.ctx.bucket.open>) => {
         await db.db.nodes.raw.updateMany(
           { blobKey: file.key },
-          { $set: { updatedAt: new Date(0) } },
+          { $set: { renditionsAt: new Date(0) } },
         );
         return files.ctx.bucket.open(...args);
       },

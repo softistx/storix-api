@@ -24,6 +24,8 @@ export interface SweepOptions extends StuckOptions {
   now?: () => Date;
   orphanMarginMs?: number;
   batch?: number;
+  // Stuck files looked at per run (`batch` is the blobs and objects read).
+  stuckBatch?: number;
   maxDeletes?: number;
 }
 

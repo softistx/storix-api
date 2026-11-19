@@ -71,6 +71,10 @@ export const nodes = defineCollection({
     // How often the sweep queued the renditions job of a file stuck
     // `PROCESSING` again (`files.sweep.stuck.ts`); at the limit it is `FAILED`.
     renditionRequeues: z.number().int().nonnegative().default(0),
+    // When the file last entered `PROCESSING`, or its renditions job last
+    // showed life (the heartbeat, a sweep requeue). The stuck sweep reads it,
+    // so the user-visible `updatedAt` never moves for it.
+    renditionsAt: z.date().nullable().default(null),
   }),
   timestamps: true,
   optimisticLock: true,
@@ -159,7 +163,7 @@ export const nodes = defineCollection({
     },
     // The sweep's scan for files stuck `PROCESSING`: few, and the oldest first.
     {
-      key: { updatedAt: 1 },
+      key: { renditionsAt: 1 },
       name: "nodes_processing",
       partialFilterExpression: { status: "PROCESSING" },
     },

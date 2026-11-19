@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { tenancy } from "@/config/tenancy";
 import { world } from "../../../test/workspaces.harness";
-import { addMember, type MembersMongo } from "../members";
+import { addMember, membersMongo } from "../members";
 
 const MEMBERS = "{ members { totalCount nodes { id accountId role } } }";
 const WORKSPACE = "{ workspace { id slug myRole } }";
@@ -84,7 +84,7 @@ describe("workspace isolation", () => {
     const a = await w.workspaceOf();
     const b = await w.workspaceOf();
     const both = await w.join(a, "MEMBER");
-    await addMember(tenancy.core as MembersMongo, {
+    await addMember(membersMongo(tenancy.core), {
       workspaceId: b.id,
       accountId: both.user.principal.accountId,
       role: "ADMIN",

@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import { tenancy } from "@/config/tenancy";
 import { world } from "../../../test/workspaces.harness";
-import { endMembership, type MembersMongo } from "./members.service";
+import { membersMongo } from "./members.handle";
+import { endMembership } from "./members.service";
 
-const mongo = () => tenancy.core as MembersMongo;
+const mongo = () => membersMongo(tenancy.core);
 
 async function scene() {
   const w = await world();

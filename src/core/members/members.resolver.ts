@@ -4,19 +4,15 @@ import { requireWorkspaceMember, requireWorkspacePermission } from "../access";
 import { memberActor } from "../audit";
 import type { Account } from "../identity";
 import { recordLeave, recordRemoval, recordRoleChange } from "./members.audit";
+import { membersMongo } from "./members.handle";
 import { listMembers } from "./members.queries";
 import { handOver, memberRemoved } from "./members.removal";
-import {
-  changeRole,
-  endMembership,
-  type MemberDoc,
-  type MembersMongo,
-} from "./members.service";
+import { changeRole, endMembership, type MemberDoc } from "./members.service";
 
 // The module's own handle on the core database (the scope's, typed by the
 // registry; see src/core/access/ports.ts).
 const handleOf = (scope: { readonly core: unknown }) =>
-  scope.core as MembersMongo;
+  membersMongo(scope.core);
 
 const memberView = (member: MemberDoc, account: Account | undefined) => ({
   id: member.id,

@@ -70,6 +70,9 @@ export async function pushVersion(
         size: input.blob.size,
         family: familyOf(input.blob.mimeType),
         status: input.status,
+        // A new blob starts its renditions afresh.
+        renditionRequeues: 0,
+        ...(input.status === "PROCESSING" && { renditionsAt: new Date() }),
         currentVersionId: row._id,
         ...(input.fresh && { focalPoint: null }),
       });

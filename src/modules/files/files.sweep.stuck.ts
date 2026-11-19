@@ -52,10 +52,10 @@ export async function requeueStuck(
   const stuck = await nodes
     .find({
       status: "PROCESSING",
-      updatedAt: { $lt: cutoff },
+      renditionsAt: { $lt: cutoff },
       blobKey: { $type: "string" },
     })
-    .sort({ updatedAt: 1 })
+    .sort({ renditionsAt: 1 })
     .limit(options.batch ?? STUCK_BATCH)
     .toArray();
   const seen = new Set<string>();
@@ -67,7 +67,7 @@ export async function requeueStuck(
     const blob = { blobKey: key, status: "PROCESSING" as const };
     if (tries >= max) {
       const done = await nodes.updateMany(blob, {
-        $set: { status: "FAILED", updatedAt: now },
+        $set: { status: "FAILED" },
       });
       if (done.modifiedCount > 0) report.failed += 1;
       continue;
@@ -82,7 +82,7 @@ export async function requeueStuck(
         `stuck renditions ${workspaceId}: ${key} not queued: ${error instanceof Error ? error.message : error}`,
       );
       // The queue is probably down, and the refused node keeps its old
-      // `updatedAt`: going on would only retry the same oldest files.
+      // `renditionsAt`: going on would only retry the same oldest files.
       report.nodesLeft = stuck.length - index;
       break;
     }
@@ -90,7 +90,7 @@ export async function requeueStuck(
     // sweep works at blob level, not on a node's versions.
     await nodes.updateMany(blob, {
       $inc: { renditionRequeues: 1 },
-      $set: { updatedAt: now },
+      $set: { renditionsAt: now },
     });
     report.requeued += 1;
   }

@@ -4,11 +4,11 @@ import { harness } from "@/core/identity/identity.harness";
 import { joinWorkspace } from "@/core/invitations";
 import {
   addMember,
-  type MembersMongo,
   memberJoined,
+  membersMongo,
   type WorkspaceRole,
 } from "@/core/members";
-import type { WorkspacesMongo } from "@/core/workspaces";
+import { workspacesMongo } from "@/core/workspaces";
 import type { Limits } from "@/http/rate-limits";
 
 export { WORKSPACE_HEADER };
@@ -43,7 +43,7 @@ export async function world(
     ...(options.audit && { audit: options.audit }),
     onAcceptedInvitation: (accepted) =>
       joinWorkspace(
-        tenancy.core as MembersMongo,
+        membersMongo(tenancy.core),
         accepted,
         options.members ?? members,
       ),
@@ -92,7 +92,7 @@ export async function world(
     role: WorkspaceRole,
   ) {
     const user = await h.account();
-    const row = await addMember(tenancy.core as MembersMongo, {
+    const row = await addMember(membersMongo(tenancy.core), {
       workspaceId: workspace.id,
       accountId: user.principal.accountId,
       role,
@@ -125,7 +125,7 @@ export async function world(
 
   // Closes a workspace as the tenancy lifecycle does: it is no longer active.
   async function archive(workspace: { id: string; owner: User }) {
-    const mongo = tenancy.core as unknown as WorkspacesMongo;
+    const mongo = workspacesMongo(tenancy.core);
     const doc = await mongo.db.workspaces.findById(workspace.id);
     if (!doc) throw new Error("no such workspace");
     await mongo.db.workspaces

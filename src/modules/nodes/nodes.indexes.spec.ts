@@ -141,4 +141,47 @@ describe("the listing indexes", () => {
     await nodesListingDescIndexes.up(context);
     expect(JSON.stringify(await nodes.indexes())).toBe(before);
   });
+
+  test("the desc-indexes migration moves nodes_processing to renditionsAt and backfills it", async () => {
+    const { workspace } = await setup();
+    const database = connection.client.db(WORKSPACE_DB(workspace.id));
+    const nodes = database.collection("nodes");
+    await nodes.dropIndex("nodes_processing");
+    await nodes.createIndex(
+      { updatedAt: 1 },
+      {
+        name: "nodes_processing",
+        partialFilterExpression: { status: "PROCESSING" },
+      },
+    );
+    const stamp = new Date(5_000);
+    // The collection's validator wants a whole node: the raw row skips it.
+    const inserted = await nodes.insertOne(
+      { status: "PROCESSING", updatedAt: stamp },
+      { bypassDocumentValidation: true },
+    );
+    const context = {
+      db: database,
+      client: connection.client,
+      session: undefined,
+    };
+    await nodesListingDescIndexes.up(context);
+    const index = (await nodes.indexes()).find(
+      (i) => i.name === "nodes_processing",
+    );
+    expect(index?.key).toEqual({ renditionsAt: 1 });
+    expect(index?.partialFilterExpression).toEqual({ status: "PROCESSING" });
+    const row = await nodes.findOne({ _id: inserted.insertedId });
+    expect(row?.["renditionsAt"]).toEqual(stamp);
+    // Idempotent: a stamped node is not touched again.
+    await nodes.updateOne(
+      { _id: inserted.insertedId },
+      { $set: { renditionsAt: new Date(9_000) } },
+      { bypassDocumentValidation: true },
+    );
+    await nodesListingDescIndexes.up(context);
+    expect(
+      (await nodes.findOne({ _id: inserted.insertedId }))?.["renditionsAt"],
+    ).toEqual(new Date(9_000));
+  });
 });
