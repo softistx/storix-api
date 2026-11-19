@@ -84,6 +84,37 @@ async function twoStuck() {
 }
 
 describe("files stuck PROCESSING", () => {
+  test("a PROCESSING row with no renditionsAt is judged by updatedAt", async () => {
+    const a = await stuckFile();
+    added.length = 0;
+    await a.mongo.db.nodes.raw.updateMany(
+      { blobKey: a.key },
+      { $unset: { renditionsAt: "" }, $set: { updatedAt: new Date(0) } },
+      { bypassDocumentValidation: true },
+    );
+    const report = await requeueStuck(a.mongo, queue, a.workspaceId, {
+      now: () => new Date(Date.now() + 2 * 3_600_000),
+    });
+    expect(report).toEqual({ requeued: 1, failed: 0 });
+    expect(added.map((job) => job.key)).toEqual([a.key]);
+  });
+
+  test("two requeues of one blob after a counter reset get distinct job ids", async () => {
+    const a = await stuckFile();
+    added.length = 0;
+    const later = new Date(Date.now() + 2 * 3_600_000);
+    for (let i = 0; i < 2; i++) {
+      await a.mongo.db.nodes.raw.updateMany(
+        { blobKey: a.key },
+        { $set: { renditionsAt: new Date(0), renditionRequeues: 0 } },
+      );
+      await requeueStuck(a.mongo, queue, a.workspaceId, { now: () => later });
+    }
+    const ids = added.map((job) => job.id);
+    expect(ids).toHaveLength(2);
+    expect(new Set(ids).size).toBe(2);
+  });
+
   test("a recent file is left alone", async () => {
     const a = await stuckFile();
     const report = await requeueStuck(a.mongo, queue, a.workspaceId);
@@ -110,10 +141,9 @@ describe("files stuck PROCESSING", () => {
     expect(await run()).toEqual({ requeued: 1, failed: 0 });
     await age();
     expect(await run()).toEqual({ requeued: 1, failed: 0 });
-    expect(added.map((job) => job.id?.split(":").at(-1))).toEqual([
-      "stuck1",
-      "stuck2",
-    ]);
+    expect(
+      added.map((job) => job.id?.split(":").at(-1)?.split("-")[0]),
+    ).toEqual(["stuck1", "stuck2"]);
     await age();
     expect(await run()).toEqual({ requeued: 0, failed: 1 });
     expect((await a.node())?.status).toBe("FAILED");

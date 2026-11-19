@@ -29,7 +29,7 @@ export interface StuckReport {
 
 // A file whose renditions job was lost between the commit and `queue.add`
 // (the process died, Redis lost it) stays `PROCESSING` for ever. The sweep
-// queues the job of such a file again (`stuck<n>` is the job id's token, as
+// queues the job of such a file again (`stuck<n>-<uuid>` is the job id's token, as
 // `redo` is for the crops) and raises its counter; at `maxRequeues` the file
 // is `FAILED`: the original stays readable, only its previews are given up. A
 // queue that refuses a job stops the scan (it is probably down) and leaves
@@ -52,7 +52,13 @@ export async function requeueStuck(
   const stuck = await nodes
     .find({
       status: "PROCESSING",
-      renditionsAt: { $lt: cutoff },
+      // `null` also matches a node with no `renditionsAt`: an older build
+      // (rolling deploy, rollback) writes `PROCESSING` without it, and it is
+      // then judged by `updatedAt`.
+      $or: [
+        { renditionsAt: { $lt: cutoff } },
+        { renditionsAt: null, updatedAt: { $lt: cutoff } },
+      ],
       blobKey: { $type: "string" },
     })
     .sort({ renditionsAt: 1 })
@@ -75,7 +81,15 @@ export async function requeueStuck(
     try {
       await queue.add(
         { workspaceId, key },
-        { id: renditionJobId({ workspaceId, key }, `stuck${tries + 1}`) },
+        {
+          id: renditionJobId(
+            { workspaceId, key },
+            // Unique per attempt: the counter is reset to 0 by a READY, a
+            // focal move or a new version, and the queue keeps the first job
+            // of an id it already holds (failed ones for 7 days).
+            `stuck${tries + 1}-${crypto.randomUUID()}`,
+          ),
+        },
       );
     } catch (error) {
       log(
