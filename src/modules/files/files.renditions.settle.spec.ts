@@ -4,6 +4,7 @@ import { store } from "@/config/tenancy";
 import { workspacesMongo } from "@/core/workspaces";
 import { field } from "../../../test/files.area";
 import { ADD, type FileView, filesWorld } from "../../../test/files.harness";
+import { ADD_VERSION } from "../../../test/versions.harness";
 import { NODE, setup } from "../nodes/nodes.harness";
 import { copyNodes } from "./files.copy";
 import { filesMongo } from "./files.handle";
@@ -135,6 +136,30 @@ describe("renditions settle by success", () => {
     });
     expect(moved.errors).toBeUndefined();
     const node = await a.node();
+    expect(node?.status).toBe("PROCESSING");
+    expect(node?.renditionRequeues).toBe(0);
+    expect(node?.renditionsAt?.getTime()).toBeGreaterThan(Date.now() - 60_000);
+  });
+
+  test("a new version starts afresh (addFileVersion)", async () => {
+    const a = await record("version.png");
+    await a.run();
+    await a.mongo.db.nodes.raw.updateMany(
+      { blobKey: a.file.key },
+      { $set: { renditionRequeues: 2, renditionsAt: new Date(0) } },
+    );
+    const up = await files.upload(
+      a.workspace.owner,
+      a.workspace.id,
+      picture(),
+      "image/png",
+    );
+    const pushed = await files.ctx.w.send(a.workspace.owner, ADD_VERSION, {
+      ...a.at,
+      variables: { fileId: a.file.id, key: up.key },
+    });
+    expect(pushed.errors).toBeUndefined();
+    const node = await a.mongo.db.nodes.findFirst({ blobKey: up.key });
     expect(node?.status).toBe("PROCESSING");
     expect(node?.renditionRequeues).toBe(0);
     expect(node?.renditionsAt?.getTime()).toBeGreaterThan(Date.now() - 60_000);
