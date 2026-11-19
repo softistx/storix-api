@@ -1,6 +1,6 @@
 import { requireWorkspacePermission } from "@/core/access";
 import { type Auditor, memberActor } from "@/core/audit";
-import { activeMemberIds, type MembersMongo } from "@/core/members";
+import { activeMemberIds, membersMongo } from "@/core/members";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { invalidInput } from "@/i18n/fail";
 import {
@@ -9,6 +9,7 @@ import {
   recordTeamMembers,
   recordTeamRename,
 } from "./teams.audit";
+import { teamsMongo } from "./teams.handle";
 import {
   createTeam,
   deleteTeam,
@@ -18,16 +19,14 @@ import {
   renameTeam,
   setTeamMembers,
   type TeamDoc,
-  type TeamsMongo,
   updateTeam,
 } from "./teams.service";
 
 // The module's handles on the request's databases (the scope's, typed by the
 // registry; see src/core/access/ports.ts).
 const workspaceDb = (scope: { readonly mongo: unknown }) =>
-  scope.mongo as TeamsMongo;
-const coreDb = (scope: { readonly core: unknown }) =>
-  scope.core as MembersMongo;
+  teamsMongo(scope.mongo);
+const coreDb = (scope: { readonly core: unknown }) => membersMongo(scope.core);
 
 interface Scope {
   readonly core: unknown;

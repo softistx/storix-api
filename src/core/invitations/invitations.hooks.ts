@@ -2,7 +2,7 @@ import type { Context } from "@/http/context";
 import { fail, forbidden, invalidInput } from "@/i18n/fail";
 import { requireWorkspacePermission } from "../access";
 import type { InvitationHooks } from "../identity";
-import { type MembersMongo, membershipOf } from "../members";
+import { membershipOf, membersMongo } from "../members";
 import { activeWorkspaceName, workspacesMongo } from "../workspaces";
 import { isRole } from "./invitations.service";
 
@@ -35,7 +35,7 @@ export const invitationHooks: InvitationHooks<Context> = {
     }
     if (subject.input) {
       const account = await ctx.identity.accounts.byEmail(subject.input.email);
-      const members = scope.core as unknown as MembersMongo;
+      const members = membersMongo(scope.core);
       if (
         account &&
         (await membershipOf(members)(scope.tenant.id, account.accountId))

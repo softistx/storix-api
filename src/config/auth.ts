@@ -1,6 +1,6 @@
 import { createJanusIdentity } from "../core/identity/identity.janus";
 import { joinWorkspace } from "../core/invitations";
-import type { MembersMongo } from "../core/members";
+import { membersMongo } from "../core/members";
 import { core } from "./db";
 import { env } from "./env";
 import { serverMailer } from "./mailer";
@@ -17,5 +17,5 @@ export const identity = createJanusIdentity({
   mailFrom: env.MAIL_FROM,
   totpKeys: env.TOTP_KEYS,
   onAcceptedInvitation: (accepted) =>
-    joinWorkspace(core as unknown as MembersMongo, accepted, members),
+    joinWorkspace(membersMongo(core), accepted, members),
 });
