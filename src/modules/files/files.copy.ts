@@ -170,6 +170,9 @@ async function makeCopy(
       meta: node.meta,
       status: node.status,
       focalPoint: node.focalPoint,
+      ...(node.status === "PROCESSING" && {
+        renditionsAt: node.renditionsAt ?? new Date(),
+      }),
     }),
   });
 }

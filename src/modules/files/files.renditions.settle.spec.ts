@@ -1,9 +1,11 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { createCanvas } from "@napi-rs/canvas";
 import { store } from "@/config/tenancy";
+import { workspacesMongo } from "@/core/workspaces";
 import { field } from "../../../test/files.area";
 import { ADD, type FileView, filesWorld } from "../../../test/files.harness";
 import { NODE, setup } from "../nodes/nodes.harness";
+import { copyNodes } from "./files.copy";
 import { filesMongo } from "./files.handle";
 import { renditionsOf } from "./files.renditions.list";
 import { requeueStuck } from "./files.sweep.stuck";
@@ -156,6 +158,46 @@ describe("renditions settle by success", () => {
     expect((await a.node())?.updatedAt).toEqual(before as Date);
     await a.run();
     expect((await a.node())?.updatedAt).toEqual(before as Date);
+  });
+
+  test("the sweep giving up leaves updatedAt alone", async () => {
+    const a = await record("giveup.png");
+    const before = (await a.node())?.updatedAt;
+    await a.mongo.db.nodes.raw.updateMany(
+      { blobKey: a.file.key },
+      { $set: { renditionsAt: new Date(0), renditionRequeues: 2 } },
+    );
+    const result = await requeueStuck(a.mongo, queue, a.workspace.id, {
+      now: () => new Date(Date.now() + 2 * 3_600_000),
+      maxRequeues: 2,
+    });
+    expect(result).toEqual({ requeued: 0, failed: 1 });
+    const node = await a.node();
+    expect(node?.status).toBe("FAILED");
+    expect(node?.updatedAt).toEqual(before as Date);
+  });
+
+  test("a copy of a PROCESSING file gets a renditionsAt", async () => {
+    const a = await record("source.png");
+    const source = await a.node();
+    expect(source?.status).toBe("PROCESSING");
+    const copies = await copyNodes(
+      a.mongo,
+      workspacesMongo(store.core),
+      {
+        ids: [a.file.id],
+        parentId: String(source?.parentId),
+        accountId: a.workspace.owner.principal.accountId,
+        workspaceId: a.workspace.id,
+      },
+      { maxNodes: 10, maxDepth: 4 },
+    );
+    expect(copies).toBeDefined();
+    const all = await a.mongo.db.nodes.raw
+      .find({ blobKey: a.file.key })
+      .toArray();
+    expect(all.length).toBe(2);
+    for (const one of all) expect(one["renditionsAt"]).toBeInstanceOf(Date);
   });
 
   test("a heartbeat that throws does not fail the job", async () => {
