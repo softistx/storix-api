@@ -2,9 +2,9 @@ import { isMediaKey, type MediaBucket, mediaPlace } from "@alxia/media";
 import { ImageError } from "@softistx/image";
 import { type Handler, JobError } from "@softistx/redis";
 import { parseRenditionJobId, type renditionJob } from "@/queues/renditions";
+import type { FilesMongo } from "./files.handle";
 import { renditionKindOf } from "./files.renditions";
 import { makeRenditions } from "./files.renditions.make";
-import type { FilesMongo } from "./files.service";
 
 // What the worker runs for each job of the `renditions` queue (plan §3.14):
 // read the original, make `thumb` and `preview` and the four crops (centred
@@ -38,16 +38,45 @@ class OriginalMissing extends Error {}
 
 // Every node of the blob (a copy shares it) still `PROCESSING` takes the
 // status. Silent: the nodes' versions stay what a client holds.
+//
+// `authoritative` (a full job that succeeded) also settles nodes the stuck
+// sweep gave up on (`FAILED`): the sizes are stored, a backlog that outlived
+// `maxRequeues` must not leave them `FAILED` for good. A crops job keeps the
+// `PROCESSING`-only rule. `READY` resets the requeue counter.
 async function setStatus(
   mongo: FilesMongo,
   key: string,
   status: "READY" | "FAILED",
+  authoritative = false,
 ) {
   await mongo.db.nodes.updateMany(
-    { blobKey: key, status: "PROCESSING" },
-    { status },
+    {
+      blobKey: key,
+      status: authoritative ? { $in: ["PROCESSING", "FAILED"] } : "PROCESSING",
+    },
+    status === "READY" ? { status, renditionRequeues: 0 } : { status },
     { audit: false },
   );
+}
+
+// A job that is running keeps its nodes out of the stuck sweep (`requeueStuck`
+// looks at `renditionsAt`): the handler touches them when it starts and again
+// before it stores, so a slow render is never queued a second time. The beat
+// comes at the phase boundaries only (nothing beats inside the read, the
+// render or the stores), so each phase must stay well under `STUCK_AFTER_MS`.
+// A raw write, as the sweep's own (no version, no audit), and best effort: a
+// database blip is logged and never fails the job nor sets it `FAILED`.
+async function touch(mongo: FilesMongo, key: string) {
+  try {
+    await mongo.db.nodes.raw.updateMany(
+      { blobKey: key, status: "PROCESSING" },
+      { $set: { renditionsAt: new Date() } },
+    );
+  } catch (error) {
+    console.warn(
+      `renditions ${key}: heartbeat failed: ${error instanceof Error ? error.message : error}`,
+    );
+  }
 }
 
 async function readOriginal(
@@ -87,6 +116,7 @@ export function renditionsHandler(
       return;
     }
     try {
+      await touch(mongo, key);
       const bytes = await readOriginal(deps.bucket, workspaceId, key);
       const place = mediaPlace("files", `workspaces/${workspaceId}`);
       const made = await makeRenditions(bytes, kind, {
@@ -94,6 +124,7 @@ export function renditionsHandler(
         focal: node.focalPoint,
         cropsOnly: crops === true,
       });
+      await touch(mongo, key);
       for (const one of made) {
         await deps.bucket.put({ key: place(key, one.size) }, one.bytes, {
           type: one.contentType,
@@ -112,6 +143,6 @@ export function renditionsHandler(
       }
       throw error;
     }
-    await setStatus(mongo, key, "READY");
+    await setStatus(mongo, key, "READY", crops !== true);
   };
 }

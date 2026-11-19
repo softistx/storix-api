@@ -35,6 +35,7 @@ export const setFocalPoint: NonNullable<
       workspaceId: scope.tenant.id,
       actor: memberActor(principal),
       ip: ctx.ip,
+      auditor: ctx.audit,
     },
     node,
   );

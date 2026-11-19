@@ -68,6 +68,13 @@ export const nodes = defineCollection({
     // holds; null on a file recorded before versions existed or copied, until
     // its first version is made (`files.versions.first.ts`).
     currentVersionId: objectId().nullable().default(null),
+    // How often the sweep queued the renditions job of a file stuck
+    // `PROCESSING` again (`files.sweep.stuck.ts`); at the limit it is `FAILED`.
+    renditionRequeues: z.number().int().nonnegative().default(0),
+    // When the file last entered `PROCESSING`, or its renditions job last
+    // showed life (the heartbeat, a sweep requeue). The stuck sweep reads it,
+    // so the user-visible `updatedAt` never moves for it.
+    renditionsAt: z.date().nullable().default(null),
   }),
   timestamps: true,
   optimisticLock: true,
@@ -124,10 +131,41 @@ export const nodes = defineCollection({
       partialFilterExpression: { trashRootId: { $type: "objectId" } },
     },
     { key: { ownerId: 1, parentId: 1 }, name: "nodes_owner_parent" },
-    // The date sort has no name in its key: no collation.
+    // The listing sorts on `type` (a string) with the name collation, so the
+    // date index carries it too, or the sort runs in memory.
     {
       key: { parentId: 1, type: -1, updatedAt: 1, _id: 1 },
       name: "nodes_listing_date",
+      collation: NAME_COLLATION,
+    },
+    // The descending sorts (folders still first): an index is read backwards
+    // as a whole, so `type` descending with the field descending is its own
+    // index (2026-11-24-nodes-listing-desc-indexes).
+    {
+      key: { parentId: 1, type: -1, name: -1, _id: -1 },
+      name: "nodes_listing_desc",
+      collation: NAME_COLLATION,
+    },
+    {
+      key: { parentId: 1, type: -1, updatedAt: -1, _id: -1 },
+      name: "nodes_listing_date_desc",
+      collation: NAME_COLLATION,
+    },
+    {
+      key: { parentId: 1, type: -1, size: -1, name: -1, _id: -1 },
+      name: "nodes_listing_size_desc",
+      collation: NAME_COLLATION,
+    },
+    {
+      key: { parentId: 1, type: -1, family: -1, name: -1, _id: -1 },
+      name: "nodes_listing_kind_desc",
+      collation: NAME_COLLATION,
+    },
+    // The sweep's scan for files stuck `PROCESSING`: few, and the oldest first.
+    {
+      key: { renditionsAt: 1 },
+      name: "nodes_processing",
+      partialFilterExpression: { status: "PROCESSING" },
     },
     {
       key: { parentId: 1, type: -1, size: 1, name: 1, _id: 1 },

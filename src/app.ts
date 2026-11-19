@@ -8,12 +8,19 @@ import {
   bucket as serverBucket,
   uploadLimit as serverUploadLimit,
 } from "./config/storage";
+import {
+  auditor as serverAuditor,
+  members as serverMembers,
+} from "./config/wiring";
+import type { Auditor } from "./core/audit";
 import type { Identity } from "./core/identity";
+import type { MemberWiring } from "./core/members";
 import {
   type FileReader,
   storageRoutes,
   type UploadLimit,
 } from "./core/storage";
+import type { Translations } from "./core/translations/translations.load";
 import { createBase } from "./http/context";
 import { clientHeader } from "./http/csrf";
 import { graphqlPlugins } from "./http/graphql-plugins";
@@ -50,6 +57,12 @@ export function createApp(
     // The `renditions` queue `addFile` adds to (`undefined`: a file has no
     // previews and is `READY` at once); specs inject one over their own Redis.
     renditions?: RenditionsQueue | undefined;
+    // What the app hands down to the kernel (src/config/wiring.ts): the member
+    // listeners and the audit port, which specs may replace, and the
+    // translations `boot` loaded (without them `errorCatalogue` fails).
+    members?: MemberWiring;
+    audit?: Auditor;
+    translations?: Translations;
   } = {},
 ) {
   const bucket = options.media ? options.media.bucket : serverBucket;
@@ -68,7 +81,13 @@ export function createApp(
       .plugin((app) =>
         graphql(app, {
           schema: options.schema ?? schema,
-          context: () => ({ media: bucket, renditions }),
+          context: () => ({
+            media: bucket,
+            renditions,
+            members: options.members ?? serverMembers,
+            audit: options.audit ?? serverAuditor,
+            translations: options.translations,
+          }),
           plugins: graphqlPlugins,
           ide: "apollo-sandbox",
           sandbox: { initialHeaders: { [clientHeader]: "apollo-sandbox" } },
@@ -99,7 +118,4 @@ function probes(mongo: () => Promise<boolean>) {
   });
 }
 
-// The app the server runs.
-export const app = createApp();
-
-export type App = typeof app;
+export type App = ReturnType<typeof createApp>;

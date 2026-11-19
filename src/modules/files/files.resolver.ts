@@ -1,6 +1,6 @@
 import { requireWorkspacePermission } from "@/core/access";
 import { memberActor } from "@/core/audit";
-import type { WorkspacesMongo } from "@/core/workspaces";
+import { workspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { invalidInput } from "@/i18n/fail";
 import { checkName, fileView, nodeView, ownerOf } from "@/modules/nodes/public";
@@ -122,12 +122,13 @@ export const filesResolvers: Resolvers = {
         workspaceId: scope.tenant.id,
         actor: memberActor(principal),
         ip: ctx.ip,
+        auditor: ctx.audit,
       };
       let added: Awaited<ReturnType<typeof addFile>>;
       try {
         added = await addFile(
           filesDb(scope),
-          ctx.tenancy.core as WorkspacesMongo,
+          workspacesMongo(ctx.tenancy.core),
           ctx.media,
           ctx.renditions,
           {
@@ -169,7 +170,7 @@ export const filesResolvers: Resolvers = {
       );
       const copies = await copyNodes(
         filesDb(scope),
-        ctx.tenancy.core as WorkspacesMongo,
+        workspacesMongo(ctx.tenancy.core),
         {
           ids,
           parentId,
@@ -181,6 +182,7 @@ export const filesResolvers: Resolvers = {
         workspaceId: scope.tenant.id,
         actor: memberActor(principal),
         ip: ctx.ip,
+        auditor: ctx.audit,
       };
       for (const { node, from } of copies) {
         await recordCopy(done, node, from);
@@ -227,6 +229,7 @@ export const filesResolvers: Resolvers = {
           workspaceId: scope.tenant.id,
           actor: memberActor(principal),
           ip: ctx.ip,
+          auditor: ctx.audit,
         },
         node,
         [

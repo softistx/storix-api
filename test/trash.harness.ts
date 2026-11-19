@@ -1,5 +1,5 @@
 import { tenancy } from "@/config/tenancy";
-import type { WorkspacesMongo } from "@/core/workspaces";
+import { workspacesMongo } from "@/core/workspaces";
 import { NODE } from "../src/modules/nodes/nodes.harness";
 import type { filesWorld } from "./files.harness";
 import { LIST as VERSIONS, versionsArea } from "./versions.harness";
@@ -40,7 +40,7 @@ export async function trashArea(files: ReturnType<typeof filesWorld>) {
     return page.nodes.map((n) => n.name).sort();
   };
   const me = a.as(a.owner);
-  const core = () => tenancy.core as unknown as WorkspacesMongo;
+  const core = () => workspacesMongo(tenancy.core);
   return {
     ...a,
     core,

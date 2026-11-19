@@ -25,9 +25,12 @@ export async function harness(
     limits?: Limits;
     media?: NonNullable<Parameters<typeof createApp>[0]>["media"];
     renditions?: NonNullable<Parameters<typeof createApp>[0]>["renditions"];
+    members?: NonNullable<Parameters<typeof createApp>[0]>["members"];
+    audit?: NonNullable<Parameters<typeof createApp>[0]>["audit"];
   } = {},
 ) {
-  const { limits, media, renditions, ...identityOptions } = options;
+  const { limits, media, renditions, members, audit, ...identityOptions } =
+    options;
   const mailer = createMemoryMailer();
   const clock = fixedClock(new Date("2026-11-14T12:00:00Z"));
   const db = connection.client.db(`identity_spec_${crypto.randomUUID()}`);
@@ -51,6 +54,8 @@ export async function harness(
     ...(limits && { limits }),
     ...(media && { media }),
     ...(renditions && { renditions }),
+    ...(members && { members }),
+    ...(audit && { audit }),
   });
   const client = graphqlClient(app, { headers: { [clientHeader]: "spec" } });
 

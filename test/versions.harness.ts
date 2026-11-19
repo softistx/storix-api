@@ -1,5 +1,5 @@
 import { store, tenancy } from "@/config/tenancy";
-import type { WorkspacesMongo } from "@/core/workspaces";
+import { workspacesMongo } from "@/core/workspaces";
 import { filesMongo } from "@/modules/files/public";
 import { setup } from "../src/modules/nodes/nodes.harness";
 import { FILE, type FileView, type filesWorld } from "./files.harness";
@@ -42,10 +42,6 @@ export async function versionsArea(files: ReturnType<typeof filesWorld>) {
       .versions;
   };
   const usage = async () =>
-    (
-      await (tenancy.core as unknown as WorkspacesMongo).db.workspaces.getById(
-        id,
-      )
-    ).usage;
+    (await workspacesMongo(tenancy.core).db.workspaces.getById(id)).usage;
   return { ...s, usage, id, owner, root, mongo, send, add, push, versions };
 }

@@ -5,13 +5,7 @@ import { env } from "@/config/env";
 import { migrations } from "@/config/migrations";
 import { i18n } from "@/i18n";
 import { errorCodes } from "@/i18n/codes";
-import {
-  buildServed,
-  catalogueOfLanguage,
-  errorMessages,
-  loadTranslations,
-  translationsLoaded,
-} from "./translations.load";
+import { buildServed, loadTranslations } from "./translations.load";
 
 const db = connection.client.db(env.MONGO_CORE_DATABASE);
 
@@ -54,8 +48,7 @@ describe("buildServed", () => {
 
 describe("loadTranslations", () => {
   test("serves every code of the inventory in both languages", async () => {
-    await loadTranslations(core);
-    expect(translationsLoaded()).toBe(true);
+    const { errorMessages } = await loadTranslations(core);
     for (const language of ["en", "fr"]) {
       expect(errorMessages(language).map((m) => m.code)).toEqual([
         ...errorCodes,
@@ -76,10 +69,12 @@ describe("loadTranslations", () => {
   });
 
   test("a changed text changes the version of the language, a reload does not", async () => {
-    await loadTranslations(core);
-    const before = catalogueOfLanguage("fr").version;
-    await loadTranslations(core);
-    expect(catalogueOfLanguage("fr").version).toBe(before);
+    const before = (await loadTranslations(core)).catalogueOfLanguage(
+      "fr",
+    ).version;
+    expect(
+      (await loadTranslations(core)).catalogueOfLanguage("fr").version,
+    ).toBe(before);
 
     const filter = { code: "auth.errors.forbidden", language: "fr" };
     const original = await core.db.translations.raw.findOne(filter);
@@ -87,18 +82,20 @@ describe("loadTranslations", () => {
       await core.db.translations.raw.updateOne(filter, {
         $set: { text: "Interdit." },
       });
-      await loadTranslations(core);
-      expect(catalogueOfLanguage("fr").version).not.toBe(before);
+      const reloaded = await loadTranslations(core);
+      expect(reloaded.catalogueOfLanguage("fr").version).not.toBe(before);
       expect(
-        errorMessages("fr").find((m) => m.code === filter.code)?.message,
+        reloaded.errorMessages("fr").find((m) => m.code === filter.code)
+          ?.message,
       ).toBe("Interdit.");
     } finally {
       await core.db.translations.raw.updateOne(filter, {
         $set: { text: original?.text ?? "" },
       });
-      await loadTranslations(core);
     }
-    expect(catalogueOfLanguage("fr").version).toBe(before);
+    expect(
+      (await loadTranslations(core)).catalogueOfLanguage("fr").version,
+    ).toBe(before);
   });
 
   test("refuses to load when a code has no text in the fallback language", async () => {
@@ -116,7 +113,7 @@ describe("loadTranslations", () => {
   });
 
   test("a language that is not shipped is refused", async () => {
-    await loadTranslations(core);
+    const { catalogueOfLanguage } = await loadTranslations(core);
     expect(() => catalogueOfLanguage("de")).toThrow('no language "de"');
   });
 });

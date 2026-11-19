@@ -1,6 +1,6 @@
 import { requireWorkspacePermission } from "@/core/access";
-import { memberActor } from "@/core/audit";
-import type { WorkspacesMongo } from "@/core/workspaces";
+import { type Auditor, memberActor } from "@/core/audit";
+import { workspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { filesMongo } from "@/modules/files/public";
 import { nodesMongo, nodeView } from "@/modules/nodes/public";
@@ -10,10 +10,15 @@ import { emptyTrash, purgeNodes } from "./trash.purge";
 import { restoreNodes, trashNodes } from "./trash.service";
 
 const doneBy = (
-  ctx: { ip?: string | null | undefined },
+  ctx: { ip?: string | null | undefined; audit: Auditor },
   workspaceId: string,
   principal: { accountId: string; name: string },
-) => ({ workspaceId, actor: memberActor(principal), ip: ctx.ip });
+) => ({
+  workspaceId,
+  actor: memberActor(principal),
+  ip: ctx.ip,
+  auditor: ctx.audit,
+});
 
 export const trashResolvers: Resolvers = {
   Query: {
@@ -46,7 +51,7 @@ export const trashResolvers: Resolvers = {
       );
       const trashed = await trashNodes(
         filesMongo(scope.mongo),
-        ctx.tenancy.core as WorkspacesMongo,
+        workspacesMongo(ctx.tenancy.core),
         { workspaceId: scope.tenant.id, accountId: principal.accountId, ids },
       );
       const done = doneBy(ctx, scope.tenant.id, principal);
@@ -60,7 +65,7 @@ export const trashResolvers: Resolvers = {
       );
       const restored = await restoreNodes(
         filesMongo(scope.mongo),
-        ctx.tenancy.core as WorkspacesMongo,
+        workspacesMongo(ctx.tenancy.core),
         { workspaceId: scope.tenant.id, accountId: principal.accountId, ids },
       );
       const done = doneBy(ctx, scope.tenant.id, principal);
@@ -79,7 +84,7 @@ export const trashResolvers: Resolvers = {
       // record of what went.
       const { removed } = await purgeNodes(
         filesMongo(scope.mongo),
-        ctx.tenancy.core as WorkspacesMongo,
+        workspacesMongo(ctx.tenancy.core),
         {
           workspaceId: scope.tenant.id,
           accountId: principal.accountId,
@@ -99,7 +104,7 @@ export const trashResolvers: Resolvers = {
       try {
         await emptyTrash(
           filesMongo(scope.mongo),
-          ctx.tenancy.core as WorkspacesMongo,
+          workspacesMongo(ctx.tenancy.core),
           {
             workspaceId: scope.tenant.id,
             accountId: principal.accountId,

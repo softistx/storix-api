@@ -83,7 +83,7 @@ export async function ownedFolder(
 }
 
 // The account's root ("My files"), made on first need. It is made when the
-// member joins (`onMemberJoined`), and here for a member who joined before
+// member joins (`nodesOnJoin`), and here for a member who joined before
 // the module existed or whose clean-up failed. Two makers at once leave one:
 // the unique index refuses the second, which reads the first's.
 export async function ensureRoot(

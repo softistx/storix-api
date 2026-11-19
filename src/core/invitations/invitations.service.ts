@@ -1,5 +1,6 @@
 import {
   addMember,
+  type MemberJoinWiring,
   type MembersMongo,
   memberJoined,
   type WorkspaceRole,
@@ -21,6 +22,7 @@ export async function joinWorkspace(
     accountId: string;
     invitedBy: string | null;
   },
+  wiring: MemberJoinWiring,
 ): Promise<void> {
   if (!isRole(accepted.role)) {
     // Unreachable: `authorize` only lets a workspace role be issued.
@@ -32,7 +34,7 @@ export async function joinWorkspace(
     role: accepted.role,
     actorId: accepted.invitedBy ?? accepted.accountId,
   });
-  await memberJoined(member);
+  await memberJoined(wiring, member);
 }
 
 export const isRole = (role: string): role is WorkspaceRole =>

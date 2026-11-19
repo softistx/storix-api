@@ -1,14 +1,13 @@
-// The audit surface: the `audit.record` port every module calls, the binding the
-// server's wiring does, and the module. Everything else in this folder is
+// The audit surface: the `Auditor` port every module calls, its factory, and the module. Everything else in this folder is
 // private.
 
 export {
   type AuditActor,
   type AuditEventInput,
   type AuditMeta,
+  type Auditor,
   type AuditSink,
-  audit,
-  bindAudit,
+  createAuditor,
   memberActor,
 } from "./audit.record";
 export { auditModule } from "./module";

@@ -1,14 +1,15 @@
 import { bucket } from "../config/bucket";
 import { closeDatabases, core } from "../config/db";
+import { appRedis, closeQueues } from "../config/redis";
 import { store } from "../config/tenancy";
-import { sweepAll } from "../modules/files/public";
+import { runStorageSweep } from "./storage-sweep.run";
 
 // The hourly `sweep` job (plan §3.14): per active workspace, removes the blobs
 // nothing references (`refs` 0) with their objects and sizes, and the objects
 // of a `/media` PUT that `addFile` never recorded once they are 75 minutes
 // old. Usage is not touched. Schedule it from the host (cron, a systemd
-// timer) until the worker runs it; it exits 1 when a workspace failed or no
-// bucket is configured.
+// timer) until the worker runs it; it exits 1 when a workspace failed, a stuck file
+// was left for the next run (`nodesLeft`) or no bucket is configured.
 //
 //   bun run storage:sweep
 try {
@@ -18,21 +19,16 @@ try {
     );
     process.exitCode = 1;
   } else {
-    const { done, failed } = await sweepAll(
+    const { summary, exitCode } = await runStorageSweep(
       core,
       (id) => store.databaseOf(id),
       bucket,
+      appRedis?.queues.renditions,
     );
-    for (const f of failed) {
-      console.error(`workspace ${f.workspaceId}: not swept:`, f.error);
-    }
-    const total = (pick: (r: (typeof done)[number]) => number) =>
-      done.reduce((sum, r) => sum + pick(r), 0);
-    console.log(
-      `swept ${done.length} workspaces: ${total((r) => r.released)} released blobs, ${total((r) => r.orphans)} orphan objects, ${total((r) => r.failed)} not removed, ${failed.length} workspaces failed`,
-    );
-    if (failed.length > 0 || total((r) => r.failed) > 0) process.exitCode = 1;
+    console.log(summary);
+    process.exitCode = exitCode;
   }
 } finally {
   await closeDatabases();
+  await closeQueues();
 }

@@ -1,8 +1,9 @@
 import { type NodeDoc, named, ownedNode } from "@/modules/nodes/public";
 import type { Focal } from "./files.crops";
+import { enqueue } from "./files.enqueue";
 import { invalidFocal, notAFile, notRenderable } from "./files.errors";
+import type { FilesMongo } from "./files.handle";
 import { type RenditionsQueue, renditionKindOf } from "./files.renditions";
-import { enqueue, type FilesMongo } from "./files.service";
 
 // A coordinate is a number from 0 to 1 (fractions of the picture).
 export const isFocal = (focal: Focal) =>
@@ -40,7 +41,11 @@ export async function setFocalPoint(
       x: input.focalPoint.x,
       y: input.focalPoint.y,
     },
-    ...(renditions && { status: "PROCESSING" as const }),
+    ...(renditions && {
+      status: "PROCESSING" as const,
+      renditionRequeues: 0,
+      renditionsAt: new Date(),
+    }),
   };
   const node = await named(() =>
     mongo.db.nodes.as(input.accountId).update(before._id, change),

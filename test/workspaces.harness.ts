@@ -1,13 +1,14 @@
 import { tenancy, WORKSPACE_HEADER } from "@/config/tenancy";
+import { members } from "@/config/wiring";
 import { harness } from "@/core/identity/identity.harness";
 import { joinWorkspace } from "@/core/invitations";
 import {
   addMember,
-  type MembersMongo,
   memberJoined,
+  membersMongo,
   type WorkspaceRole,
 } from "@/core/members";
-import type { WorkspacesMongo } from "@/core/workspaces";
+import { workspacesMongo } from "@/core/workspaces";
 import type { Limits } from "@/http/rate-limits";
 
 export { WORKSPACE_HEADER };
@@ -29,14 +30,23 @@ export async function world(
     limits?: Limits;
     media?: HarnessOptions["media"];
     renditions?: HarnessOptions["renditions"];
+    // A wiring other than the server's (specs: a listener that fails).
+    members?: HarnessOptions["members"];
+    audit?: HarnessOptions["audit"];
   } = {},
 ) {
   const h = await harness({
     ...(options.limits && { limits: options.limits }),
     ...(options.media && { media: options.media }),
     ...(options.renditions && { renditions: options.renditions }),
+    ...(options.members && { members: options.members }),
+    ...(options.audit && { audit: options.audit }),
     onAcceptedInvitation: (accepted) =>
-      joinWorkspace(tenancy.core as MembersMongo, accepted),
+      joinWorkspace(
+        membersMongo(tenancy.core),
+        accepted,
+        options.members ?? members,
+      ),
   });
   let sequence = 0;
   const slug = () => `ws-${++sequence}-${crypto.randomUUID().slice(0, 6)}`;
@@ -82,13 +92,13 @@ export async function world(
     role: WorkspaceRole,
   ) {
     const user = await h.account();
-    const row = await addMember(tenancy.core as MembersMongo, {
+    const row = await addMember(membersMongo(tenancy.core), {
       workspaceId: workspace.id,
       accountId: user.principal.accountId,
       role,
       actorId: workspace.owner.principal.accountId,
     });
-    await memberJoined(row);
+    await memberJoined(options.members ?? members, row);
     return { user, memberId: row.id };
   }
 
@@ -115,7 +125,7 @@ export async function world(
 
   // Closes a workspace as the tenancy lifecycle does: it is no longer active.
   async function archive(workspace: { id: string; owner: User }) {
-    const mongo = tenancy.core as unknown as WorkspacesMongo;
+    const mongo = workspacesMongo(tenancy.core);
     const doc = await mongo.db.workspaces.findById(workspace.id);
     if (!doc) throw new Error("no such workspace");
     await mongo.db.workspaces

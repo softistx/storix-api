@@ -1,7 +1,7 @@
 import { mediaPlace } from "@alxia/media";
 import type { WorkspacesMongo } from "@/core/workspaces";
+import type { FilesMongo } from "./files.handle";
 import { filesMongo } from "./files.handle";
-import type { FilesMongo } from "./files.service";
 import { sweepOrphans } from "./files.sweep.orphans";
 import {
   ORPHAN_MARGIN_MS,
@@ -14,6 +14,7 @@ import {
   type SweepReport,
   sizesOf,
 } from "./files.sweep.run";
+import { requeueStuck } from "./files.sweep.stuck";
 
 // The blobs nothing references (`refs` 0): the blob goes first, with a delete
 // that only matches while `refs` is still 0, then its object and its sizes. A
@@ -44,9 +45,10 @@ async function sweepReleased(run: Sweep) {
 }
 
 // One workspace: its released blobs, then the unrecorded objects older than
-// the margin. Usage is not touched: it counts only blobs with `refs` above 0
+// the margin, then (given the renditions queue) the files stuck `PROCESSING`.
+// Usage is not touched: it counts only blobs with `refs` above 0
 // (`recountStorage`), and a released one is already out of it. Never throws
-// for a delete: it logs, counts it in `failed` and goes on.
+// for a delete or the stuck scan: it logs, counts it in `failed` and goes on.
 export async function sweepWorkspace(
   mongo: FilesMongo,
   bucket: SweepBucket,
@@ -67,6 +69,33 @@ export async function sweepWorkspace(
   };
   await sweepReleased(run);
   if (run.left > 0) await sweepOrphans(run);
+  if (options.renditions) {
+    try {
+      report.stuck = await requeueStuck(
+        mongo,
+        options.renditions,
+        workspaceId,
+        {
+          now: run.now,
+          log: run.log,
+          ...(options.stuckAfterMs !== undefined && {
+            stuckAfterMs: options.stuckAfterMs,
+          }),
+          ...(options.maxRequeues !== undefined && {
+            maxRequeues: options.maxRequeues,
+          }),
+          ...(options.stuckBatch !== undefined && {
+            batch: options.stuckBatch,
+          }),
+        },
+      );
+    } catch (error) {
+      run.log(
+        `stuck renditions ${workspaceId}: scan failed: ${error instanceof Error ? error.message : error}`,
+      );
+      report.failed += 1;
+    }
+  }
   return report;
 }
 

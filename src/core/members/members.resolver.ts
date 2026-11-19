@@ -4,19 +4,15 @@ import { requireWorkspaceMember, requireWorkspacePermission } from "../access";
 import { memberActor } from "../audit";
 import type { Account } from "../identity";
 import { recordLeave, recordRemoval, recordRoleChange } from "./members.audit";
+import { membersMongo } from "./members.handle";
 import { listMembers } from "./members.queries";
 import { handOver, memberRemoved } from "./members.removal";
-import {
-  changeRole,
-  endMembership,
-  type MemberDoc,
-  type MembersMongo,
-} from "./members.service";
+import { changeRole, endMembership, type MemberDoc } from "./members.service";
 
 // The module's own handle on the core database (the scope's, typed by the
 // registry; see src/core/access/ports.ts).
 const handleOf = (scope: { readonly core: unknown }) =>
-  scope.core as MembersMongo;
+  membersMongo(scope.core);
 
 const memberView = (member: MemberDoc, account: Account | undefined) => ({
   id: member.id,
@@ -101,6 +97,7 @@ export const membersResolvers: Resolvers = {
           workspaceId: scope.tenant.id,
           actor: memberActor(principal),
           ip: ctx.ip,
+          auditor: ctx.audit,
           member,
           name: view.name,
           from,
@@ -136,7 +133,7 @@ export const membersResolvers: Resolvers = {
                 if (!receiver) return;
                 name = await nameOf(ctx, target);
                 if (
-                  await handOver(scope, {
+                  await handOver(ctx.members, scope, {
                     workspaceId: scope.tenant.id,
                     from: {
                       memberId: target.id,
@@ -156,11 +153,12 @@ export const membersResolvers: Resolvers = {
           : {}),
       });
       name = name === undefined ? await nameOf(ctx, removed) : name;
-      await memberRemoved(scope, removed);
+      await memberRemoved(ctx.members, scope, removed);
       await recordRemoval({
         workspaceId: scope.tenant.id,
         actor: memberActor(principal),
         ip: ctx.ip,
+        auditor: ctx.audit,
         member: removed,
         name,
         transferredTo,
@@ -175,11 +173,12 @@ export const membersResolvers: Resolvers = {
         actorId: principal.accountId,
         canManageOwners: true,
       });
-      await memberRemoved(scope, left);
+      await memberRemoved(ctx.members, scope, left);
       await recordLeave({
         workspaceId: scope.tenant.id,
         actor: memberActor(principal),
         ip: ctx.ip,
+        auditor: ctx.audit,
         member: left,
         name: principal.name,
       });

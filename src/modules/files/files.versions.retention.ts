@@ -4,8 +4,8 @@ import {
   type WorkspacesMongo,
 } from "@/core/workspaces";
 import { lockTree, type NodeDoc, nodesMongo } from "@/modules/nodes/public";
+import type { FilesMongo } from "./files.handle";
 import { filesMongo } from "./files.handle";
-import type { FilesMongo } from "./files.service";
 import { removeVersion } from "./files.versions";
 
 const DAY_MS = 86_400_000;

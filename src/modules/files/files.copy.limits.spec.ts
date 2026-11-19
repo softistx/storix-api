@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { store } from "@/config/tenancy";
-import type { WorkspacesMongo } from "@/core/workspaces";
+import { workspacesMongo } from "@/core/workspaces";
 import { areaOf, code } from "../../../test/files.area";
 import { filesWorld } from "../../../test/files.harness";
 import { copyNodes } from "./files.copy";
@@ -16,7 +16,7 @@ async function copy(
   limits: { maxNodes: number; maxDepth: number },
 ) {
   const mongo = filesMongo(await store.databaseOf(a.workspace.id));
-  const core = store.core as unknown as WorkspacesMongo;
+  const core = workspacesMongo(store.core);
   return copyNodes(
     mongo,
     core,
