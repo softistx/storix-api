@@ -31,7 +31,7 @@
         "@softistx/mail": "^1.6.0",
         "@softistx/mail-smtp": "^1.1.0",
         "@softistx/mongo": "^0.29.0",
-        "@softistx/redis": "^0.21.1",
+        "@softistx/redis": "^0.22.0",
         "@softistx/s3": "^0.13.0",
         "@softistx/telemetry": "^0.4.2",
         "dataloader": "^2.2.3",
@@ -351,7 +351,7 @@
 
     "@softistx/mongo": ["@softistx/mongo@0.29.0", "https://npm.softistx.com/@softistx/mongo/-/mongo-0.29.0.tgz", { "peerDependencies": { "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-f9Y4ci1BOW94sj1nGmvxI4TrmyrcYwYSEgT4utL6RuemuO7xqBonTivGC4beXSYcfwhjCFIgsYHvSDqdQ/YmDA=="],
 
-    "@softistx/redis": ["@softistx/redis@0.21.1", "https://npm.softistx.com/@softistx/redis/-/redis-0.21.1.tgz", { "peerDependencies": { "redis-memory-server": ">=0.17.1 <0.18", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "optionalPeers": ["redis-memory-server"] }, "sha512-fa7Z8ZRO4wocxL5meiDMLOyFwYnYgx7bTOIMQuse5u4PLfKuDjaSLwetO5SRs7qfOz0jIeTgaMVFUl8l6B4PRQ=="],
+    "@softistx/redis": ["@softistx/redis@0.22.0", "https://npm.softistx.com/@softistx/redis/-/redis-0.22.0.tgz", { "peerDependencies": { "redis-memory-server": ">=0.17.1 <0.18", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "optionalPeers": ["redis-memory-server"] }, "sha512-K2LvMMHINv54l/TVHDuvQNxTFdNwJGt1cBYAsvE0Ddk48MKxylOcDEUriuwt3x1mRlEM02r915KVhWv5E1/eNA=="],
 
     "@softistx/s3": ["@softistx/s3@0.13.0", "https://npm.softistx.com/@softistx/s3/-/s3-0.13.0.tgz", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-0U0zavWQ4R4AwPfUFXA1QNRENsjxyV4reu10mkqC1MYTk94X3CqBXcbQFO+LpZmy7K8Y6xWY1mrqw4yGtN3aNw=="],
 
