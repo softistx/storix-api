@@ -33,7 +33,7 @@
         "@softistx/mongo": "^0.29.0",
         "@softistx/redis": "^0.21.1",
         "@softistx/s3": "^0.13.0",
-        "@softistx/telemetry": "^0.4.1",
+        "@softistx/telemetry": "^0.4.2",
         "dataloader": "^2.2.3",
         "graphql": "^17.0.2",
         "graphql-yoga": "^5.24.2",
@@ -355,7 +355,7 @@
 
     "@softistx/s3": ["@softistx/s3@0.13.0", "https://npm.softistx.com/@softistx/s3/-/s3-0.13.0.tgz", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-0U0zavWQ4R4AwPfUFXA1QNRENsjxyV4reu10mkqC1MYTk94X3CqBXcbQFO+LpZmy7K8Y6xWY1mrqw4yGtN3aNw=="],
 
-    "@softistx/telemetry": ["@softistx/telemetry@0.4.1", "https://npm.softistx.com/@softistx/telemetry/-/telemetry-0.4.1.tgz", { "peerDependencies": { "typescript": "^6.0.3" } }, "sha512-nSSF19VAGwX3GdVcgCg3oPJGAsyA/q6L1zdQq0+NuWAjYna+s2bRwyT0wIxRoOY5zfR8SXqCK2i9p5V+N5dN7w=="],
+    "@softistx/telemetry": ["@softistx/telemetry@0.4.2", "https://npm.softistx.com/@softistx/telemetry/-/telemetry-0.4.2.tgz", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["typescript"] }, "sha512-eiBFsw4GvWncOb5Zt9nYsTbrQ/8xwGpJkRYRaFqcFq8BuUkMnSzLPgNaLE4h+u4EJq6YcAa9KHG4PktS3xtw4A=="],
 
     "@types/bun": ["@types/bun@1.4.4", "", { "dependencies": { "bun-types": "1.4.4" } }, "sha512-9wkRDXUXK124pEnAutE6n/l18j+i9GC5IAHK8TmX/2nlySETmky0OU6yL5U8pW1AoKh++AN9auDCr647BfurjQ=="],
 
