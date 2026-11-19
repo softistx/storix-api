@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { ObjectId } from "mongodb";
-import { type FilesMongo, filesMongo } from "./files.handle";
+import { filesMongo } from "./files.handle";
 import { MAX_READS, personalPage, type Row } from "./files.personal";
 
 // A list whose rows all point at nodes that are gone: the scan stops on its
 // cap and hands back a cursor, instead of reading every dead row.
 describe("personal lists over dead rows", () => {
-  const mongo = {
+  const mongo = filesMongo({
     db: { nodes: { findMany: async () => [] } },
-  } as unknown as FilesMongo;
+  });
 
   test("a scan of dead rows stops at MAX_READS and resumes by cursor", async () => {
     let reads = 0;
