@@ -20,8 +20,11 @@ export interface StuckOptions {
 export interface StuckReport {
   // Files whose renditions job was queued again.
   requeued: number;
-  // Files that spent their retries (or whose queue refused) and are `FAILED`.
+  // Files that spent their retries and are `FAILED`.
   failed: number;
+  // Nodes left for the next run: the queue refused a job, so the scan stopped
+  // at that node (it counts the nodes of the scanned batch from there on).
+  nodesLeft?: number;
 }
 
 // A file whose renditions job was lost between the commit and `queue.add`
@@ -29,7 +32,8 @@ export interface StuckReport {
 // queues the job of such a file again (`stuck<n>` is the job id's token, as
 // `redo` is for the crops) and raises its counter; at `maxRequeues` the file
 // is `FAILED`: the original stays readable, only its previews are given up. A
-// queue that refuses the job leaves the file for the next run. Every node of a
+// queue that refuses a job stops the scan (it is probably down) and leaves
+// that file and the rest for the next run. Every node of a
 // shared blob (a copy) moves together.
 export async function requeueStuck(
   mongo: FilesMongo,
@@ -55,7 +59,7 @@ export async function requeueStuck(
     .limit(options.batch ?? STUCK_BATCH)
     .toArray();
   const seen = new Set<string>();
-  for (const node of stuck) {
+  for (const [index, node] of stuck.entries()) {
     const key = node["blobKey"] as string;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -77,8 +81,13 @@ export async function requeueStuck(
       log(
         `stuck renditions ${workspaceId}: ${key} not queued: ${error instanceof Error ? error.message : error}`,
       );
-      continue;
+      // The queue is probably down, and the refused node keeps its old
+      // `updatedAt`: going on would only retry the same oldest files.
+      report.nodesLeft = stuck.length - index;
+      break;
     }
+    // On purpose a raw write, past the optimistic lock and the audit: the
+    // sweep works at blob level, not on a node's versions.
     await nodes.updateMany(blob, {
       $inc: { renditionRequeues: 1 },
       $set: { updatedAt: now },

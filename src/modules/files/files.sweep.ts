@@ -45,9 +45,10 @@ async function sweepReleased(run: Sweep) {
 }
 
 // One workspace: its released blobs, then the unrecorded objects older than
-// the margin, then (given the renditions queue) the files stuck `PROCESSING`. Usage is not touched: it counts only blobs with `refs` above 0
+// the margin, then (given the renditions queue) the files stuck `PROCESSING`.
+// Usage is not touched: it counts only blobs with `refs` above 0
 // (`recountStorage`), and a released one is already out of it. Never throws
-// for a delete: it logs, counts it in `failed` and goes on.
+// for a delete or the stuck scan: it logs, counts it in `failed` and goes on.
 export async function sweepWorkspace(
   mongo: FilesMongo,
   bucket: SweepBucket,
@@ -69,12 +70,19 @@ export async function sweepWorkspace(
   await sweepReleased(run);
   if (run.left > 0) await sweepOrphans(run);
   if (options.renditions) {
-    report.stuck = await requeueStuck(
-      mongo,
-      options.renditions,
-      workspaceId,
-      options,
-    );
+    try {
+      report.stuck = await requeueStuck(
+        mongo,
+        options.renditions,
+        workspaceId,
+        options,
+      );
+    } catch (error) {
+      run.log(
+        `stuck renditions ${workspaceId}: scan failed: ${error instanceof Error ? error.message : error}`,
+      );
+      report.failed += 1;
+    }
   }
   return report;
 }
