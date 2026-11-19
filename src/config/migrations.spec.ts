@@ -51,6 +51,7 @@ describe("the core migrations", () => {
     "2026-11-15-nodes-listing-collation",
     "2026-11-21-nodes-trash-indexes",
     "2026-11-21-versions-indexes",
+    "2026-11-24-nodes-listing-desc-indexes",
   ];
 
   test("the core ids a database already ran are a frozen prefix of the list", () => {

@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 import { store } from "@/config/tenancy";
 import { field } from "../../../test/files.area";
 import {
@@ -10,6 +10,7 @@ import {
 import { setup } from "../nodes/nodes.harness";
 import { filesMongo } from "./files.handle";
 import type { RenditionsQueue } from "./files.renditions";
+import { sweepWorkspace } from "./files.sweep";
 import { requeueStuck } from "./files.sweep.stuck";
 
 // Jobs are collected, never run; `refuse` makes the queue throw.
@@ -80,7 +81,7 @@ describe("files stuck PROCESSING", () => {
     expect((await a.node())?.status).toBe("FAILED");
   });
 
-  test("a queue that refuses leaves the file for the next run", async () => {
+  test("a queue that refuses stops the scan and leaves the file for the next run", async () => {
     const a = await stuckFile();
     await a.mongo.db.nodes.raw.updateMany(
       { blobKey: a.key },
@@ -91,12 +92,36 @@ describe("files stuck PROCESSING", () => {
       const report = await requeueStuck(a.mongo, queue, a.workspaceId, {
         log: () => {},
       });
-      expect(report).toEqual({ requeued: 0, failed: 0 });
+      expect(report).toEqual({ requeued: 0, failed: 0, left: 1 });
     } finally {
       refuse = false;
     }
     const node = await a.node();
     expect(node?.status).toBe("PROCESSING");
     expect(node?.renditionRequeues).toBe(0);
+  });
+
+  test("the sweep of a workspace never throws for the stuck scan", async () => {
+    const a = await stuckFile();
+    const find = spyOn(a.mongo.db.nodes.raw, "find").mockImplementation(() => {
+      throw new Error("mongo is away");
+    });
+    const logs: string[] = [];
+    try {
+      const report = await sweepWorkspace(
+        a.mongo,
+        {
+          list: async () => ({ items: [], nextCursor: null }),
+          delete: async () => {},
+        } as never,
+        a.workspaceId,
+        { renditions: queue, log: (m) => logs.push(m) },
+      );
+      expect(report.failed).toBe(1);
+      expect(report.stuck).toBeUndefined();
+    } finally {
+      find.mockRestore();
+    }
+    expect(logs.some((m) => m.includes("scan failed"))).toBe(true);
   });
 });
