@@ -38,7 +38,7 @@ than one request (see Q1), realtime updates, custom rendition presets, a platfor
 
 | Repository | What | Lives in |
 | --- | --- | --- |
-| `softistx/storix-api` | GraphQL API (Bun, alxia, Yoga) and its queue worker | `~/workspace/dev/storix/storix-api` |
+| `softistx/storix-api` | GraphQL API (Bun, alxia, graxia) and its queue worker | `~/workspace/dev/storix/storix-api` |
 | `softistx/storix-ui` | React Router 8 BFF on `@alxia/react-router`, `@softistx/material` | `~/workspace/dev/storix/storix-ui` |
 | `softistx/storix-widget` | `@softistx/storix-widget`: script loader (Shadow DOM) and a `FileSource` | `~/workspace/dev/storix/storix-widget` |
 
@@ -616,7 +616,7 @@ workflows are disabled, a new repository's `ci.yml` is disabled at creation
 
 | # | Slice | Delivers | Acceptance | Depends on |
 | --- | --- | --- | --- | --- |
-| A0 | `chore: initial skeleton` | Bun, alxia, Yoga, `config/env.ts`, `core/` and `modules/registry.ts`, health, `schema.graphql` printed, docker-compose (MongoDB replica set, Redis, Mailpit, SeaweedFS), `scripts/dev.ts`, `verify` and `verify:pr` (affected specs), `ci.yml` (one job, `pull_request` into `develop`), `AGENTS.md`, `CONTEXT.md`, `README.md`, `docs/roadmap.md`, `docs/development.md`, `.nxgt-issues.json`, Dockerfile and `.dockerignore`, the janus-import dependency check | `verify` green; `bun run dev` answers `/health`; `bun check` reports a seeded error then a clean tree | none |
+| A0 | `chore: initial skeleton` | Bun, alxia, graxia, `config/env.ts`, `core/` and `modules/registry.ts`, health, `schema.graphql` printed, docker-compose (MongoDB replica set, Redis, Mailpit, SeaweedFS), `scripts/dev.ts`, `verify` and `verify:pr` (affected specs), `ci.yml` (one job, `pull_request` into `develop`), `AGENTS.md`, `CONTEXT.md`, `README.md`, `docs/roadmap.md`, `docs/development.md`, `.nxgt-issues.json`, Dockerfile and `.dockerignore`, the janus-import dependency check | `verify` green; `bun run dev` answers `/health`; `bun check` reports a seeded error then a clean tree | none |
 | A1 | `feat(i18n): error inventory, translations and errorCatalogue` | `defineCodes`, `fail`, `ErrorCode`, the `translations` collection and its first migration (auth, validation), `Query.errorCatalogue`, `coverage.spec.ts`, `db:migrate`, `db:sync` | a code without a message in both languages fails the spec; the catalogue's `version` changes with a text | A0 |
 | U0 | `chore: initial skeleton` | React Router 8 on `@alxia/react-router`, `execute()` and the proxy secret, material, `app/themes/storix.ts` (generated CSS committed), i18n English and French, `AppShell` with the six destinations as empty pages, CSP and security headers, the mock API (`app/mocks`), `check:i18n`, `check:deps`, `check:theme`, `build:checked`, Playwright quality harness, `ci.yml`, `AGENTS.md`, `README.md`, `docs/roadmap.md`, `docs/security.md` | `verify` green; the shell captured and scored; no sideways scroll at 360 px | none |
 | U1 | `feat(landing): public landing page, privacy and terms` | S1, S2: `app/modules/landing`, `app/modules/legal`; a guest sees the landing page at `/`, a signed-in visitor is sent on; meta, Open Graph, sitemap, `robots.txt` | captures of S1 and S2 scored; the page is indexable and the app pages are not; axe clean | U0 |

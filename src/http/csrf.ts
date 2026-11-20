@@ -1,4 +1,4 @@
-import type { Plugin } from "graphql-yoga";
+import { definePlugin } from "@graxia/core";
 import { fail } from "../i18n/fail";
 
 // The header every /graphql request carries, any non-empty value (the
@@ -8,13 +8,22 @@ import { fail } from "../i18n/fail";
 // request reaches a resolver, cookie or not.
 export const clientHeader = "x-storix-client";
 
-// A Yoga plugin (src/app.ts): a request without the header is refused before
-// it is parsed, 403. Yoga's `useCSRFPrevention` checks only the requests a
-// browser does not preflight; this one checks every request. The refusal
-// is `auth.errors.client-header-required`.
-export const requireClientHeader: Plugin = {
-  onRequestParse({ request }) {
+// A graxia plugin (src/app.ts): a request without the header is refused before
+// it is parsed, 403. graxia's own CSRF check (on by default) covers the
+// requests a browser does not preflight; this one checks every operation. It
+// runs in `onParams`, so the IDE's page (a GET with no operation) still loads.
+// The refusal is `auth.errors.client-header-required`.
+export const requireClientHeader = definePlugin({
+  name: "storix-client-header",
+  onParams: ({ request, respond }) => {
     if (request.headers.get(clientHeader)?.trim()) return;
-    throw fail("auth.errors.client-header-required", { status: 403 });
+    const error = fail("auth.errors.client-header-required", { status: 403 });
+    const { http: _http, ...extensions } = error.extensions;
+    respond(
+      Response.json(
+        { errors: [{ message: error.message, extensions }] },
+        { status: 403 },
+      ),
+    );
   },
-};
+});

@@ -9,7 +9,7 @@ import type { Params } from "./params";
 // the request's language, their fallback; `extensions.params`, when given, are
 // the values that message interpolates ({minutes}…), so a client can word the
 // refusal itself; `extensions.http.status`, when given, is the HTTP status
-// Yoga answers a top-level failure with; `extensions.field`, when given, names
+// graxia answers a top-level failure with; `extensions.field`, when given, names
 // the input field it is about. `/media` and `/public` refusals use the same
 // shape (plan §3.13).
 export function fail(

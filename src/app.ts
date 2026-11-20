@@ -1,5 +1,5 @@
 import { health } from "@alxia/core";
-import { graphql } from "@alxia/graphql";
+import { graphql, type ServerContext } from "@alxia/graphql";
 import type { MediaBucket } from "@alxia/media";
 import { identity as serverIdentity } from "./config/auth";
 import { closeDatabases, mongoAnswers } from "./config/db";
@@ -21,7 +21,7 @@ import {
   type UploadLimit,
 } from "./core/storage";
 import type { Translations } from "./core/translations/translations.load";
-import { createBase } from "./http/context";
+import { type Base, createBase } from "./http/context";
 import { clientHeader } from "./http/csrf";
 import { graphqlPlugins } from "./http/graphql-plugins";
 import { keyPathsOnly } from "./http/key-paths";
@@ -81,7 +81,7 @@ export function createApp(
       .plugin((app) =>
         graphql(app, {
           schema: options.schema ?? schema,
-          context: () => ({
+          context: (_: { serverContext: ServerContext<Base["~context"]> }) => ({
             media: bucket,
             renditions,
             members: options.members ?? serverMembers,
