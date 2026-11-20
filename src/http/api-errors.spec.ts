@@ -2,16 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { GraphQLError } from "graphql";
 import { apiErrors } from "./api-errors";
 
-// What Yoga hands the plugin: the execution result, which the plugin may
-// replace through `setResult`.
+// What graxia hands the plugin's after-hook: the execution result, which the
+// plugin may replace through `setResult`.
 function run(errors: GraphQLError[]) {
   let replaced: { errors?: readonly GraphQLError[] } | undefined;
-  const hooks = (
-    apiErrors.onExecute as unknown as () => {
-      onExecuteDone: (payload: unknown) => void;
-    }
+  const after = (
+    apiErrors.onExecute as unknown as () => (payload: unknown) => void
   )();
-  hooks.onExecuteDone({
+  after({
     result: { errors },
     setResult: (result: typeof replaced) => {
       replaced = result;

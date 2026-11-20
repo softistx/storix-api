@@ -98,6 +98,6 @@ export interface Extras {
   translations: Translations | undefined;
 }
 
-// A resolver's context: Yoga's and the base's, plus `Extras`. The generated
+// A resolver's context: graxia's and the base's, plus `Extras`. The generated
 // `Resolvers` takes it (codegen.ts: `contextType`).
 export type Context = Readonly<GraphQLContext<Base, Extras>>;

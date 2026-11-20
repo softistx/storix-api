@@ -1,6 +1,6 @@
 # storix-api
 
-storix is the softistx file manager: a workspace's files in folders, shared with people, teams and links, searchable, versioned, and embeddable in other softistx products through a widget. This repository is the GraphQL API (Bun, alxia, Yoga) and its queue worker.
+storix is the softistx file manager: a workspace's files in folders, shared with people, teams and links, searchable, versioned, and embeddable in other softistx products through a widget. This repository is the GraphQL API (Bun, alxia, graxia) and its queue worker.
 
 The v1 plan is split into efforts E0 to E8, each a tracking issue with its slices as issues; `docs/roadmap.md` links them.
 
@@ -47,7 +47,7 @@ curl localhost:3000/health
 | `src/modules/registry.ts`       | the one list of modules                                             |
 | `src/i18n/`                     | the error inventory (`defineCodes`, `ErrorCode`), `fail`, the i18n instance, the coverage check |
 | `src/config/`                   | `env.ts` (read once at import), the MongoDB handle                  |
-| `src/http/`                     | the base (request id, client address), the schema, the Yoga plugins |
+| `src/http/`                     | the base (request id, client address), the schema, the graxia plugins |
 | `docker-compose.yml`, `docker/` | the development services                                            |
 | `CONTEXT.md`                    | the domain glossary and the error-code table                        |
 

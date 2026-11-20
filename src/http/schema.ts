@@ -1,9 +1,9 @@
 import { freshPerMutation } from "@alxia/graphql";
 import { type Module, typeDefsOf } from "@alxia/modules";
 import { mergeResolvers, mergeTypeDefs } from "@graphql-tools/merge";
+import { createSchema } from "@graxia/core";
 import { scalarResolvers, scalarTypeDefs } from "@nxgt/graphql-scalars";
 import { constraintTypeDefs, withValidation } from "@nxgt/graphql-validation";
-import { createSchema } from "graphql-yoga";
 import { modules } from "../modules/registry";
 import type { Context } from "./context";
 
@@ -15,7 +15,7 @@ import type { Context } from "./context";
 // The list is a parameter so a spec can build the schema of a sample module.
 export function schemaOf(list: readonly Module[]) {
   return withValidation(
-    createSchema<Context>({
+    createSchema<Context>()({
       typeDefs: mergeTypeDefs([
         scalarTypeDefs,
         constraintTypeDefs,

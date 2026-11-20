@@ -81,7 +81,7 @@ interface Refusal {
   };
 }
 
-// A refusal over HTTP: the message in the request's language, the status Yoga
+// A refusal over HTTP: the message in the request's language, the status graxia
 // answers, and an @constraint refusal worded as `invalid-input`.
 const resolvers: Resolvers = {
   Query: {
