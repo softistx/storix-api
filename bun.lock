@@ -31,7 +31,7 @@
         "@softistx/mail": "^1.6.1",
         "@softistx/mail-smtp": "^1.1.1",
         "@softistx/mongo": "^0.30.1",
-        "@softistx/redis": "^0.24.0",
+        "@softistx/redis": "^0.24.1",
         "@softistx/s3": "^0.13.1",
         "@softistx/telemetry": "^0.4.2",
         "dataloader": "^2.2.3",
@@ -351,7 +351,7 @@
 
     "@softistx/mongo": ["@softistx/mongo@0.30.1", "", { "peerDependencies": { "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-rOrAkDQmobpNI1b/+oDSO0PVEVcIqBo+Ly6qwj4AuvFpfgZ4MOXfDWc7suZdaETbcwEqKUhNJzY9uaxya1+/tw=="],
 
-    "@softistx/redis": ["@softistx/redis@0.24.0", "", { "peerDependencies": { "redis-memory-server": ">=0.17.1 <0.18", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "optionalPeers": ["redis-memory-server"] }, "sha512-47PjZUfHWbiURqWi00V2Hfc0RxLFOJ5FGDnf8cd8+pgSE2CpvDtA7YFtdfPfh75hz1iwanP50POkfG3v3I0mYA=="],
+    "@softistx/redis": ["@softistx/redis@0.24.1", "", { "peerDependencies": { "redis-memory-server": ">=0.17.1 <0.18", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "optionalPeers": ["redis-memory-server"] }, "sha512-5fvcyYuiN526rKoRGBZke2lRCc9Tcn68R+Z0WvIx+pbo/E9A9fC+d1r/IaVVjeUBEyvd54KFt8BA40xaROh7Qg=="],
 
     "@softistx/s3": ["@softistx/s3@0.13.1", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-W+IuhMQieaNjKuSe3wvrlC2EcFHEBrgE6OJI5XLautMay/Kig43H1893hJ/jdbJIdeVqF2p87ZlLaCUj4+uL7w=="],
 
