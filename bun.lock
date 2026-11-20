@@ -25,7 +25,7 @@
         "@softistx/ai-telemetry": "^0.3.4",
         "@softistx/image": "^0.6.1",
         "@softistx/janus": "^0.79.0",
-        "@softistx/janus-graphql": "^0.34.0",
+        "@softistx/janus-graphql": "^0.35.0",
         "@softistx/janus-mail": "^0.26.23",
         "@softistx/janus-mongo": "^0.32.1",
         "@softistx/mail": "^1.6.1",
@@ -339,7 +339,7 @@
 
     "@softistx/janus": ["@softistx/janus@0.79.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-ZcSfd0erRm8JgxnMDpAcU/d6VMacv1DXDzEoE9N9UFu4ZGDn/5UF98NpgRnzrN9YDgOQtGyO7imhUE4TVjnk6w=="],
 
-    "@softistx/janus-graphql": ["@softistx/janus-graphql@0.34.0", "", { "peerDependencies": { "@envelop/core": "^5.0.0 || ^6.0.0", "@graphql-tools/utils": ">=10.0.0 <14", "@softistx/janus": "^0.79.0", "graphql": "^16.9.0 || ^17.0.0", "graphql-ws": "^6.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["graphql-ws"] }, "sha512-IjuUgZCsnjbHJtHC65XNU90kk4XEQtPW2kdlvxW2D1GLq4APC1q4tFfKUITUyJiZEU8ozDj+j20FF3aj6JWTQA=="],
+    "@softistx/janus-graphql": ["@softistx/janus-graphql@0.35.0", "", { "peerDependencies": { "@envelop/core": "^5.0.0 || ^6.0.0", "@graphql-tools/utils": ">=10.0.0 <14", "@softistx/janus": "^0.79.0", "graphql": "^16.9.0 || ^17.0.0", "graphql-ws": "^6.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["graphql-ws"] }, "sha512-kekoCEoRwWKNGAc3oV18I41Q0QO1JIyWOG3z1tU3qC0oA1G5T1+lIKy8ONi1FhgF2j1/0hEJdxr6UUvdL4OZbA=="],
 
     "@softistx/janus-mail": ["@softistx/janus-mail@0.26.23", "", { "peerDependencies": { "@softistx/janus": "^0.79.0", "@softistx/mail": ">=1.5.0 <2", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-PIsS3GjV+diM7wRyFjAPsCfKv9b1HTyjsL8ZTrWTMJWZCcObU1i+/ZH4dVi1MWbDiCM4Bx8lG5v/D6KDE8WBkA=="],
 
