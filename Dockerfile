@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.10
 # Bun bundles the app and its dependencies into dist/server.js, and the
 # background jobs into dist/worker.js (run it as a second container with
 # `bun --no-install dist/worker.js`; the SDL files are
@@ -14,7 +15,7 @@ WORKDIR /app
 ENV MONGOMS_DISABLE_POSTINSTALL=1 \
     REDISMS_DISABLE_POSTINSTALL=1
 COPY package.json bun.lock* bunfig.toml* ./
-RUN bun install --frozen-lockfile
+RUN --mount=type=secret,id=npm_read,env=NPM_SOFTISTX_READ_TOKEN bun install --frozen-lockfile
 COPY . .
 RUN bun run build
 
