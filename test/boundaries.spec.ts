@@ -1,6 +1,6 @@
 import { describe, test } from "bun:test";
 import { resolve } from "node:path";
-import { assertBoundaries } from "@alxia/modules";
+import { assertBoundaries } from "@softistx/alxia-modules";
 import { modules } from "../src/modules/registry";
 
 // The module boundaries, for every registered module, kernel (`src/core/<name>`,

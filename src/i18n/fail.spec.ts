@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, test } from "bun:test";
-import { defineModule } from "@alxia/modules";
+import { defineModule } from "@softistx/alxia-modules";
 import { migrate } from "@softistx/mongo/migrations";
 import { createApp } from "@/app";
 import { connection, core } from "@/config/db";

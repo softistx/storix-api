@@ -1,4 +1,4 @@
-import { defineModule } from "@alxia/modules";
+import { defineModule } from "@softistx/alxia-modules";
 import { quotas as codes } from "@/i18n/codes";
 import typeDefs from "./quotas.graphqls" with { type: "text" };
 import { quotasResolvers } from "./quotas.resolver";

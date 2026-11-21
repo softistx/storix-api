@@ -1,5 +1,5 @@
-import { migrationsOf } from "@alxia/modules";
-import type { MigrateMode } from "@alxia/tenancy";
+import { migrationsOf } from "@softistx/alxia-modules";
+import type { MigrateMode } from "@softistx/alxia-tenancy";
 import { closeDatabases, connection } from "../config/db";
 import { env } from "../config/env";
 import { migrations } from "../config/migrations";

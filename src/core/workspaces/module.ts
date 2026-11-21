@@ -1,4 +1,4 @@
-import { defineModule } from "@alxia/modules";
+import { defineModule } from "@softistx/alxia-modules";
 import { workspaces as codes } from "@/i18n/codes";
 import { workspacesQuota } from "./migrations/2026-11-20-workspaces-quota.migration";
 import { workspacesSettings } from "./migrations/2026-11-21-workspaces-settings.migration";

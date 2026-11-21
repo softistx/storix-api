@@ -1,4 +1,4 @@
-import { type Access, createAccess } from "@alxia/access";
+import { type Access, createAccess } from "@softistx/alxia-access";
 import { type WorkspaceRole, workspaceRoles } from "../core/members";
 import { modules } from "../modules/registry";
 

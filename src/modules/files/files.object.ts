@@ -1,4 +1,8 @@
-import { isMediaKey, type MediaBucket, mediaPlace } from "@alxia/media";
+import {
+  isMediaKey,
+  type MediaBucket,
+  mediaPlace,
+} from "@softistx/alxia-media";
 import { fail } from "@/i18n/fail";
 import { keyUnknown } from "./files.errors";
 

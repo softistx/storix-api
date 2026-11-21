@@ -1,4 +1,4 @@
-import { defineModule } from "@alxia/modules";
+import { defineModule } from "@softistx/alxia-modules";
 import type { HandoverListener, JoinListener } from "@/core/members";
 import { nodes as codes } from "@/i18n/codes";
 import { nodesListingCollation } from "./migrations/2026-11-15-nodes-listing-collation.migration";

@@ -1,4 +1,4 @@
-import { HttpError } from "@alxia/core";
+import { HttpError } from "@softistx/alxia";
 import type { GraphQLError } from "graphql";
 
 // A refusal outside /graphql (a middleware's), thrown as the HTTP error alxia

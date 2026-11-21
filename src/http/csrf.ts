@@ -1,4 +1,4 @@
-import { definePlugin } from "@graxia/core";
+import { definePlugin } from "@softistx/graxia";
 import { fail } from "../i18n/fail";
 
 // The header every /graphql request carries, any non-empty value (the

@@ -1,4 +1,4 @@
-import { defineModule } from "@alxia/modules";
+import { defineModule } from "@softistx/alxia-modules";
 import { files, versions } from "@/i18n/codes";
 import {
   blobs,

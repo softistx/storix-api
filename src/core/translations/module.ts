@@ -1,4 +1,4 @@
-import { defineModule } from "@alxia/modules";
+import { defineModule } from "@softistx/alxia-modules";
 import { translationMigrations } from "./migrations";
 import { translations } from "./translations.collection";
 import typeDefs from "./translations.graphqls" with { type: "text" };

@@ -8,7 +8,7 @@ export const isObjectIdLike = (value: string) => /^[0-9a-f]{24}$/.test(value);
 
 // The workspaces, in the core database: the registry of tenants. Each one has
 // a database of its own (`MONGO_WORKSPACE_PREFIX` + its id), opened by
-// `@alxia/tenancy`. `status` is the tenancy lifecycle: only an `active`
+// `@softistx/alxia-tenancy`. `status` is the tenancy lifecycle: only an `active`
 // workspace answers a request. `quotaBytes` is the storage the workspace may
 // hold (default 10 GiB, set by `bun run workspace:quota`) and `usage` its
 // counters, kept by `workspaces.usage.ts` (plan §3.9); `settings` are below.

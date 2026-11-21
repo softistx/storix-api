@@ -1,4 +1,4 @@
-import { graphqlClient } from "@alxia/graphql/testing";
+import { graphqlClient } from "@softistx/alxia-graphql/testing";
 import { fixedClock, scryptHasher } from "@softistx/janus";
 import { totpCode } from "@softistx/janus/testing";
 import {

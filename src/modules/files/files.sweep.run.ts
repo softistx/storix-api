@@ -4,7 +4,7 @@ import type { RenditionsQueue } from "./files.renditions";
 import type { StuckOptions, StuckReport } from "./files.sweep.stuck";
 
 // What the sweep needs of the bucket: the listing, and the delete that
-// `@alxia/media`'s routes use.
+// `@softistx/alxia-media`'s routes use.
 export type SweepBucket = Pick<
   BoundBucket<{ readonly key: string }>,
   "list" | "delete"

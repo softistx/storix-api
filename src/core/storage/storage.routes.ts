@@ -1,5 +1,5 @@
-import type { MediaBucket } from "@alxia/media";
-import { mediaRoutes } from "@alxia/media";
+import type { MediaBucket } from "@softistx/alxia-media";
+import { mediaRoutes } from "@softistx/alxia-media";
 import { keyPrefix } from "./storage.access";
 import type { MediaRequires } from "./storage.context";
 import type { FileReader } from "./storage.keys";

@@ -76,7 +76,15 @@ directive @constraint(
   startsWith: String
 ) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
 
-directive @cost(weight: Int!) on ARGUMENT_DEFINITION | ENUM | FIELD_DEFINITION | INPUT_FIELD_DEFINITION | OBJECT | SCALAR
+"""
+The cost of a field, type, enum, scalar, argument or input field in the query cost limit, following the IBM GraphQL cost specification.
+"""
+directive @cost(
+  """
+  The cost it adds; it replaces the default object or scalar cost for what it marks, and on a field it is added once, not per list item.
+  """
+  weight: Int!
+) on ARGUMENT_DEFINITION | ENUM | FIELD_DEFINITION | INPUT_FIELD_DEFINITION | OBJECT | SCALAR
 
 """
 Directs the executor to defer this fragment when the `if` argument is true or undefined.
@@ -96,7 +104,27 @@ STEP_UP_REQUIRED. Where several apply, the smallest `maxAge` holds.
 """
 directive @fresh(maxAge: Int!) on FIELD_DEFINITION | INTERFACE | OBJECT
 
-directive @listSize(assumedSize: Int, requireOneSlicingArgument: Boolean = true, sizedFields: [String!], slicingArguments: [String!]) on FIELD_DEFINITION
+"""
+How many items a list field returns, used to multiply its cost in the query cost limit, following the IBM GraphQL cost specification.
+"""
+directive @listSize(
+  """
+  The list size to assume when no slicing argument gives one; it defaults to the server limits.cost.defaultListSize (10 unless configured) and it also sizes the inner levels of a nested list.
+  """
+  assumedSize: Int
+  """
+  Whether a request must give a non-negative integer for at least one slicing argument, otherwise it is rejected; true by default.
+  """
+  requireOneSlicingArgument: Boolean = true
+  """
+  The fields of the returned object that hold the list (for example the edges of a connection), each sized like this field instead of once.
+  """
+  sizedFields: [String!]
+  """
+  The names of the arguments (a dotted path reaches into an input) whose non-negative integer value is the list size; the largest given one is used.
+  """
+  slicingArguments: [String!]
+) on FIELD_DEFINITION
 
 """
 Only a user holding permission `name` on the object of `type` whose id `id`

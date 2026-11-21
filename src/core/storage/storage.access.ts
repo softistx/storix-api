@@ -1,5 +1,5 @@
-import { requireMember } from "@alxia/access";
-import type { MediaDenial } from "@alxia/media";
+import { requireMember } from "@softistx/alxia-access";
+import type { MediaDenial } from "@softistx/alxia-media";
 import { GraphQLError } from "graphql";
 import { apiRefusal } from "@/core/access/refusals";
 import type { MediaRequires } from "./storage.context";

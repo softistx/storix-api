@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { seedsOf } from "@alxia/i18n";
+import { seedsOf } from "@softistx/alxia-i18n";
 import { texts } from "./migrations/2026-11-13-auth-validation-errors.texts";
 
 describe("seedsOf over the migration texts", () => {

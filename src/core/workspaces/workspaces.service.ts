@@ -1,4 +1,4 @@
-import type { ModuleCoreHandle } from "@alxia/modules";
+import type { ModuleCoreHandle } from "@softistx/alxia-modules";
 import { ConflictError, toObjectId } from "@softistx/mongo";
 import type { core } from "@/config/db";
 import {

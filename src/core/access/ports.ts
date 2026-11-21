@@ -1,5 +1,5 @@
-import type { Viewer } from "@alxia/access";
-import type { TenantScope } from "@alxia/tenancy";
+import type { Viewer } from "@softistx/alxia-access";
+import type { TenantScope } from "@softistx/alxia-tenancy";
 import type { WorkspaceRole } from "../members";
 import type { Workspace } from "../workspaces";
 

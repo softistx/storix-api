@@ -1,4 +1,4 @@
-// The members surface: the roles, the membership check `@alxia/tenancy` asks
+// The members surface: the roles, the membership check `@softistx/alxia-tenancy` asks
 // for, and the module. Everything else in this folder is private.
 
 import type { MemberJoinWiring } from "./members.joined";

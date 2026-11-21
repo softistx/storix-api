@@ -1,4 +1,4 @@
-import { forwardedIp, type TrustedProxies } from "@alxia/core";
+import { forwardedIp, type TrustedProxies } from "@softistx/alxia";
 
 export const PROXY_SECRET_HEADER = "x-storix-proxy-secret";
 
@@ -7,7 +7,7 @@ export const PROXY_SECRET_HEADER = "x-storix-proxy-secret";
 const OPEN_PREFIX = "/public/";
 
 // The `ip` option behind proxies, passed straight to `alxia({ ip })`: it must
-// not be wrapped, or @alxia/proxy no longer strips the secret header. Under
+// not be wrapped, or @softistx/alxia-proxy no longer strips the secret header. Under
 // /public/, TRUSTED_PROXIES alone. Elsewhere (/graphql, the media routes), with
 // `secret` (API_PROXY_SECRET), the forwarded address is honoured only on a
 // request that carries it in `x-storix-proxy-secret`; any other request is the

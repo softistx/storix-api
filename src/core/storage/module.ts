@@ -1,4 +1,4 @@
-import { defineModule } from "@alxia/modules";
+import { defineModule } from "@softistx/alxia-modules";
 import { storage as codes } from "@/i18n/codes";
 
 // The object store behind `/media`: no collection, no GraphQL field, only the

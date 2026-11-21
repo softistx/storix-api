@@ -4,7 +4,7 @@ See [troubleshooting.md](troubleshooting.md) for the messages the server and its
 
 ## Install
 
-`@softistx/*`, `@alxia/*` and `@nxgt/*` packages all come from npmjs; no token is needed.
+`@softistx/*` and `@nxgt/*` packages all come from npmjs; no token is needed.
 
 ```sh
 bun install
@@ -56,7 +56,7 @@ replica set.
 - `bun run db:migrate` applies the pending core migrations (the `translations` rows for now) and the workspace migrations on every workspace database (a failing workspace is reported and exits 1, the others still run). Flags: `--dry-run` lists them, `--status` lists every id with its state (applied, pending, missing), `--rollback-to <id>` undoes everything after `<id>` (the migration `<id>` itself stays applied).
 - `bun run db:sync` creates the indexes and validators of the core collections and of the identity's own (janus's users, sessions, tokens, relations and API keys; `--dry-run` previews). Outside production the server syncs the identity's collections at boot, before the migrations; in production only with `MONGO_AUTO_SYNC`, otherwise `db:sync` is the deployment step.
 - A new error code needs its `defineCodes` entry, a migration with both languages, and a CONTEXT.md row: `coverage.spec.ts` and `bun run context:check` fail otherwise.
-- A migration that creates codes undoes them with `removeTexts`; one that rewords codes an earlier migration created undoes the rewording with `restoreTexts(previous)` (`@alxia/i18n`, over `translations.store.ts`).
+- A migration that creates codes undoes them with `removeTexts`; one that rewords codes an earlier migration created undoes the rewording with `restoreTexts(previous)` (`@softistx/alxia-i18n`, over `translations.store.ts`).
 
 ## Boot and deploy
 
@@ -93,8 +93,8 @@ nowhere else (`bun run deps:check`). `src/config/auth.ts` builds the port the se
 ## Workspaces, members and roles
 
 A workspace is the tenant: a row in the core database (`workspaces`) and a database of its own
-(`<MONGO_WORKSPACE_PREFIX><id>`). `src/config/tenancy.ts` builds the `@alxia/tenancy` store, `src/config/access.ts`
-the permission catalogue (`@alxia/access`), and `src/http/context.ts` hands each resolver a `ctx.guard`.
+(`<MONGO_WORKSPACE_PREFIX><id>`). `src/config/tenancy.ts` builds the `@softistx/alxia-tenancy` store, `src/config/access.ts`
+the permission catalogue (`@softistx/alxia-access`), and `src/http/context.ts` hands each resolver a `ctx.guard`.
 
 - A request names its workspace in the **`x-storix-workspace`** header, by id or by slug. Without it a workspace operation is 400 `workspaces.errors.workspace-required`. An unknown workspace, a workspace the caller does not belong to and one that is not open yet are all 404 `workspaces.errors.not-found`: a caller learns nothing about a workspace they are not in.
 - Roles are `OWNER`, `ADMIN`, `MEMBER`. Modules declare `permissions` and `defaultGrants`; OWNER holds every permission. `owners:manage` is the owners' alone: only an OWNER makes, demotes or removes an owner. A workspace always keeps an owner (409 `workspaces.errors.last-owner` on leaving, demoting or removing the last one, concurrent changes included).
@@ -126,7 +126,7 @@ An admin invites an address into the request's workspace; the invitee accepts wi
 
 ## Files storage (`/media`)
 
-`src/core/storage` mounts `@alxia/media` at `/media` after the auth middleware (`src/app.ts`), over one private bucket (`S3_BUCKET`, bound with `@softistx/s3`; SeaweedFS locally, `bun run services:up`). Without `S3_BUCKET`, `S3_ACCESS_KEY` and `S3_SECRET_KEY` every route answers 503 `storage.errors.unavailable`.
+`src/core/storage` mounts `@softistx/alxia-media` at `/media` after the auth middleware (`src/app.ts`), over one private bucket (`S3_BUCKET`, bound with `@softistx/s3`; SeaweedFS locally, `bun run services:up`). Without `S3_BUCKET`, `S3_ACCESS_KEY` and `S3_SECRET_KEY` every route answers 503 `storage.errors.unavailable`.
 
 - `PUT /media/<kind>` stores the raw body (send `Content-Length`) and answers `{ key, contentType, size }`; `GET /media/<kind>/<key>` streams it with `Range`, `ETag` and `If-None-Match` (206, 304, 416).
 - Kinds (`storage.kinds.ts`): `files` takes any type up to 95 MiB (known signatures sniffed; a type outside the inline-safe list is served as a download) and `avatars` takes JPEG, PNG and WebP up to 10 MiB, stores only its `64` and `256` px squares (EXIF dropped, `keepOriginal: false`). Both use `Cache-Control: private, no-cache`, so a reader who lost access is refused on the next use.
@@ -186,7 +186,7 @@ The third step needs the renditions queue, so `storage:sweep` needs Redis (`REDI
 
 ## The proxy secret
 
-`@alxia/core` 0.23's `requireProxySecret({ paths, secret })` refuses a request to a path that
+`@softistx/alxia` 0.23's `requireProxySecret({ paths, secret })` refuses a request to a path that
 does not carry the BFF's secret. storix-api has no BFF-only path: `/graphql` and `/media` are
 also reached by workspace API keys (consumer servers), and the account operations are GraphQL
 fields of `/graphql`; a key is kept from every other path by the `auth.errors.api-key-not-accepted`

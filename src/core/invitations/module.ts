@@ -1,4 +1,4 @@
-import { defineModule } from "@alxia/modules";
+import { defineModule } from "@softistx/alxia-modules";
 import { invitations as codes } from "@/i18n/codes";
 import { invitationTypeDefs } from "../identity";
 import { invitationsResolvers } from "./invitations.resolver";

@@ -1,4 +1,4 @@
-import { isMediaKey } from "@alxia/media";
+import { isMediaKey } from "@softistx/alxia-media";
 import { ConflictError } from "@softistx/mongo";
 import { removeObjects, type Sweep } from "./files.sweep.run";
 

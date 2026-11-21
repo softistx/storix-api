@@ -1,4 +1,4 @@
-import type { MediaBucket } from "@alxia/media";
+import type { MediaBucket } from "@softistx/alxia-media";
 import { addUsage, type WorkspacesMongo } from "@/core/workspaces";
 import {
   insertFile,

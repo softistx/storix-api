@@ -1,4 +1,4 @@
-import { defineMiddleware } from "@alxia/core";
+import { defineMiddleware } from "@softistx/alxia";
 import { API_KEY_PREFIX } from "../core/identity";
 import { fail } from "../i18n/fail";
 import { refusalError } from "./refusal";

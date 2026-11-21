@@ -1,4 +1,4 @@
-import { defineModule } from "@alxia/modules";
+import { defineModule } from "@softistx/alxia-modules";
 import type { RemovalListener } from "@/core/members";
 import { teams as codes } from "@/i18n/codes";
 import { teams } from "./teams.collection";

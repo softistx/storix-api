@@ -1,4 +1,4 @@
-import { defineModule } from "@alxia/modules";
+import { defineModule } from "@softistx/alxia-modules";
 import { members as codes } from "@/i18n/codes";
 import { members } from "./members.collection";
 import typeDefs from "./members.graphqls" with { type: "text" };

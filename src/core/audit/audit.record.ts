@@ -1,4 +1,4 @@
-import type { CollectionsOf, ModuleHandle } from "@alxia/modules";
+import type { CollectionsOf, ModuleHandle } from "@softistx/alxia-modules";
 import type { Mongo } from "@softistx/mongo";
 import type { auditActorTypes } from "./audit.collection";
 import { hashAddress } from "./audit.ip-hash";

@@ -1,11 +1,11 @@
-import { refusalMapper } from "@alxia/access";
+import { refusalMapper } from "@softistx/alxia-access";
 import { fail, forbidden, unauthenticated } from "@/i18n/fail";
 
-// The refusals of `@alxia/access` and `@alxia/tenancy`, worded as the API's own
+// The refusals of `@softistx/alxia-access` and `@softistx/alxia-tenancy`, worded as the API's own
 // codes. An unknown workspace, an inactive one and one the caller is not a
 // member of are the same 404, so a caller learns nothing about which exist.
 export const apiRefusal = refusalMapper((refusal) => {
-  // The codes of `@alxia/tenancy` are matched by their prefix and name: they
+  // The codes of `@softistx/alxia-tenancy` are matched by their prefix and name: they
   // are that package's, not entries of this API's inventory.
   if (refusal.code.startsWith("tenancy.errors.")) {
     switch (refusal.code.slice("tenancy.errors.".length)) {

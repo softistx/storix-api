@@ -1,4 +1,8 @@
-import { isMediaKey, type MediaBucket, mediaPlace } from "@alxia/media";
+import {
+  isMediaKey,
+  type MediaBucket,
+  mediaPlace,
+} from "@softistx/alxia-media";
 import { ImageError } from "@softistx/image";
 import { type Handler, JobError } from "@softistx/redis";
 import { parseRenditionJobId, type renditionJob } from "@/queues/renditions";
