@@ -18,7 +18,7 @@ Global rules: `~/.claude/CLAUDE.md`. The product's: `~/workspace/dev/storix/AGEN
 
 ## Modules
 
-A module is `src/modules/<name>/` (a kernel module is `src/core/<name>/`, same layout), its files named `<name>.<role>.ts`. The registry (`src/modules/registry.ts`) lists the modules; a module's `index.ts` is the barrel the others import.
+A module is `src/modules/<name>/` (a kernel module is `src/core/<name>/`, same layout), its files named `<name>.<role>.ts`. The registry (`src/modules/registry.ts`) lists the modules; a module's `public.ts` is what the other modules import (a kernel module's `index.ts`). This is the target layout: the existing modules are still flat (`files`, `identity`, ...) and move one by one in layout-only PRs (tracking issue #158).
 
 | File | Holds |
 | --- | --- |
@@ -27,7 +27,7 @@ A module is `src/modules/<name>/` (a kernel module is `src/core/<name>/`, same l
 | `services/<domain>.service.ts` | the business rules, one service per domain (the entity or aggregate its methods act on), its single entry point; no split by kind of work. With data-loaders, the only code that reads or writes a model. `services/index.ts` is the barrel and holds the module's factory |
 | `resolvers/<name>.resolver.ts` | thin resolvers calling the services; `resolvers/support.ts` holds what they share; `resolvers/index.ts` barrel |
 | `data-loaders/<what>.data-loader.ts` | the module's DataLoaders, each with its spec; one file `<name>.data-loader.ts` while it fits; a field that reads per parent goes through a loader, never a query per row |
-| `<name>.errors.ts` | the module's refusals and its `defineCodes("<name>", [...])` codes; a service throws its module's codes through it, never an inline code |
+| `<name>.errors.ts` | the module's refusals and its `defineCodes("<name>", [...])` codes; the target: a service throws its module's codes through it, never an inline code (today one inventory, `src/i18n/codes.ts`) |
 | `<name>.rules.ts` (`rules/` when several) | pure rules and computations, no storage |
 | `<name>.utils.ts` (`utils/<what>.utils.ts` when several, barrel) | small helpers that are not a business rule, reading or writing no collection, each with its spec |
 | `module.ts`, `<name>.port.ts`, `migrations/` | single-file roles, unchanged at the root |
@@ -36,6 +36,6 @@ A module is `src/modules/<name>/` (a kernel module is `src/core/<name>/`, same l
 - **Sizes**: every source file stays under 250 lines, except a service (`*.service.ts`), which holds all its domain's methods at any length; each method stays under 50 lines, each other function under 80. Pure parts go to rules or utils, steps to private methods. A service past 600 lines is raised with the owner in the PR.
 - **No helper function at the top level of a service, a resolver or a data-loader** (`*.service.ts`, `*.resolver.ts`, `*.data-loader.ts`, `resolvers/support.ts`): such a file holds its role (the class or factory, the resolver map, the loader factory). A small helper moves to the module's utils, rules or errors file by what it does, with its spec. Top-level `const` data used by that file alone may stay. A helper used by several modules goes to a shared file, never copied.
 - **Specs**: storix's specs run at the GraphQL level, named by behaviour. A spec exercising one service sits beside it as `services/<domain>.service.spec.ts`; a flow crossing several modules stays at the module's root as `<name>.<what>.integration.spec.ts`. A spec file stays near 250 lines, split by what it checks, and a spec callback under 80 lines. Every data-loader and util has its spec beside it.
-- **No loose null checks**: never `== null` / `!= null`; compare `=== null` or `=== undefined` by the type (Biome's `noDoubleEquals` with `ignoreNull: false` guards it once the existing hits are fixed).
-- **Identity**: the `janus.*` files of `src/core/identity` are services under `services/janus/`; the ports (`identity.port.ts`) stay at the root.
+- **No loose null checks**: never `== null` / `!= null`; compare `=== null` or `=== undefined` by the type (Biome's `noDoubleEquals` with `ignoreNull: false` is switched on once the existing hits are fixed; not configured yet).
+- **Identity**: the `janus.*` files of `src/core/identity` become services under `services/janus/`; the ports (`identity.port.ts`) stay at the root.
 - **Layout moves** change no behaviour: renames, import updates and helper lifts only, reviewed with `git diff -M`; the boundary specs and `docs/` paths stay current.
