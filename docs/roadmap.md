@@ -4,7 +4,7 @@ What a user gets, in order. An entry moves Next, Now, Shipped as its effort star
 
 ## Now
 
-Nothing in progress.
+- **Conventions alignment**: the code laid out by role in every module, batched field reads (no per-row queries on file versions or workspace settings), shorter functions and stricter lint guards, with no change to the API's behaviour. ([issue](https://github.com/softistx/storix-api/issues/158))
 
 ## Next
 
