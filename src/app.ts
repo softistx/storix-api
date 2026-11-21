@@ -1,6 +1,6 @@
-import { health } from "@alxia/core";
-import { graphql, type ServerContext } from "@alxia/graphql";
-import type { MediaBucket } from "@alxia/media";
+import { health } from "@softistx/alxia";
+import { graphql, type ServerContext } from "@softistx/alxia-graphql";
+import type { MediaBucket } from "@softistx/alxia-media";
 import { identity as serverIdentity } from "./config/auth";
 import { closeDatabases, mongoAnswers } from "./config/db";
 import { appRedis, closeQueues, limits as serverLimits } from "./config/redis";

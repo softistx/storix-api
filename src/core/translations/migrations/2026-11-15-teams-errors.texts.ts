@@ -1,4 +1,4 @@
-import type { Texts } from "@alxia/i18n";
+import type { Texts } from "@softistx/alxia-i18n";
 
 // Frozen with the migration that writes it: a later wording is a later
 // migration, never an edit here. ICU messages; French uses ’ so that no

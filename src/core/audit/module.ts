@@ -1,4 +1,4 @@
-import { defineModule } from "@alxia/modules";
+import { defineModule } from "@softistx/alxia-modules";
 import { auditEvents } from "./audit.collection";
 import typeDefs from "./audit.graphqls" with { type: "text" };
 import { auditResolvers } from "./audit.resolver";

@@ -3,7 +3,7 @@ import { oldShape } from "./2026-11-13-auth-validation-errors.old-shape.fixture"
 import { texts } from "./2026-11-13-auth-validation-errors.texts";
 
 // This frozen file was reshaped (`{ en: {key: text}, fr: {…} }` to
-// `{ key: { en, fr } }`) when @alxia/i18n 0.6.0 was adopted. The reshape must
+// `{ key: { en, fr } }`) when @softistx/alxia-i18n 0.6.0 was adopted. The reshape must
 // write exactly the rows the old shape did.
 describe("2026-11-13 auth-validation-errors texts", () => {
   const rows = (entries: [string, string][]) => entries.sort();

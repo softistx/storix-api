@@ -1,5 +1,5 @@
-import { collectionsOf } from "@alxia/modules";
-import { perOrganization } from "@alxia/tenancy";
+import { collectionsOf } from "@softistx/alxia-modules";
+import { perOrganization } from "@softistx/alxia-tenancy";
 import { defineMongo } from "@softistx/mongo";
 import type { TenancyPort } from "../core/access";
 import { membershipOf } from "../core/members";

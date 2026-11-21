@@ -1,4 +1,4 @@
-import { defineModule } from "@alxia/modules";
+import { defineModule } from "@softistx/alxia-modules";
 import { trash as codes } from "@/i18n/codes";
 import typeDefs from "./trash.graphqls" with { type: "text" };
 import { trashResolvers } from "./trash.resolver";

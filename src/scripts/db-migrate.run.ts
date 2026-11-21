@@ -1,4 +1,4 @@
-import type { MigrateMode, TenantMigration } from "@alxia/tenancy";
+import type { MigrateMode, TenantMigration } from "@softistx/alxia-tenancy";
 import {
   type Migration,
   migrate,

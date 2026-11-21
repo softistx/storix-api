@@ -1,4 +1,4 @@
-import { removeTexts, upsertTexts } from "@alxia/i18n";
+import { removeTexts, upsertTexts } from "@softistx/alxia-i18n";
 import { defineMigration } from "@softistx/mongo/migrations";
 import { textStore } from "../translations.store";
 import { texts } from "./2026-11-21-versions-trash-errors.texts";

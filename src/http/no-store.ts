@@ -1,4 +1,4 @@
-import { definePlugin } from "@graxia/core";
+import { definePlugin } from "@softistx/graxia";
 
 // A graxia plugin (src/app.ts): every GraphQL response carries
 // `Cache-Control: no-store`. The answers hold a session token and account data;

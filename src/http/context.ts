@@ -1,7 +1,7 @@
-import { alxia, defineMiddleware } from "@alxia/core";
-import type { GraphQLContext } from "@alxia/graphql";
-import type { MediaBucket } from "@alxia/media";
-import { lazyScope } from "@alxia/tenancy";
+import { alxia, defineMiddleware } from "@softistx/alxia";
+import type { GraphQLContext } from "@softistx/alxia-graphql";
+import type { MediaBucket } from "@softistx/alxia-media";
+import { lazyScope } from "@softistx/alxia-tenancy";
 import { GraphQLError } from "graphql";
 import { access } from "../config/access";
 import { env } from "../config/env";

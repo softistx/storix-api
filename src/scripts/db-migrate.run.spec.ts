@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { MigrateMode, TenantMigration } from "@alxia/tenancy";
+import type { MigrateMode, TenantMigration } from "@softistx/alxia-tenancy";
 import { defineMigration } from "@softistx/mongo/migrations";
 import { connection } from "../config/db";
 import { runMigrate } from "./db-migrate.run";

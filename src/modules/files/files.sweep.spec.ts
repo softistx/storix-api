@@ -1,5 +1,5 @@
 import { describe, expect, spyOn, test } from "bun:test";
-import { mediaPlace, newMediaKey } from "@alxia/media";
+import { mediaPlace, newMediaKey } from "@softistx/alxia-media";
 import { Collection } from "mongodb";
 import { store } from "@/config/tenancy";
 import { ADD, filesWorld } from "../../../test/files.harness";

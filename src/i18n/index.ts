@@ -1,4 +1,4 @@
-import { createI18n } from "@alxia/i18n";
+import { createI18n } from "@softistx/alxia-i18n";
 import type { ErrorCode } from "./codes";
 
 // English is the product's default language and the last step of every chain.

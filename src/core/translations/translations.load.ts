@@ -5,8 +5,8 @@ import {
   resolveCatalogue,
   type TextRow,
   type Tree,
-} from "@alxia/i18n";
-import type { ModuleCoreHandle } from "@alxia/modules";
+} from "@softistx/alxia-i18n";
+import type { ModuleCoreHandle } from "@softistx/alxia-modules";
 import type { core } from "@/config/db";
 import { FALLBACK_LANGUAGE, i18n, type Language } from "@/i18n";
 import { errorCodes } from "@/i18n/codes";
@@ -78,7 +78,7 @@ export function buildServed(
   return { trees, served: built };
 }
 
-// Reads the translations once, at startup, and gives them to @alxia/i18n
+// Reads the translations once, at startup, and gives them to @softistx/alxia-i18n
 // (`setResources`, atomic: a request in flight keeps its snapshot) and to what
 // `errorCatalogue` serves, which it returns. The texts change by migration,
 // which comes with a restart, so there is no reload. The fallback language must

@@ -1,4 +1,4 @@
-import { defineCodes } from "@alxia/i18n";
+import { defineCodes } from "@softistx/alxia-i18n";
 
 // Who is asking: shared by every module, so declared here (plan §3.13).
 export const auth = defineCodes("auth", [

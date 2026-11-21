@@ -8,7 +8,7 @@ Read before writing (all read-only): `~/.claude/CLAUDE.md`; the plugins `alxia-g
 `alxia-react-router-bff` 0.67.1, `ui-ux` 0.14.1, `bun-api` 1.5.1; pulsarix (plan, api, ui, widget),
 clavix (spec layout, roadmap), schoolz-api (`files`, `translations`), healthix (docs layout),
 publix-api `src/modules/media` and publix-ui `app/modules/media`, `app/core/media`; the packages
-`@alxia/media` 0.6.2, `@softistx/s3` 0.13.0, `@softistx/image` 0.6.0, `@softistx/janus` 0.59,
+`@softistx/alxia-media` 0.6.2, `@softistx/s3` 0.13.0, `@softistx/image` 0.6.0, `@softistx/janus` 0.59,
 `@softistx/material` 3.204 / `material-core` 0.87 (`FileSource`), `@softistx/ai-*`.
 
 ## 1. Product and scope
@@ -39,7 +39,7 @@ than one request (see Q1), realtime updates, custom rendition presets, a platfor
 | Repository | What | Lives in |
 | --- | --- | --- |
 | `softistx/storix-api` | GraphQL API (Bun, alxia, graxia) and its queue worker | `~/workspace/dev/storix/storix-api` |
-| `softistx/storix-ui` | React Router 8 BFF on `@alxia/react-router`, `@softistx/material` | `~/workspace/dev/storix/storix-ui` |
+| `softistx/storix-ui` | React Router 8 BFF on `@softistx/alxia-react-router`, `@softistx/material` | `~/workspace/dev/storix/storix-ui` |
 | `softistx/storix-widget` | `@softistx/storix-widget`: script loader (Shadow DOM) and a `FileSource` | `~/workspace/dev/storix/storix-widget` |
 
 - `~/workspace/dev/storix/` is the coordinating folder (as pulsarix's): `AGENTS.md`, `docs/plan.md`,
@@ -50,11 +50,11 @@ than one request (see Q1), realtime updates, custom rendition presets, a platfor
   handed over) before the UI or widget slice that uses it; the UI works on its mock API meanwhile.
 - Conventions: the two alxia plugins, `ui-ux` and `bun-api`, without departure. Where pulsarix
   departed (error texts in code), storix follows the plugin (texts in the database, §3.13).
-- Packages: `@alxia/core`, `graphql`, `env`, `i18n`, `language`, `modules`, `tenancy`, `access`,
+- Packages: `@softistx/alxia`, `graphql`, `env`, `i18n`, `language`, `modules`, `tenancy`, `access`,
   `media`; `@softistx/mongo`, `redis`, `s3`, `image`, `mail`, `mail-smtp`, `janus`, `janus-mongo`,
   `janus-graphql`, `janus-mail`, `telemetry`, `ai-core`, `ai-anthropic`, `ai-ollama`,
   `ai-telemetry`, `ai-testing`; `@nxgt/graphql-scalars`, `graphql-validation`, `graphql-client`;
-  UI: `@alxia/react-router`, `@alxia/secure-headers`, `@softistx/material`, `material-core`,
+  UI: `@softistx/alxia-react-router`, `@softistx/alxia-secure-headers`, `@softistx/material`, `material-core`,
   `@softistx/zod`. No third-party client where one of these exists.
 - Type checking is `bun check`; Biome's scripts are `lint` and `fix`. The green bar is
   `bun run verify`; CI is one job on `pull_request` into `develop` running `verify:pr`.
@@ -74,7 +74,7 @@ storix-worker (dist/worker.js) ──► the same three: renditions, extraction,
 ```
 
 - The browser never calls the API and never sees a storage URL. Bytes go browser → BFF `/media`
-  route → API `@alxia/media` routes → private bucket. No presigned URL anywhere.
+  route → API `@softistx/alxia-media` routes → private bucket. No presigned URL anywhere.
 - `/public/*` is the only surface a third-party origin reaches. It is served by storix-api and
   routed on the storix host by the deploy stack, as pulsarix's `/public/graphql` is.
 - The worker is a second entry of storix-api (`src/worker.ts`), as publix-api's.
@@ -82,7 +82,7 @@ storix-worker (dist/worker.js) ──► the same three: renditions, extraction,
 ### 3.2 storix-api modules
 
 `src/core/` is the kernel (no business module imported); `src/modules/registry.ts` is the one
-list of modules (`@alxia/modules`). Each module follows `<name>.<role>.ts`.
+list of modules (`@softistx/alxia-modules`). Each module follows `<name>.<role>.ts`.
 
 | Module | Where | Owns |
 | --- | --- | --- |
@@ -114,7 +114,7 @@ list of modules (`@alxia/modules`). Each module follows `<name>.<role>.ts`.
 ### 3.3 Data model
 
 Tenancy as pulsarix and publix: a **core database** and **one database per workspace**
-(`@alxia/tenancy`). Every model is a `defineCollection` with `timestamps` and `actors`; ids are
+(`@softistx/alxia-tenancy`). Every model is a `defineCollection` with `timestamps` and `actors`; ids are
 ObjectIds; account ids are opaque strings from the identity port.
 
 **Core database**
@@ -164,7 +164,7 @@ Rules that follow from the model:
 - One private bucket (`S3_BUCKET`, `storix` locally), bound with `@softistx/s3` `bindBucket`.
   Local and test storage is SeaweedFS (`@softistx/s3/testing` in specs, a compose service in
   `bun run dev`). No public hostname, no CORS rule, no `S3_PUBLIC_ENDPOINT`.
-- Keys, through `@alxia/media`'s `keyPrefix`: `workspaces/<workspaceId>/<kind>/<key>` and
+- Keys, through `@softistx/alxia-media`'s `keyPrefix`: `workspaces/<workspaceId>/<kind>/<key>` and
   `workspaces/<workspaceId>/<kind>/<key>/<size>` for a rendition. `<key>` is a UUID.
 - Kinds (`storage.kinds.ts`):
 
@@ -495,7 +495,7 @@ are edited in place; peer sections are tabs (pill bar, `?tab=`, short labels wit
 | S15b | Settings › Teams | teams, members of a team | name taken |
 | S15c | Settings › Storage | used, quota, split current / versions / trash, largest files | almost full, full |
 | S15d | Settings › Retention | trash days, versions kept, link policy (max days, password required), AI opt-in and budget | saved, refused |
-| S15e | Settings › API keys | keys with scopes, origins, last used, app space ("Open folder"); create (secret shown once, snippet for the widget and for `mintAccessToken`); disable, revoke; built on `@alxia/react-router/api-keys` (0.68: list newest first, one-time secret, step-up replay) | step-up; key limit |
+| S15e | Settings › API keys | keys with scopes, origins, last used, app space ("Open folder"); create (secret shown once, snippet for the widget and for `mintAccessToken`); disable, revoke; built on `@softistx/alxia-react-router/api-keys` (0.68: list newest first, one-time secret, step-up replay) | step-up; key limit |
 | S15f | Settings › Audit | filterable log (actor, action, target, date), export CSV | empty, large range |
 | S16 | `/account/security` | Password, second factor, sessions | read-only with in-place edit |
 | S17 | `/s/:token` | **Public link**: password form; a file (preview, Download); a folder (read-only browser); a drop zone (`DROP`) with a per-file list and a "sent" confirmation | one identical "link not available" page for unknown, expired, revoked; locked with wait; no app chrome, no session, `noindex` |
@@ -576,9 +576,9 @@ that needs it. Nothing below is worked around in storix.
 
 | # | Package (repository) | Change | Why | Blocks |
 | --- | --- | --- | --- | --- |
-| UP-1 | `@alxia/media` (softistx/alxia) | A kind that accepts any content type (`accept: "*"`): sniff the types with a known signature, store the declared type otherwise, and serve anything outside an inline-safe list as `application/octet-stream` with `attachment` | a file manager stores every type; today `accept` is an exact list and a wildcard throws at declaration | A7 |
-| UP-2 | `@alxia/media` (softistx/alxia) | The declared `Content-Length` and the kind's context available to `authorizeWrite` / `throttle` (or a `quota(ctx, bytes)` hook), so an app refuses on a quota before a byte is read | the quota check must come before the body; to verify first: if `ctx` already carries the request, this is a doc issue | A11 |
-| UP-3 | `@alxia/media` + `@alxia/react-router/media` (softistx/alxia) | Resumable upload in parts (`POST …/uploads`, `PUT …/uploads/<id>/<n>`, complete, abort), with the BFF proxy's matching routes | files above one request's limit (95 MiB behind the edge proxy) | Next (Q1) |
+| UP-1 | `@softistx/alxia-media` (softistx/alxia) | A kind that accepts any content type (`accept: "*"`): sniff the types with a known signature, store the declared type otherwise, and serve anything outside an inline-safe list as `application/octet-stream` with `attachment` | a file manager stores every type; today `accept` is an exact list and a wildcard throws at declaration | A7 |
+| UP-2 | `@softistx/alxia-media` (softistx/alxia) | The declared `Content-Length` and the kind's context available to `authorizeWrite` / `throttle` (or a `quota(ctx, bytes)` hook), so an app refuses on a quota before a byte is read | the quota check must come before the body; to verify first: if `ctx` already carries the request, this is a doc issue | A11 |
+| UP-3 | `@softistx/alxia-media` + `@softistx/alxia-react-router/media` (softistx/alxia) | Resumable upload in parts (`POST …/uploads`, `PUT …/uploads/<id>/<n>`, complete, abort), with the BFF proxy's matching routes | files above one request's limit (95 MiB behind the edge proxy) | Next (Q1) |
 | UP-4 | `@softistx/s3` | A multipart API (create, upload part, complete, abort, list parts); today "Multipart upload" is under Not planned | UP-3 needs parts that survive between requests | Next (Q1) |
 | UP-5 | `@softistx/image` (`/pdf`) | `renderPdfPage(input, { page })` and `extractPdfText(input, { maxBytes })`; today only page 1 is drawn and the text layer is "not planned yet" | full-text search of PDFs, OCR of scanned PDFs | A25, A26 |
 | UP-6 | `@softistx/image` (new `/video`) | A poster frame and a probe (duration, width, height) of a video | video thumbnails; v1 ships without | Later |
@@ -618,7 +618,7 @@ workflows are disabled, a new repository's `ci.yml` is disabled at creation
 | --- | --- | --- | --- | --- |
 | A0 | `chore: initial skeleton` | Bun, alxia, graxia, `config/env.ts`, `core/` and `modules/registry.ts`, health, `schema.graphql` printed, docker-compose (MongoDB replica set, Redis, Mailpit, SeaweedFS), `scripts/dev.ts`, `verify` and `verify:pr` (affected specs), `ci.yml` (one job, `pull_request` into `develop`), `AGENTS.md`, `CONTEXT.md`, `README.md`, `docs/roadmap.md`, `docs/development.md`, `.nxgt-issues.json`, Dockerfile and `.dockerignore`, the janus-import dependency check | `verify` green; `bun run dev` answers `/health`; `bun check` reports a seeded error then a clean tree | none |
 | A1 | `feat(i18n): error inventory, translations and errorCatalogue` | `defineCodes`, `fail`, `ErrorCode`, the `translations` collection and its first migration (auth, validation), `Query.errorCatalogue`, `coverage.spec.ts`, `db:migrate`, `db:sync` | a code without a message in both languages fails the spec; the catalogue's `version` changes with a text | A0 |
-| U0 | `chore: initial skeleton` | React Router 8 on `@alxia/react-router`, `execute()` and the proxy secret, material, `app/themes/storix.ts` (generated CSS committed), i18n English and French, `AppShell` with the six destinations as empty pages, CSP and security headers, the mock API (`app/mocks`), `check:i18n`, `check:deps`, `check:theme`, `build:checked`, Playwright quality harness, `ci.yml`, `AGENTS.md`, `README.md`, `docs/roadmap.md`, `docs/security.md` | `verify` green; the shell captured and scored; no sideways scroll at 360 px | none |
+| U0 | `chore: initial skeleton` | React Router 8 on `@softistx/alxia-react-router`, `execute()` and the proxy secret, material, `app/themes/storix.ts` (generated CSS committed), i18n English and French, `AppShell` with the six destinations as empty pages, CSP and security headers, the mock API (`app/mocks`), `check:i18n`, `check:deps`, `check:theme`, `build:checked`, Playwright quality harness, `ci.yml`, `AGENTS.md`, `README.md`, `docs/roadmap.md`, `docs/security.md` | `verify` green; the shell captured and scored; no sideways scroll at 360 px | none |
 | U1 | `feat(landing): public landing page, privacy and terms` | S1, S2: `app/modules/landing`, `app/modules/legal`; a guest sees the landing page at `/`, a signed-in visitor is sent on; meta, Open Graph, sitemap, `robots.txt` | captures of S1 and S2 scored; the page is indexable and the app pages are not; axe clean | U0 |
 | U2 | `feat(help): help panel and flow-doc harness` | `HelpButton` and `HelpSheet` in the shell, `docs/flows/` layout, `capture()`, `help:check` in `verify`, the role guide route | a screen route cited by no flow fails `help:check` | U0 |
 | W0 | `chore: initial skeleton` | the build (loader IIFE, hashed bundle, ESM entry, `./source` entry, `.d.ts`), `<storix-widget>` with an open shadow root and material's styles inside, `check-size`, the host fixture and leak test, `capture` script, `ci.yml`, `AGENTS.md` (the invariants of §5), `README.md`, `docs/roadmap.md`; the shadow-root spike of §6 with `FilePickerDialog` over `createMemorySource` | `verify` green; loader at most 5 KB gzipped; the leak test shows no style either way and one global; captures of the picker in the fixture | none |
@@ -704,7 +704,7 @@ workflows are disabled, a new repository's `ci.yml` is disabled at creation
 | A28 | `feat(tokens): scoped tokens` | `mintAccessToken`, `revokeAccessToken`, the Redis store, the key cascade, fail closed | a token outside its folder, mode, origin or lifetime is refused with its own code; revoking the key ends its tokens | A27 |
 | A29 | `feat(public): the public surface for the widget` | `/public/graphql` (persisted operations only), `/public/media`, CORS for the key's origins, the preflight, per-token limits | a foreign origin gets no CORS header; an ad-hoc query is `public.errors.persisted-only`; `UPLOAD` uploads and `READ` cannot | A28, A24 |
 | A30 | `feat(usages): where a file is used` | `usages`, `setFileUsage`, `removeFileUsage`, `File.usages`, `usageCount`, the in-use rule on trash | ported `media.usage.spec.ts` cases; `force` trashes a used file | A27 |
-| U21 | `feat(api-keys): the API keys tab` | S15e with the snippets, "Open folder" on an app space; the routes on `@alxia/react-router/api-keys` (0.68) | captures; the token is shown once; step-up | U5, A27 |
+| U21 | `feat(api-keys): the API keys tab` | S15e with the snippets, "Open folder" on an app space; the routes on `@softistx/alxia-react-router/api-keys` (0.68) | captures; the token is shown once; step-up | U5, A27 |
 | U22 | `feat(audit): the audit tab` | S15f | captures; filters in the URL; CSV export | U5, A6 |
 | U23 | `feat(widget): serve the widget files` | `/widget/v1/*` from `WIDGET_DIST_DIR` | traversal specs; cache headers; 404 when unset in production | U0, W0 |
 | W1 | `feat(source): the storix file source` | `createStorixSource` (§5.1), token refresh, blob-URL cache, `storixRef` | unit tests against a stub of `/public`; an expired token is renewed once, then surfaces `tokens.errors.expired` | W0, A29 |
@@ -797,7 +797,7 @@ The owner's answers, 2026-11-13 (about 13:10 EST). All followed the recommendati
   thin storix `api-keys` GraphQL module that ties each key to a storix workspace and its
   scopes, and a 401 `auth.errors.api-key-not-accepted` on every path a key may not reach (§3.7).
   Reference, read-only: self-learning-api `src/app.ts`, `src/auth/viewer.ts`, `src/auth/auth.ts`,
-  `src/modules/api-keys`. The UI tab uses `@alxia/react-router/api-keys` (0.68).
+  `src/modules/api-keys`. The UI tab uses `@softistx/alxia-react-router/api-keys` (0.68).
 - **Q5. Registry of `@softistx/storix-widget`**: GitHub Packages, restricted, published locally
   after the green bar.
 - **Q6. Share-link expiry**: required, 7 days by default, at most 365, with a workspace policy
@@ -810,11 +810,11 @@ The owner's answers, 2026-11-13 (about 13:10 EST). All followed the recommendati
 
 ### Packages released after the plan was written
 
-- `@alxia/core` 0.23 adds `requireProxySecret({ paths, secret, errorFormat })`. It fits a path
+- `@softistx/alxia` 0.23 adds `requireProxySecret({ paths, secret, errorFormat })`. It fits a path
   that only the BFF reaches. `/graphql` and `/media` are also reached by keys, so the viewer,
   not the secret, decides there; A0 checks whether the account routes or any other path are
   BFF-only before wiring it.
-- `@alxia/react-router` 0.68 adds `/api-keys` (U21) and the link-redirect helpers `handOver`,
+- `@softistx/alxia-react-router` 0.68 adds `/api-keys` (U21) and the link-redirect helpers `handOver`,
   `handingOver`, `postLinkRequest`, `postLinkArgs` on `/session`. They fit the e-mailed links
   of U3 (reset, verification) and the invitation accept of U5, not share links, which are
   storix's own `/s/<token>` pages.

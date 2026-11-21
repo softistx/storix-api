@@ -1,4 +1,7 @@
-import { type CoreCollectionsOf, coreCollectionsOf } from "@alxia/modules";
+import {
+  type CoreCollectionsOf,
+  coreCollectionsOf,
+} from "@softistx/alxia-modules";
 import { connectMongo, defineMongo, openMongo } from "@softistx/mongo";
 import { modules } from "../modules/registry";
 import { autoSyncOf } from "./auto-sync";

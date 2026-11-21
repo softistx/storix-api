@@ -1,12 +1,12 @@
-import type { ModuleCoreHandle } from "@alxia/modules";
-import type { Tenant, TenantRegistry } from "@alxia/tenancy";
+import type { ModuleCoreHandle } from "@softistx/alxia-modules";
+import type { Tenant, TenantRegistry } from "@softistx/alxia-tenancy";
 import { ConflictError } from "@softistx/mongo";
 import type { core } from "@/config/db";
 import { slugTaken } from "./slug-taken";
 
 type WorkspacesMongo = ModuleCoreHandle<"workspaces", typeof core>;
 
-// A workspace as `@alxia/tenancy` reads it: the tenant, with its lock.
+// A workspace as `@softistx/alxia-tenancy` reads it: the tenant, with its lock.
 export interface Workspace extends Tenant {
   version: number;
   createdAt: Date;
@@ -23,7 +23,7 @@ export const workspaceOf = (doc: Doc): Workspace => ({
   createdAt: doc.createdAt,
 });
 
-// The port `@alxia/tenancy` resolves a request's workspace through, over the
+// The port `@softistx/alxia-tenancy` resolves a request's workspace through, over the
 // `workspaces` collection of the core database.
 export const workspaceRegistry = (
   mongo: WorkspacesMongo,

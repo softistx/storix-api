@@ -1,4 +1,4 @@
-import type { CollectionsOf, ModuleHandle } from "@alxia/modules";
+import type { CollectionsOf, ModuleHandle } from "@softistx/alxia-modules";
 import type { Mongo } from "@softistx/mongo";
 
 // The module's handle on a workspace's database: its own collection, and the

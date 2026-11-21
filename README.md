@@ -39,7 +39,7 @@ curl localhost:3000/health
 | Path                            | Holds                                                               |
 | ------------------------------- | ------------------------------------------------------------------- |
 | `src/core/`                     | the kernel: `workspaces`, `members`, `invitations`, `audit`, `access`, `identity`, `translations`, `storage`, `system` |
-| `src/core/storage/`             | `/media`: `@alxia/media` over one private S3 bucket (`files`, `avatars` kinds) |
+| `src/core/storage/`             | `/media`: `@softistx/alxia-media` over one private S3 bucket (`files`, `avatars` kinds) |
 | `src/modules/teams/`            | a workspace's teams                                                  |
 | `src/modules/nodes/`            | the folder tree: each member's root, create, rename, move, `node` and `nodes` (filter, sort, cursor) |
 | `src/modules/files/`            | files: `addFile`, `copyNodes`, `updateFile`, `setFocalPoint`, `setStarred`, `openFile` (`blobs`, `stars`, `recents`) |
@@ -380,5 +380,5 @@ move is audited as `file.focal` (the target only, never the coordinates).
 `File.focalPoint` is the point (null for the centre). `File.renditions` lists what is stored and served now: all six sizes of
 a `READY` picture, `THUMB` and `PREVIEW` of a `READY` PDF, and nothing while the file is `PROCESSING` or `FAILED`;
 `rendition(preset)` is one of them or null. `size` is the name in the URL, `GET /media/files/<key>/<size>`. The kind is
-`private, no-cache`, and `@alxia/media` serves the stored object's own `ETag`: the crops are rewritten with the new pixels, so
+`private, no-cache`, and `@softistx/alxia-media` serves the stored object's own `ETag`: the crops are rewritten with the new pixels, so
 their `ETag` changes after a move and a client that revalidates gets the new crop (200, not 304).

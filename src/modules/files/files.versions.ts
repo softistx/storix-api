@@ -1,4 +1,4 @@
-import type { MediaBucket } from "@alxia/media";
+import type { MediaBucket } from "@softistx/alxia-media";
 import { tryObjectId } from "@softistx/mongo";
 import type { WorkspacesMongo } from "@/core/workspaces";
 import { fail } from "@/i18n/fail";

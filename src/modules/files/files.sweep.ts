@@ -1,4 +1,4 @@
-import { mediaPlace } from "@alxia/media";
+import { mediaPlace } from "@softistx/alxia-media";
 import type { WorkspacesMongo } from "@/core/workspaces";
 import type { FilesMongo } from "./files.handle";
 import { filesMongo } from "./files.handle";

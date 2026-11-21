@@ -1,4 +1,4 @@
-import type { CollectionsOf, ModuleHandle } from "@alxia/modules";
+import type { CollectionsOf, ModuleHandle } from "@softistx/alxia-modules";
 import {
   ConflictError,
   type Mongo,

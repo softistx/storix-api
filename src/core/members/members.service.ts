@@ -1,5 +1,5 @@
-import type { ModuleCoreHandle } from "@alxia/modules";
-import type { Membership } from "@alxia/tenancy";
+import type { ModuleCoreHandle } from "@softistx/alxia-modules";
+import type { Membership } from "@softistx/alxia-tenancy";
 import { toObjectId, tryObjectId } from "@softistx/mongo";
 import type { core } from "@/config/db";
 import { fail, forbidden, invalidInput } from "@/i18n/fail";
@@ -12,7 +12,7 @@ export type MemberDoc = Awaited<
   ReturnType<MembersMongo["db"]["members"]["getById"]>
 >;
 
-// What a membership says to `@alxia/tenancy`: the member's role, or null when
+// What a membership says to `@softistx/alxia-tenancy`: the member's role, or null when
 // the account is not (or no longer) a member. A key is never asked: the
 // guards refuse it before the scope is read.
 export const membershipOf =

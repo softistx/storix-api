@@ -1,4 +1,4 @@
-import { defineEnv } from "@alxia/env";
+import { defineEnv } from "@softistx/alxia-env";
 import { z } from "zod";
 
 const production = Bun.env.NODE_ENV === "production";

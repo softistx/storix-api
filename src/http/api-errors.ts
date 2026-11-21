@@ -1,5 +1,5 @@
-import { definePlugin } from "@graxia/core";
 import { invalidInputOf } from "@nxgt/graphql-validation";
+import { definePlugin } from "@softistx/graxia";
 import { translate } from "../i18n/fail";
 
 // A graxia plugin: @constraint refusals leave as every other invalid input

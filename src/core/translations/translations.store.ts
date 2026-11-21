@@ -1,7 +1,7 @@
-import type { TextRow, TextStore } from "@alxia/i18n";
+import type { TextRow, TextStore } from "@softistx/alxia-i18n";
 import type { ClientSession, Db } from "mongodb";
 
-// The `translations` collection as @alxia/i18n's `TextStore`. The Mongo field
+// The `translations` collection as @softistx/alxia-i18n's `TextStore`. The Mongo field
 // is `code`; the package calls it `key`. `createdAt` and `updatedAt` and the
 // migration's session are this adapter's concern, not the package's.
 export function textStore(

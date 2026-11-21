@@ -1,4 +1,4 @@
-import { coreMigrationsOf } from "@alxia/modules";
+import { coreMigrationsOf } from "@softistx/alxia-modules";
 import { type Migration, migrationStatus } from "@softistx/mongo/migrations";
 import type { Db } from "mongodb";
 import { modules } from "../modules/registry";

@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
-import { catalogueOf, uncovered } from "@alxia/i18n";
-import { codesOf } from "@alxia/modules";
 import { FIELD_CODES } from "@nxgt/graphql-validation";
+import { catalogueOf, uncovered } from "@softistx/alxia-i18n";
+import { codesOf } from "@softistx/alxia-modules";
 import { migrate } from "@softistx/mongo/migrations";
 import { Glob } from "bun";
 import { connection, core } from "../config/db";

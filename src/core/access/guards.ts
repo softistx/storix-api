@@ -2,7 +2,7 @@ import {
   type Permission,
   requireMember,
   requirePermission,
-} from "@alxia/access";
+} from "@softistx/alxia-access";
 import type { Principal } from "@/core/identity";
 import type { Context } from "@/http/context";
 import { fail, unauthenticated } from "@/i18n/fail";

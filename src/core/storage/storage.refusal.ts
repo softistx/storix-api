@@ -1,5 +1,5 @@
-import type { BaseContext, StatusCode } from "@alxia/core";
-import type { MediaRefusal } from "@alxia/media";
+import type { BaseContext, StatusCode } from "@softistx/alxia";
+import type { MediaRefusal } from "@softistx/alxia-media";
 import type { ErrorCode } from "@/i18n/codes";
 import { fail } from "@/i18n/fail";
 import type { Params } from "@/i18n/params";

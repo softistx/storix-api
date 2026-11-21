@@ -1,4 +1,4 @@
-import type { MediaBucket } from "@alxia/media";
+import type { MediaBucket } from "@softistx/alxia-media";
 import type { AppRedis } from "../config/redis";
 import { store } from "../config/tenancy";
 import {
