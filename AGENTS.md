@@ -27,10 +27,10 @@ A module is `src/modules/<name>/` (a kernel module is `src/core/<name>/`, same l
 | `services/<domain>.service.ts` | the business rules, one service per domain (the entity or aggregate its methods act on), its single entry point; no split by kind of work. With data-loaders, the only code that reads or writes a model. `services/index.ts` is the barrel and holds the module's factory |
 | `resolvers/<name>.resolver.ts` | thin resolvers calling the services; `resolvers/support.ts` holds what they share; `resolvers/index.ts` barrel |
 | `data-loaders/<what>.data-loader.ts` | the module's DataLoaders, each with its spec; one file `<name>.data-loader.ts` while it fits; a field that reads per parent goes through a loader, never a query per row |
-| `<name>.errors.ts` | the module's refusals and its `defineCodes("<name>", [...])` codes; a module never throws a code it did not define inline in a service |
+| `<name>.errors.ts` | the module's refusals and its `defineCodes("<name>", [...])` codes; a service throws its module's codes through it, never an inline code |
 | `<name>.rules.ts` (`rules/` when several) | pure rules and computations, no storage |
 | `<name>.utils.ts` (`utils/<what>.utils.ts` when several, barrel) | small helpers that are not a business rule, reading or writing no collection, each with its spec |
-| `<name>.module.ts` / `module.ts`, `<name>.port.ts`, `migrations/` | single-file roles, unchanged at the root |
+| `module.ts`, `<name>.port.ts`, `migrations/` | single-file roles, unchanged at the root |
 
 - **Flat or folders**: a role with one file stays flat at the module's root; as soon as a role has several files they go in a folder named after the role, with a `<role>/index.ts` barrel (`graphql/` has none: the SDL is loaded by glob). Single-file roles stay at the root. Imports inside a module are relative; `@/...` is for another module.
 - **Sizes**: every source file stays under 250 lines, except a service (`*.service.ts`), which holds all its domain's methods at any length; each method stays under 50 lines, each other function under 80. Pure parts go to rules or utils, steps to private methods. A service past 600 lines is raised with the owner in the PR.
