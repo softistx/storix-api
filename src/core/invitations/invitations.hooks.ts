@@ -1,10 +1,11 @@
 import type { Context } from "@/http/context";
-import { fail, forbidden, invalidInput } from "@/i18n/fail";
+import { forbidden, invalidInput } from "@/i18n/fail";
 import { requireWorkspacePermission } from "../access";
 import type { InvitationHooks } from "../identity";
 import { membershipOf, membersMongo } from "../members";
 import { activeWorkspaceName, workspacesMongo } from "../workspaces";
-import { isRole } from "./invitations.service";
+import { alreadyMember } from "./invitations.errors";
+import { isRole } from "./utils/role.utils";
 
 // What the invitation fields ask of the application. Everything an owner-side
 // field does needs `members:manage` in the request's workspace (the
@@ -40,10 +41,7 @@ export const invitationHooks: InvitationHooks<Context> = {
         account &&
         (await membershipOf(members)(scope.tenant.id, account.accountId))
       ) {
-        throw fail("invitations.errors.already-member", {
-          status: 409,
-          field: "email",
-        });
+        throw alreadyMember();
       }
     }
     // Each send is a mail: counted per inviter, after the refusals above.

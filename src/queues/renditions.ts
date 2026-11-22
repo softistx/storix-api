@@ -5,7 +5,7 @@ import { z } from "zod";
 // upload of a type that has previews, the worker (`src/worker.ts`) makes the
 // `thumb` and `preview` sizes and sets the node's status. A failed run is
 // retried with a growing backoff; the handler marks the node `FAILED` when the
-// last attempt is spent (src/modules/files/files.renditions.work.ts).
+// last attempt is spent (src/modules/files/services/renditions.service.ts).
 
 export const RENDITIONS_QUEUE = "renditions";
 

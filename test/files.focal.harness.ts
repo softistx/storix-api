@@ -1,7 +1,7 @@
 import { expect } from "bun:test";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { store } from "@/config/tenancy";
-import { filesMongo } from "../src/modules/files/files.handle";
+import { filesMongo } from "../src/modules/files/models";
 import { NODE, setup } from "../src/modules/nodes/nodes.harness";
 import { field } from "./files.area";
 import { ADD, type FileView, type filesWorld } from "./files.harness";

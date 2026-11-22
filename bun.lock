@@ -7,7 +7,7 @@
       "dependencies": {
         "@graphql-tools/merge": "^10.0.6",
         "@napi-rs/canvas": "^1.1.0",
-        "@nxgt/graphql-client": "^0.7.0",
+        "@nxgt/graphql-client": "^0.8.0",
         "@nxgt/graphql-scalars": "^0.7.1",
         "@nxgt/graphql-validation": "^0.9.0",
         "@softistx/ai-anthropic": "^0.4.2",
@@ -32,7 +32,7 @@
         "@softistx/janus-mongo": "^0.33.0",
         "@softistx/mail": "^1.6.1",
         "@softistx/mail-smtp": "^1.1.1",
-        "@softistx/mongo": "^0.30.1",
+        "@softistx/mongo": "^0.31.0",
         "@softistx/redis": "^0.24.1",
         "@softistx/s3": "^0.13.1",
         "@softistx/telemetry": "^0.5.0",
@@ -286,7 +286,7 @@
 
     "@nodelib/fs.walk": ["@nodelib/fs.walk@1.2.8", "", { "dependencies": { "@nodelib/fs.scandir": "2.1.5", "fastq": "^1.6.0" } }, "sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg=="],
 
-    "@nxgt/graphql-client": ["@nxgt/graphql-client@0.7.0", "", { "dependencies": { "@graphql-typed-document-node/core": "^3.2.0", "@nxgt/httpyz": "^0.5.0" }, "peerDependencies": { "@types/react": "^19.0.0", "graphql": "^16.11.0 || ^17.0.0", "react": "^19.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@types/react", "react"] }, "sha512-PydzJwLtPQ9aKyLzEHy3XAS77swEMSsZBf9bb21e9NXN3hjIQ7/8DuH39DaBrWPBFoVEivHzqiNI4GxmvXb/WQ=="],
+    "@nxgt/graphql-client": ["@nxgt/graphql-client@0.8.0", "", { "dependencies": { "@graphql-typed-document-node/core": "^3.2.0", "@nxgt/httpyz": "^0.5.0" }, "peerDependencies": { "@types/react": "^19.0.0", "graphql": "^16.11.0 || ^17.0.0", "react": "^19.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@types/react", "react"] }, "sha512-QXu2aP5z3QXVr/DmBHKP5dN2xhooo8+bsMQ/53VQ92nTobGyLhvwODaPlIota+PjqJvDX8Ik/eSW8CzDQFR3FA=="],
 
     "@nxgt/graphql-codegen-zod": ["@nxgt/graphql-codegen-zod@0.4.1", "", { "dependencies": { "@nxgt/graphql-validation": "^0.9.0", "change-case": "^5.4.4" }, "peerDependencies": { "graphql": "^16.11.0 || ^17.0.0", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-y2Mp3Sa6vgp/1Y/jGTNt39ZjEraSspm+3GCIeSuFHCVCeQf6mrGTIOomfb6dTintzRMbk48+cZTs55FQ0VmN5g=="],
 
@@ -348,7 +348,7 @@
 
     "@softistx/mail-smtp": ["@softistx/mail-smtp@1.1.1", "", { "peerDependencies": { "@softistx/mail": "^1.6.1", "nodemailer": ">=7.0.0 <11", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-6SNOzfxNGPFzgNLjBldh0gM5wPv1GmWUBfz6qLTjCDJzCKW1R9ZVDoze/vBQaKMDwTzFBy8jhf4wNCLIX6JxSA=="],
 
-    "@softistx/mongo": ["@softistx/mongo@0.30.1", "", { "peerDependencies": { "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-rOrAkDQmobpNI1b/+oDSO0PVEVcIqBo+Ly6qwj4AuvFpfgZ4MOXfDWc7suZdaETbcwEqKUhNJzY9uaxya1+/tw=="],
+    "@softistx/mongo": ["@softistx/mongo@0.31.0", "", { "peerDependencies": { "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-3qGpSDRmIwa/5bpP0RvwumeP/Jm9Sn0bVH/eUvv2zQjiAaVzJBPDQCYmPzhOWfnM9rd7r+2WTFehOL9zuzKuOQ=="],
 
     "@softistx/redis": ["@softistx/redis@0.24.1", "", { "peerDependencies": { "redis-memory-server": ">=0.17.1 <0.18", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "optionalPeers": ["redis-memory-server"] }, "sha512-5fvcyYuiN526rKoRGBZke2lRCc9Tcn68R+Z0WvIx+pbo/E9A9fC+d1r/IaVVjeUBEyvd54KFt8BA40xaROh7Qg=="],
 

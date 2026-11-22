@@ -96,7 +96,7 @@ describe("a workspace always keeps an owner", () => {
     const workspace = await w.workspaceOf();
     const second = await w.join(workspace, "OWNER");
     await w.send(second.user, LEAVE, { workspace: workspace.id });
-    const { addMember } = await import("./members.service");
+    const { addMember } = await import("./services");
     const { tenancy } = await import("@/config/tenancy");
     await addMember(tenancy.core as never, {
       workspaceId: workspace.id,

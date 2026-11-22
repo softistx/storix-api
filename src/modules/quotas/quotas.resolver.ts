@@ -2,7 +2,7 @@ import { requireWorkspacePermission } from "@/core/access";
 import { workspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { fail } from "@/i18n/fail";
-import { storageView } from "./quotas.service";
+import { storageView } from "./services";
 
 export const quotasResolvers: Resolvers = {
   Query: {

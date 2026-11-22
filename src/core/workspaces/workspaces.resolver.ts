@@ -1,35 +1,21 @@
 import type { Resolvers } from "@/generated/graphql/resolvers";
-import { fail, invalidInput } from "@/i18n/fail";
+import { invalidInput } from "@/i18n/fail";
 import { requireAccountSession, requireWorkspacePermission } from "../access";
 import { memberActor } from "../audit";
-import { membershipsOfAccount, type WorkspaceRole } from "../members";
-import { isObjectIdLike } from "./workspaces.collection";
-import { workspacesMongo } from "./workspaces.handle";
-import { type Workspace, workspaceOf } from "./workspaces.registry";
-import { renameWorkspace } from "./workspaces.rename";
-import { createWorkspace } from "./workspaces.service";
-import { settingsOf, updateSettings } from "./workspaces.settings";
-
-const view = (workspace: Workspace, myRole: WorkspaceRole) => ({
-  id: workspace.id,
-  slug: workspace.slug,
-  name: workspace.name,
-  myRole,
-  createdAt: workspace.createdAt,
-});
-
-const notFound = () => fail("workspaces.errors.not-found", { status: 404 });
+import { settingsOfWorkspace } from "./data-loaders";
+import { isObjectIdLike, workspacesMongo } from "./models";
+import {
+  createWorkspace,
+  renameWorkspace,
+  updateSettings,
+  workspacesOfAccount,
+} from "./services";
+import { view } from "./utils";
+import { notFound } from "./workspaces.errors";
 
 export const workspacesResolvers: Resolvers = {
   Workspace: {
-    settings: async (workspace, _, ctx) => {
-      const settings = await settingsOf(
-        workspacesMongo(ctx.tenancy.core),
-        workspace.id,
-      );
-      if (!settings) throw notFound();
-      return settings;
-    },
+    settings: (workspace, _, ctx) => settingsOfWorkspace(workspace, ctx),
   },
   Query: {
     workspace: async (_, __, ctx) => {
@@ -38,21 +24,11 @@ export const workspacesResolvers: Resolvers = {
     },
     myWorkspaces: async (_, __, ctx) => {
       const { accountId } = requireAccountSession(ctx);
-      const mongo = workspacesMongo(ctx.tenancy.core);
-      const memberships = await membershipsOfAccount(mongo, accountId);
-      const roles = new Map(
-        memberships.map((m) => [m.workspaceId.toHexString(), m.role]),
+      const mine = await workspacesOfAccount(
+        workspacesMongo(ctx.tenancy.core),
+        accountId,
       );
-      const found = await mongo.db.workspaces.findMany({
-        filter: {
-          _id: { $in: memberships.map((m) => m.workspaceId) },
-          status: "active",
-        },
-        sort: { name: 1 },
-      });
-      return found.map((doc) =>
-        view(workspaceOf(doc), roles.get(doc.id) ?? "MEMBER"),
-      );
+      return mine.map(({ workspace, role }) => view(workspace, role));
     },
   },
   Mutation: {
@@ -131,9 +107,15 @@ export const workspacesResolvers: Resolvers = {
       );
       const core = workspacesMongo(ctx.tenancy.core);
       const patch = {
-        ...(input.trashDays != null && { trashDays: input.trashDays }),
-        ...(input.versionsMax != null && { versionsMax: input.versionsMax }),
-        ...(input.versionsDays != null && { versionsDays: input.versionsDays }),
+        ...(typeof input.trashDays === "number" && {
+          trashDays: input.trashDays,
+        }),
+        ...(typeof input.versionsMax === "number" && {
+          versionsMax: input.versionsMax,
+        }),
+        ...(typeof input.versionsDays === "number" && {
+          versionsDays: input.versionsDays,
+        }),
       };
       const settings = await updateSettings(core, scope.tenant.id, patch);
       if (!settings) throw notFound();

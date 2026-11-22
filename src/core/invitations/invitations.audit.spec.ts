@@ -4,7 +4,7 @@ import type { Context } from "@/http/context";
 import {
   recordInvitationAccept,
   recordInvitationWrite,
-} from "./invitations.audit";
+} from "./services/invitations.audit";
 
 const viewer = { accountId: "a1", name: "Ada" };
 const record = mock(async (_event: AuditEventInput) => {});

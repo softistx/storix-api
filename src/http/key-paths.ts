@@ -1,6 +1,6 @@
 import { defineMiddleware } from "@softistx/alxia";
 import { API_KEY_PREFIX } from "../core/identity";
-import { fail } from "../i18n/fail";
+import { apiKeyNotAccepted } from "../i18n/fail";
 import { refusalError } from "./refusal";
 
 // The paths a personal API key may call. Any other path refuses a key.
@@ -29,9 +29,7 @@ export const keyPathsOnly = defineMiddleware<{
   viewer: { apiKeyId: string | null } | null;
 }>()(async ({ url, request, viewer }, next) => {
   if (!acceptsKeys(url.pathname) && (viewer?.apiKeyId || keyShaped(request))) {
-    throw refusalError(
-      fail("auth.errors.api-key-not-accepted", { status: 401 }),
-    );
+    throw refusalError(apiKeyNotAccepted());
   }
   return next();
 });

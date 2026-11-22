@@ -7,7 +7,7 @@ import { defineMigration } from "@softistx/mongo/migrations";
 // stay first. `nodes_processing` serves the sweep's scan for files stuck
 // `PROCESSING`. A database whose indexes are not synced at boot builds them
 // here; one that has them is left alone. Keep in step with
-// `nodes.collection.ts`. It lives in the files module only for its place in the
+// `models/nodes.model.ts`. It lives in the files module only for its place in the
 // list: the runner takes the modules in registry order, nodes first, and a new
 // id must come after `2026-11-21-versions-indexes`, which the files module
 // lists.

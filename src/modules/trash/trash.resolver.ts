@@ -1,24 +1,16 @@
 import { requireWorkspacePermission } from "@/core/access";
-import { type Auditor, memberActor } from "@/core/audit";
 import { workspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { filesMongo } from "@/modules/files/public";
 import { nodesMongo, nodeView } from "@/modules/nodes/public";
-import { recordEmpty, recordTrash } from "./trash.audit";
-import { listTrash } from "./trash.list";
-import { emptyTrash, purgeNodes } from "./trash.purge";
-import { restoreNodes, trashNodes } from "./trash.service";
-
-const doneBy = (
-  ctx: { ip?: string | null | undefined; audit: Auditor },
-  workspaceId: string,
-  principal: { accountId: string; name: string },
-) => ({
-  workspaceId,
-  actor: memberActor(principal),
-  ip: ctx.ip,
-  auditor: ctx.audit,
-});
+import {
+  emptyTrash,
+  listTrash,
+  purgeNodes,
+  restoreNodes,
+  trashNodes,
+} from "./services";
+import { doneBy, recordEmpty, recordTrash } from "./utils";
 
 export const trashResolvers: Resolvers = {
   Query: {
@@ -38,7 +30,7 @@ export const trashResolvers: Resolvers = {
           startCursor: null,
           endCursor: page.endCursor,
           hasNextPage: page.endCursor !== null,
-          hasPreviousPage: after != null,
+          hasPreviousPage: typeof after === "string",
         },
       };
     },

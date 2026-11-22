@@ -351,7 +351,7 @@ move, trash and purge in the same transaction as the node.
   `authenticate(request) → Principal | null` (`{ accountId, email, name, authenticatedAt,
   secondFactor }`), `accounts.byIds(ids)` (a DataLoader source), `accounts.byEmail`,
   `assertFresh(principal, maxAge)`, `hasher` (`hash`, `verify`), and the invitation token
-  mechanics. `identity.janus.ts` implements it with `@softistx/janus*`; `config/auth.ts` wires it.
+  mechanics. `services/identity.janus.ts` implements it with `@softistx/janus*`; `config/auth.ts` wires it.
 - Every other module stores `accountId` as an opaque string and never imports a janus package
   (a dependency check in `verify`: only `src/core/identity/**` and `src/config/auth.ts` may).
 - The account operations of the schema (`signIn`, `signOut`, reset, verification, TOTP,

@@ -1,5 +1,5 @@
 import { defineModule } from "@softistx/alxia-modules";
-import { identity } from "@/i18n/codes";
+import { identity } from "./identity.errors";
 import typeDefs from "./identity.graphqls" with { type: "text" };
 import { identityResolvers } from "./identity.resolver";
 

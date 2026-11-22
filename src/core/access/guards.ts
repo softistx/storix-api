@@ -5,7 +5,7 @@ import {
 } from "@softistx/alxia-access";
 import type { Principal } from "@/core/identity";
 import type { Context } from "@/http/context";
-import { fail, unauthenticated } from "@/i18n/fail";
+import { apiKeyNotAccepted, unauthenticated } from "@/i18n/fail";
 import type { WorkspaceScope } from "./ports";
 import { apiRefusal } from "./refusals";
 
@@ -22,7 +22,7 @@ export interface Guarded {
 function sessionOf(ctx: Context): Principal {
   if (!ctx.viewer) throw unauthenticated();
   if (ctx.viewer.apiKeyId !== null) {
-    throw fail("auth.errors.api-key-not-accepted", { status: 401 });
+    throw apiKeyNotAccepted();
   }
   return ctx.viewer;
 }

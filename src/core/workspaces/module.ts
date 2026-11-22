@@ -1,8 +1,8 @@
 import { defineModule } from "@softistx/alxia-modules";
-import { workspaces as codes } from "@/i18n/codes";
 import { workspacesQuota } from "./migrations/2026-11-20-workspaces-quota.migration";
 import { workspacesSettings } from "./migrations/2026-11-21-workspaces-settings.migration";
-import { workspaces } from "./workspaces.collection";
+import { workspaces } from "./models/workspaces.model";
+import { workspaces as codes } from "./workspaces.errors";
 import typeDefs from "./workspaces.graphqls" with { type: "text" };
 import { workspacesResolvers } from "./workspaces.resolver";
 

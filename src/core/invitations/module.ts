@@ -1,6 +1,6 @@
 import { defineModule } from "@softistx/alxia-modules";
-import { invitations as codes } from "@/i18n/codes";
 import { invitationTypeDefs } from "../identity";
+import { invitations as codes } from "./invitations.errors";
 import { invitationsResolvers } from "./invitations.resolver";
 
 // Invitations to a workspace: an admin invites an address with a role, the

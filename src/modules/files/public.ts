@@ -2,35 +2,32 @@
 // the orphan sweep.
 // Everything else in this folder is private.
 
-export { accounted } from "./files.accounting";
-export { releaseBlobs } from "./files.blob";
-export type { FilesMongo } from "./files.handle";
-export { filesMongo } from "./files.handle";
-export { fileReader } from "./files.reader";
-export { recountStorage } from "./files.recount";
+export type { FilesMongo } from "./models";
+export { filesMongo } from "./models";
+export { filesModule } from "./module";
 export {
   type RenditionsQueue,
   renditionKindOf,
-} from "./files.renditions";
-export {
-  markRenditionsFailed,
-  renditionsHandler,
-} from "./files.renditions.work";
-export { sweepAll, sweepWorkspace } from "./files.sweep";
+} from "./rules";
 export type {
   SweepBucket,
   SweepOptions,
   SweepReport,
-} from "./files.sweep.run";
+} from "./services";
 export {
+  accounted,
+  fileReader,
   MAX_REQUEUES,
-  requeueStuck,
-  STUCK_AFTER_MS,
-} from "./files.sweep.stuck";
-export {
+  markRenditionsFailed,
   type RetentionOptions,
   type RetentionReport,
+  recountStorage,
+  releaseBlobs,
+  renditionsHandler,
+  requeueStuck,
   retainAll,
   retainVersions,
-} from "./files.versions.retention";
-export { filesModule } from "./module";
+  STUCK_AFTER_MS,
+  sweepAll,
+  sweepWorkspace,
+} from "./services";

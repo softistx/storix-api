@@ -1,17 +1,7 @@
 import { requireWorkspacePermission } from "@/core/access";
 import type { Resolvers } from "@/generated/graphql/resolvers";
-import type { AuditMongo } from "./audit.record";
-import { type AuditDoc, listEvents } from "./audit.service";
-
-const view = (event: AuditDoc) => ({
-  id: event.id,
-  at: event.at,
-  actor: event.actor,
-  action: event.action,
-  target: event.target,
-  ipHash: event.ipHash,
-  meta: event.meta,
-});
+import { type AuditMongo, listEvents } from "./services";
+import { view } from "./utils";
 
 export const auditResolvers: Resolvers = {
   Query: {
@@ -31,7 +21,7 @@ export const auditResolvers: Resolvers = {
           startCursor: after ?? null,
           endCursor: page.endCursor,
           hasNextPage: page.endCursor !== null,
-          hasPreviousPage: after != null,
+          hasPreviousPage: typeof after === "string",
         },
       };
     },

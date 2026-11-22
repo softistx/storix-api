@@ -1,53 +1,18 @@
 import type { Resolvers } from "@/generated/graphql/resolvers";
-import type { Context } from "@/http/context";
 import { requireWorkspaceMember, requireWorkspacePermission } from "../access";
 import { memberActor } from "../audit";
-import type { Account } from "../identity";
-import { recordLeave, recordRemoval, recordRoleChange } from "./members.audit";
-import { membersMongo } from "./members.handle";
-import { listMembers } from "./members.queries";
-import { handOver, memberRemoved } from "./members.removal";
-import { changeRole, endMembership, type MemberDoc } from "./members.service";
-
-// The module's own handle on the core database (the scope's, typed by the
-// registry; see src/core/access/ports.ts).
-const handleOf = (scope: { readonly core: unknown }) =>
-  membersMongo(scope.core);
-
-const memberView = (member: MemberDoc, account: Account | undefined) => ({
-  id: member.id,
-  accountId: member.accountId,
-  name: account?.name ?? null,
-  email: account?.email ?? null,
-  role: member.role,
-  joinedAt: member.createdAt,
-});
-
-// One call for the accounts of a page (the port's DataLoader source).
-async function accountsOf(ctx: Context, members: readonly MemberDoc[]) {
-  const accounts = await ctx.identity.accounts.byIds(
-    members.map((member) => member.accountId),
-  );
-  return new Map(accounts.map((account) => [account.accountId, account]));
-}
-
-// The name of a member's account for the audit log, null when the account
-// cannot be read: the removal has committed, so a failed lookup must not fail
-// the request.
-async function accountOf(
-  ctx: Context,
-  member: MemberDoc,
-): Promise<Account | undefined> {
-  try {
-    return (await accountsOf(ctx, [member])).get(member.accountId);
-  } catch {
-    return undefined;
-  }
-}
-
-async function nameOf(ctx: Context, member: MemberDoc): Promise<string | null> {
-  return (await accountOf(ctx, member))?.name ?? null;
-}
+import {
+  changeRole,
+  endMembership,
+  handOver,
+  listMembers,
+  type MemberDoc,
+  memberRemoved,
+  recordLeave,
+  recordRemoval,
+  recordRoleChange,
+} from "./services";
+import { accountOf, accountsOf, handleOf, memberView, nameOf } from "./utils";
 
 export const membersResolvers: Resolvers = {
   Query: {
@@ -67,7 +32,7 @@ export const membersResolvers: Resolvers = {
           startCursor: after ?? null,
           endCursor: page.endCursor,
           hasNextPage: page.endCursor !== null,
-          hasPreviousPage: after != null,
+          hasPreviousPage: typeof after === "string",
         },
         totalCount: page.totalCount,
       };

@@ -1,6 +1,7 @@
 // The audit surface: the `Auditor` port every module calls, its factory, and the module. Everything else in this folder is
 // private.
 
+export { auditModule } from "./module";
 export {
   type AuditActor,
   type AuditEventInput,
@@ -9,5 +10,4 @@ export {
   type AuditSink,
   createAuditor,
   memberActor,
-} from "./audit.record";
-export { auditModule } from "./module";
+} from "./services";
