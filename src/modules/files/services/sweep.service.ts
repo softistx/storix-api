@@ -1,8 +1,8 @@
 import { mediaPlace } from "@softistx/alxia-media";
 import type { WorkspacesMongo } from "@/core/workspaces";
-import type { FilesMongo } from "./files.handle";
-import { filesMongo } from "./files.handle";
-import { sweepOrphans } from "./files.sweep.orphans";
+import type { FilesMongo } from "../models";
+import { filesMongo } from "../models";
+import { sweepOrphans } from "./sweep.orphans.service";
 import {
   ORPHAN_MARGIN_MS,
   removeObjects,
@@ -13,8 +13,8 @@ import {
   type SweepOptions,
   type SweepReport,
   sizesOf,
-} from "./files.sweep.run";
-import { requeueStuck } from "./files.sweep.stuck";
+} from "./sweep.run.service";
+import { requeueStuck } from "./sweep.stuck.service";
 
 // The blobs nothing references (`refs` 0): the blob goes first, with a delete
 // that only matches while `refs` is still 0, then its object and its sizes. A

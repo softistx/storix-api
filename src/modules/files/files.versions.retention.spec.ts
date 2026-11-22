@@ -4,7 +4,7 @@ import { workspacesMongo } from "@/core/workspaces";
 import { failDeleteOn } from "../../../test/fail-delete";
 import { filesWorld } from "../../../test/files.harness";
 import { versionsArea } from "../../../test/versions.harness";
-import { retainVersions } from "./files.versions.retention";
+import { retainVersions } from "./services";
 
 const files = filesWorld();
 let spies: { mockRestore: () => void }[] = [];

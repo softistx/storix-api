@@ -1,9 +1,9 @@
 import type { WorkspacesMongo } from "@/core/workspaces";
 import { familyOf, type NodeDoc } from "@/modules/nodes/public";
-import { accounted } from "./files.accounting";
-import { recordBlob, releaseBlob } from "./files.blob";
-import type { FilesMongo } from "./files.handle";
-import { ensureVersions } from "./files.versions.first";
+import type { FilesMongo } from "../models";
+import { accounted } from "./accounting.service";
+import { recordBlob, releaseBlob } from "./blob.service";
+import { ensureVersions } from "./versions.first.service";
 
 // What a new current version holds: the blob (`fresh` when it is an upload
 // just recorded, else a blob a version of this file already holds), how its

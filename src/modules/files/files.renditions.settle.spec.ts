@@ -6,11 +6,10 @@ import { field } from "../../../test/files.area";
 import { ADD, type FileView, filesWorld } from "../../../test/files.harness";
 import { ADD_VERSION } from "../../../test/versions.harness";
 import { NODE, setup } from "../nodes/nodes.harness";
-import { copyNodes } from "./files.copy";
-import { filesMongo } from "./files.handle";
 import { renditionsOf } from "./files.renditions.list";
-import { requeueStuck } from "./files.sweep.stuck";
+import { filesMongo } from "./models";
 import { type RenditionsQueue, renditionsHandler } from "./public";
+import { copyNodes, requeueStuck } from "./services";
 
 // A queue that holds its jobs: the spec calls the handler itself.
 const added: string[] = [];

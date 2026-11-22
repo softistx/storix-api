@@ -1,6 +1,6 @@
 import type { FileReader } from "@/core/storage";
-import { mayRead } from "./files.access";
-import { filesMongo } from "./files.handle";
+import { filesMongo } from "../models";
+import { mayRead } from "./access.service";
 
 // Who may read a `files` key through `/media`: the check the app hands to the
 // storage routes (`createApp`), so the kernel needs no registry of its own.

@@ -1,6 +1,6 @@
 import { type NodeDoc, named, ownedNode } from "@/modules/nodes/public";
-import { notAFile } from "./files.errors";
-import type { FilesMongo } from "./files.handle";
+import { notAFile } from "../files.errors";
+import type { FilesMongo } from "../models";
 
 // Sets the tags and the metadata of a file of the caller's tree: each one
 // given replaces the old value, one left out stays. With a `version`, the

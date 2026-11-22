@@ -1,7 +1,7 @@
 import type { BoundBucket } from "@softistx/s3";
-import type { FilesMongo } from "./files.handle";
-import type { RenditionsQueue } from "./files.renditions";
-import type { StuckOptions, StuckReport } from "./files.sweep.stuck";
+import type { RenditionsQueue } from "../files.renditions";
+import type { FilesMongo } from "../models";
+import type { StuckOptions, StuckReport } from "./sweep.stuck.service";
 
 // What the sweep needs of the bucket: the listing, and the delete that
 // `@softistx/alxia-media`'s routes use.

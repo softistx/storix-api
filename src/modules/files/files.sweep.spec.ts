@@ -4,10 +4,9 @@ import { Collection } from "mongodb";
 import { store } from "@/config/tenancy";
 import { ADD, filesWorld } from "../../../test/files.harness";
 import { setup } from "../nodes/nodes.harness";
-import { filesMongo } from "./files.handle";
-import { recountStorage } from "./files.recount";
-import { sweepWorkspace } from "./files.sweep";
-import type { SweepBucket } from "./files.sweep.run";
+import { filesMongo } from "./models";
+import type { SweepBucket } from "./services";
+import { recountStorage, sweepWorkspace } from "./services";
 
 // The orphan sweep against a real S3 API and the real Mongo: released blobs
 // with their sizes, objects nobody recorded once they are old enough, and a

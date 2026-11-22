@@ -47,7 +47,7 @@ export const stars = defineCollection({
 
 // A file a member opened or uploaded lately: one document per account and
 // file, `at` the last time. Capped at `MAX_RECENTS` per account when one is
-// recorded (`files.recents.ts`).
+// recorded (`services/recents.service.ts`).
 export const recents = defineCollection({
   name: "recents",
   schema: z.object({

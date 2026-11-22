@@ -10,16 +10,16 @@ import {
   nodesMongo,
   ownedNode,
 } from "@/modules/nodes/public";
-import { accounted } from "./files.accounting";
-import { KeyRecorded, releaseBlob } from "./files.blob";
-import { enqueue } from "./files.enqueue";
-import { keyUnknown, notAFile } from "./files.errors";
-import type { FilesMongo } from "./files.handle";
-import { discardObject, storedObject } from "./files.object";
-import { type RenditionsQueue, renditionKindOf } from "./files.renditions";
+import { keyUnknown, notAFile } from "../files.errors";
+import { discardObject, storedObject } from "../files.object";
+import { type RenditionsQueue, renditionKindOf } from "../files.renditions";
+import type { FilesMongo } from "../models";
+import { accounted } from "./accounting.service";
+import { KeyRecorded, releaseBlob } from "./blob.service";
+import { enqueue } from "./enqueue.service";
 import { isQuotaExceeded } from "./files.service";
-import { ensureVersions } from "./files.versions.first";
-import { pushVersion } from "./files.versions.push";
+import { ensureVersions } from "./versions.first.service";
+import { pushVersion } from "./versions.push.service";
 
 export type VersionDoc = Awaited<
   ReturnType<FilesMongo["db"]["versions"]["getById"]>

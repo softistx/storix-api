@@ -12,8 +12,8 @@ import {
   rootLocked,
   tooDeep,
 } from "@/modules/nodes/public";
-import { copyTooLarge } from "./files.errors";
-import type { FilesMongo } from "./files.handle";
+import { copyTooLarge } from "../files.errors";
+import type { FilesMongo } from "../models";
 
 // The most nodes one copy makes: a copied folder and everything under it.
 export const MAX_COPY_NODES = 5_000;

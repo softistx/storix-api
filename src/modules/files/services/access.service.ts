@@ -1,4 +1,4 @@
-import type { FilesMongo } from "./files.handle";
+import type { FilesMongo } from "../models";
 
 // Whether the account may read a `files` object: a live node of their own
 // tree holds the key, as its blob or as one of its versions' (sharing widens

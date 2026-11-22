@@ -9,7 +9,7 @@ import {
   png,
 } from "../../../test/files.harness";
 import { setup } from "../nodes/nodes.harness";
-import { filesMongo } from "./files.handle";
+import { filesMongo } from "./models";
 
 const files = filesWorld({ renditions: true });
 

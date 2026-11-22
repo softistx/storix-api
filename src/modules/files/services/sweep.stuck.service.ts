@@ -1,6 +1,6 @@
 import { renditionJobId } from "@/queues/renditions";
-import type { FilesMongo } from "./files.handle";
-import type { RenditionsQueue } from "./files.renditions";
+import type { RenditionsQueue } from "../files.renditions";
+import type { FilesMongo } from "../models";
 
 /** A file is stuck `PROCESSING` when untouched for this long. */
 export const STUCK_AFTER_MS = 60 * 60_000;

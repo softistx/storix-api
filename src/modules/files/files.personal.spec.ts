@@ -3,8 +3,8 @@ import { ObjectId } from "mongodb";
 import { store } from "@/config/tenancy";
 import { filesWorld } from "../../../test/files.harness";
 import { NODE, setup } from "../nodes/nodes.harness";
-import { filesMongo } from "./files.handle";
-import { MAX_RECENTS, recordRecent } from "./files.recents";
+import { filesMongo } from "./models";
+import { MAX_RECENTS, recordRecent } from "./services";
 
 const files = filesWorld();
 

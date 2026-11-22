@@ -7,7 +7,7 @@ import type { WorkspacesMongo } from "./workspaces.service";
 // counts each distinct blob once, so a copy that shares a blob adds nothing;
 // `files` counts live file nodes, copies included (a trashed file is not one);
 // `versionBytes` the blobs only versions hold (no node does), `trashBytes` the
-// blobs only trashed nodes hold (see `files.accounting.ts`). The counters are raised and
+// blobs only trashed nodes hold (see `src/modules/files/services/accounting.service.ts`). The counters are raised and
 // lowered in the transaction that changes a ref (`addUsage`), and `reconcile`
 // (src/modules/quotas) recounts them.
 export interface Usage {

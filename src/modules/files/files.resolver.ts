@@ -11,20 +11,26 @@ import {
   recordQuotaRefusal,
   recordVersion,
 } from "./files.audit";
-import { copyNodes } from "./files.copy";
 import { notAFile } from "./files.errors";
-import { listStarred, setStarred } from "./files.favourites";
 import { fileRenditionResolvers, setFocalPoint } from "./files.focal.resolver";
-import { filesMongo } from "./files.handle";
-import type { PersonalPage } from "./files.personal";
-import { listRecent, openFile, recordRecent } from "./files.recents";
 import { checkTags, MAX_META_BYTES, metaFits } from "./files.rules";
-import { addFile, isQuotaExceeded } from "./files.service";
-import { updateFile } from "./files.update";
 import {
   fileVersionResolvers,
   versionMutations,
 } from "./files.versions.resolver";
+import { filesMongo } from "./models";
+import type { PersonalPage } from "./services";
+import {
+  addFile,
+  copyNodes,
+  isQuotaExceeded,
+  listRecent,
+  listStarred,
+  openFile,
+  recordRecent,
+  setStarred,
+  updateFile,
+} from "./services";
 
 // The module's handle on the request's workspace database (the scope's, typed
 // by the registry; see src/core/access/ports.ts).

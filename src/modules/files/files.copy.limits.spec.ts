@@ -3,8 +3,8 @@ import { store } from "@/config/tenancy";
 import { workspacesMongo } from "@/core/workspaces";
 import { areaOf, code } from "../../../test/files.area";
 import { filesWorld } from "../../../test/files.harness";
-import { copyNodes } from "./files.copy";
-import { filesMongo } from "./files.handle";
+import { filesMongo } from "./models";
+import { copyNodes } from "./services";
 
 const files = filesWorld();
 

@@ -8,10 +8,9 @@ import {
   png,
 } from "../../../test/files.harness";
 import { setup } from "../nodes/nodes.harness";
-import { filesMongo } from "./files.handle";
 import type { RenditionsQueue } from "./files.renditions";
-import { sweepWorkspace } from "./files.sweep";
-import { requeueStuck } from "./files.sweep.stuck";
+import { filesMongo } from "./models";
+import { requeueStuck, sweepWorkspace } from "./services";
 
 // Jobs are collected, never run; `refuse` makes the queue throw.
 let refuse = false;
