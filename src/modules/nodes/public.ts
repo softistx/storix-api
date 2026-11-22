@@ -35,4 +35,11 @@ export {
   ownedNode,
   sameNameSibling,
 } from "./services";
-export { copyName, depthOf, type FileNode, fileView, nodeView } from "./utils";
+export {
+  copyName,
+  depthOf,
+  type FileNode,
+  fileView,
+  nodeView,
+  sessionOf,
+} from "./utils";

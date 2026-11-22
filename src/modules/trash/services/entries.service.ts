@@ -7,9 +7,9 @@ import {
   type NodesMongo,
   nodeNotFound,
   ownedNode,
+  sessionOf,
 } from "@/modules/nodes/public";
 import { notTrashed } from "../trash.errors";
-import { inSession } from "../utils";
 
 // A top entry of the caller's trash: the node they trashed, not one that went
 // with a folder. `not-trashed` for a live node, `not-found` for a node of the
@@ -33,7 +33,7 @@ export async function blobKeysOf(
   const keys: unknown[] = await tx.db.nodes.raw.distinct(
     "blobKey",
     { ...filter, blobKey: { $ne: null } },
-    inSession(tx),
+    sessionOf(tx),
   );
   return keys.filter((key): key is string => typeof key === "string");
 }
@@ -66,7 +66,7 @@ export async function trashTop(
   const keys = await blobKeysOf(tx, live);
   const files = await tx.db.nodes.raw.countDocuments(
     { type: "FILE", ...live },
-    inSession(tx),
+    sessionOf(tx),
   );
   await accounted(
     tx,
@@ -83,7 +83,7 @@ export async function trashTop(
             trashRootId: top._id,
           },
         },
-        inSession(tx),
+        sessionOf(tx),
       );
       await tx.db.nodes.raw.updateOne(
         { _id: top._id },
@@ -94,7 +94,7 @@ export async function trashTop(
             trashRootId: null,
           },
         },
-        inSession(tx),
+        sessionOf(tx),
       );
     },
     () => -files,
@@ -121,7 +121,7 @@ export async function restoreEntry(
   const keys = await blobKeysOf(tx, subtree);
   const files = await tx.db.nodes.raw.countDocuments(
     { type: "FILE", ...subtree },
-    inSession(tx),
+    sessionOf(tx),
   );
   await accounted(
     tx,
@@ -133,12 +133,12 @@ export async function restoreEntry(
       await tx.db.nodes.raw.updateOne(
         { _id: node._id },
         { $set: { trashedAt: null, trashedBy: null, name } },
-        inSession(tx),
+        sessionOf(tx),
       );
       await tx.db.nodes.raw.updateMany(
         { trashRootId: node._id },
         { $set: { trashedAt: null, trashedBy: null, trashRootId: null } },
-        inSession(tx),
+        sessionOf(tx),
       );
     },
     () => files,

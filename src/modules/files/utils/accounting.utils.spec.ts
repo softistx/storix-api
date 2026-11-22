@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { FilesMongo } from "../models";
-import { counted, sessionOf } from "./accounting.utils";
+import { counted } from "./accounting.utils";
 
 describe("counted", () => {
   test("counts nothing for a blob that is not held", () => {
@@ -31,16 +30,5 @@ describe("counted", () => {
       versionBytes: 5,
       trashBytes: 0,
     });
-  });
-});
-
-describe("sessionOf", () => {
-  const within = (session: unknown) =>
-    ({ db: { nodes: { session } } }) as unknown as FilesMongo;
-
-  test("carries the transaction's session, or nothing outside one", () => {
-    const session = { id: 1 } as never;
-    expect(sessionOf(within(session))).toEqual({ session });
-    expect(sessionOf(within(undefined))).toEqual({});
   });
 });

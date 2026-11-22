@@ -9,8 +9,9 @@ import {
   type NodeDoc,
   named,
   nodesMongo,
+  sessionOf,
 } from "@/modules/nodes/public";
-import { inSession, topsOf } from "../utils";
+import { topsOf } from "../utils";
 import { entryOf } from "./entries.service";
 
 interface Done {
@@ -31,7 +32,7 @@ export async function purgeTop(
   workspaceId: string,
   top: NodeDoc,
 ): Promise<number> {
-  const session = inSession(tx);
+  const session = sessionOf(tx);
   const subtree = { $or: [{ _id: top._id }, { ancestors: top._id }] };
   const ids: NodeDoc["_id"][] = await tx.db.nodes.raw.distinct(
     "_id",

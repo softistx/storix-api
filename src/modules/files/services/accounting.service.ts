@@ -1,6 +1,7 @@
 import { addUsage, type WorkspacesMongo } from "@/core/workspaces";
+import { sessionOf } from "@/modules/nodes/public";
 import type { FilesMongo } from "../models";
-import { counted, type Held, sessionOf } from "../utils";
+import { counted, type Held } from "../utils";
 
 // Where a blob stands in the workspace's counters (plan §3.9): held by a live
 // node (`live`, the current files), held only by trashed nodes (`trash`), held
