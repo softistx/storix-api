@@ -42,8 +42,6 @@ export const field =
 // opening) is as dead as a spent one: `invitations.errors.invalid`, for the
 // preview and for the accept alike. The preview names the workspace only when
 // it is active, so a null name is that state.
-const closed = invalidInvitation;
-
 // The invitation a code names, as the preview answers it.
 export interface Previewed {
   id: string;
@@ -59,7 +57,7 @@ export const preview: Field = async (parent, args, ctx, info) => {
   if (!resolve)
     throw new Error("no invitation resolver Query.invitationPreview");
   const answer = (await resolve(parent, args, ctx, info)) as Previewed;
-  if (answer.organization === null) throw closed();
+  if (answer.organization === null) throw invalidInvitation();
   return answer;
 };
 
