@@ -1,5 +1,6 @@
 import { addUsage, type WorkspacesMongo } from "@/core/workspaces";
 import type { FilesMongo } from "../models";
+import { counted, type Held, sessionOf } from "../utils";
 
 // Where a blob stands in the workspace's counters (plan §3.9): held by a live
 // node (`live`, the current files), held only by trashed nodes (`trash`), held
@@ -8,16 +9,6 @@ import type { FilesMongo } from "../models";
 // one state, so `usage.bytes` is the sum of the three counted ones and
 // `versionBytes` and `trashBytes` are two of its parts.
 export type BlobState = "none" | "live" | "trash" | "versions";
-
-interface Held {
-  size: number;
-  state: BlobState;
-}
-
-const sessionOf = (tx: FilesMongo) => {
-  const session = tx.db.nodes.session;
-  return session ? { session } : {};
-};
 
 // The state of each of these blobs, read in the caller's transaction.
 async function states(
@@ -50,12 +41,6 @@ async function states(
   }
   return found;
 }
-
-const counted = (held: Held | undefined) => ({
-  bytes: held && held.state !== "none" ? held.size : 0,
-  versionBytes: held?.state === "versions" ? held.size : 0,
-  trashBytes: held?.state === "trash" ? held.size : 0,
-});
 
 // Runs a write that changes who holds these blobs (a version pushed or
 // removed, nodes trashed, restored or purged) and moves the workspace's

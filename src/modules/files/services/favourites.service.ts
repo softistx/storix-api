@@ -1,10 +1,7 @@
 import { type NodeDoc, ownedNode } from "@/modules/nodes/public";
 import type { FilesMongo } from "../models";
-import {
-  afterPosition,
-  type PersonalPage,
-  personalPage,
-} from "./personal.service";
+import { afterPosition } from "../utils";
+import { type PersonalPage, personalPage } from "./personal.service";
 
 // Stars or unstars a node of the caller's tree, and answers the node. Starring
 // is idempotent (the list keeps the first date) and so is unstarring; a

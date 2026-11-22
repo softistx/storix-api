@@ -10,13 +10,17 @@ import {
   sameNameSibling,
 } from "@/modules/nodes/public";
 import { keyUnknown } from "../files.errors";
-import { discardObject, storedObject } from "../files.object";
-import { type RenditionsQueue, renditionKindOf } from "../files.renditions";
 import type { FilesMongo } from "../models";
+import { type RenditionsQueue, renditionKindOf } from "../rules";
+import {
+  discardObject,
+  isNameTaken,
+  isQuotaExceeded,
+  storedObject,
+} from "../utils";
 import { KeyRecorded, recordBlob } from "./blob.service";
 import { enqueue } from "./enqueue.service";
-import { makeFirstVersion } from "./versions.first.service";
-import { pushVersion } from "./versions.push.service";
+import { makeFirstVersion, pushVersion } from "./versions.service";
 
 // Tries `KEEP_BOTH` again when a writer took the free name first.
 const ATTEMPTS = 3;
@@ -144,11 +148,3 @@ async function record(
     appended: null,
   };
 }
-
-// Whether `error` is a GraphQL error carrying the catalogue code.
-const hasCode = (code: string) => (error: unknown) =>
-  (error as { extensions?: { code?: string } }).extensions?.code === code;
-
-export const isQuotaExceeded = hasCode("quotas.errors.exceeded");
-
-const isNameTaken = hasCode("nodes.errors.name-taken");
