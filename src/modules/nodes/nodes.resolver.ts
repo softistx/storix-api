@@ -1,8 +1,8 @@
 import { requireWorkspacePermission } from "@/core/access";
 import { memberActor } from "@/core/audit";
 import type { Resolvers } from "@/generated/graphql/resolvers";
+import { ownerOf } from "./data-loaders";
 import { nodesMongo } from "./models";
-import { ownerOf } from "./nodes.owner";
 import {
   createFolder,
   foldersOf,

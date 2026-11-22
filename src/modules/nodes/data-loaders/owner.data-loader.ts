@@ -14,7 +14,12 @@ export interface NodeOwnerView {
 // reason to fail the read.
 const loaders = new WeakMap<object, DataLoader<string, NodeOwnerView | null>>();
 
-function loaderOf(ctx: Context) {
+// `Node.owner`: null for a node that records no owner or whose account is gone.
+export function ownerOf(
+  node: { ownerId?: string | null },
+  ctx: Context,
+): Promise<NodeOwnerView | null> {
+  if (!node.ownerId) return Promise.resolve(null);
   let loader = loaders.get(ctx);
   if (!loader) {
     loader = new DataLoader<string, NodeOwnerView | null>(async (ids) => {
@@ -31,12 +36,5 @@ function loaderOf(ctx: Context) {
     });
     loaders.set(ctx, loader);
   }
-  return loader;
+  return loader.load(node.ownerId);
 }
-
-// `Node.owner`: null for a node that records no owner or whose account is gone.
-export const ownerOf = (
-  node: { ownerId?: string | null },
-  ctx: Context,
-): Promise<NodeOwnerView | null> =>
-  node.ownerId ? loaderOf(ctx).load(node.ownerId) : Promise.resolve(null);
