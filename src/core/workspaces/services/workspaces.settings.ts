@@ -1,5 +1,5 @@
 import { toObjectId } from "@softistx/mongo";
-import { DEFAULT_SETTINGS } from "./workspaces.collection";
+import { DEFAULT_SETTINGS } from "../models/workspaces.model";
 import type { WorkspacesMongo } from "./workspaces.service";
 
 export type Settings = {

@@ -1,4 +1,4 @@
-import type { WorkspaceScope } from "../access";
+import type { WorkspaceScope } from "../../access";
 import type { MemberDoc } from "./members.service";
 
 // Who left a workspace, as the modules that keep member ids of their own are

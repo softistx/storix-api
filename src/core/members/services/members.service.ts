@@ -2,8 +2,9 @@ import type { ModuleCoreHandle } from "@softistx/alxia-modules";
 import type { Membership } from "@softistx/alxia-tenancy";
 import { toObjectId, tryObjectId } from "@softistx/mongo";
 import type { core } from "@/config/db";
-import { fail, forbidden, invalidInput } from "@/i18n/fail";
-import type { WorkspaceRole } from "./roles";
+import { forbidden, invalidInput } from "@/i18n/fail";
+import { lastOwner, memberNotFound } from "../members.errors";
+import type { WorkspaceRole } from "../roles";
 
 // The module's handle on the core database: its own collection only.
 export type MembersMongo = ModuleCoreHandle<"members", typeof core>;
@@ -60,11 +61,6 @@ export async function addMember(
     version: existing.version,
   });
 }
-
-export const memberNotFound = () =>
-  fail("members.errors.not-found", { status: 404 });
-export const lastOwner = () =>
-  fail("workspaces.errors.last-owner", { status: 409 });
 
 // Takes a write lock on the workspace's current owners, inside a transaction:
 // two concurrent changes that each leave one owner behind both touch the

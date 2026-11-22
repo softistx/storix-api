@@ -1,24 +1,18 @@
 import type { Resolvers } from "@/generated/graphql/resolvers";
-import { fail, invalidInput } from "@/i18n/fail";
+import { invalidInput } from "@/i18n/fail";
 import { requireAccountSession, requireWorkspacePermission } from "../access";
 import { memberActor } from "../audit";
-import { membershipsOfAccount, type WorkspaceRole } from "../members";
-import { isObjectIdLike } from "./workspaces.collection";
-import { workspacesMongo } from "./workspaces.handle";
-import { type Workspace, workspaceOf } from "./workspaces.registry";
-import { renameWorkspace } from "./workspaces.rename";
-import { createWorkspace } from "./workspaces.service";
-import { settingsOf, updateSettings } from "./workspaces.settings";
-
-const view = (workspace: Workspace, myRole: WorkspaceRole) => ({
-  id: workspace.id,
-  slug: workspace.slug,
-  name: workspace.name,
-  myRole,
-  createdAt: workspace.createdAt,
-});
-
-const notFound = () => fail("workspaces.errors.not-found", { status: 404 });
+import { membershipsOfAccount } from "../members";
+import { isObjectIdLike, workspacesMongo } from "./models";
+import {
+  createWorkspace,
+  renameWorkspace,
+  settingsOf,
+  updateSettings,
+  workspaceOf,
+} from "./services";
+import { view } from "./utils";
+import { notFound } from "./workspaces.errors";
 
 export const workspacesResolvers: Resolvers = {
   Workspace: {

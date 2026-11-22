@@ -2,7 +2,7 @@ import type { ModuleCoreHandle } from "@softistx/alxia-modules";
 import type { Tenant, TenantRegistry } from "@softistx/alxia-tenancy";
 import { ConflictError } from "@softistx/mongo";
 import type { core } from "@/config/db";
-import { slugTaken } from "./slug-taken";
+import { slugTaken } from "../workspaces.errors";
 
 type WorkspacesMongo = ModuleCoreHandle<"workspaces", typeof core>;
 

@@ -1,4 +1,4 @@
-import type { MembersMongo } from "./members.service";
+import type { MembersMongo } from "../services/members.service";
 
 // The one place the core database becomes the `members` module's typed
 // handle: `ctx.tenancy.core`, a scope's `core` and a store's `core` are plain

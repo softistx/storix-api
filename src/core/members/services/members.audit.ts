@@ -1,6 +1,6 @@
-import type { AuditActor, Auditor } from "../audit";
+import type { AuditActor, Auditor } from "../../audit";
+import type { WorkspaceRole } from "../roles";
 import type { MemberDoc } from "./members.service";
-import type { WorkspaceRole } from "./roles";
 
 interface Done {
   workspaceId: string;

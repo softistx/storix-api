@@ -1,8 +1,8 @@
 import { defineModule } from "@softistx/alxia-modules";
 import { members as codes } from "@/i18n/codes";
-import { members } from "./members.collection";
 import typeDefs from "./members.graphqls" with { type: "text" };
 import { membersResolvers } from "./members.resolver";
+import { members } from "./models/members.model";
 
 // Who belongs to a workspace and with which role. Owns the permissions of the
 // membership (`members:read`, `members:manage`) and `owners:manage`, which
