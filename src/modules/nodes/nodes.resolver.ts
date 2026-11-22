@@ -1,36 +1,25 @@
 import { requireWorkspacePermission } from "@/core/access";
 import { memberActor } from "@/core/audit";
 import type { Resolvers } from "@/generated/graphql/resolvers";
-import { invalidInput } from "@/i18n/fail";
-import { recordFolderCreate, recordMove, recordRename } from "./nodes.audit";
-import { nodesMongo } from "./nodes.handle";
-import { listNodes } from "./nodes.list";
-import { moveNodes } from "./nodes.move";
+import { nodesMongo } from "./models";
 import { ownerOf } from "./nodes.owner";
-import { checkName } from "./nodes.rules";
-import { createFolder, ownedNode, renameNode } from "./nodes.service";
-import { foldersOf, nodeView, pathTo, rootsOf } from "./nodes.tree";
-
-// The module's handle on the request's workspace database.
-const workspaceDb = (scope: { readonly mongo: unknown }) =>
-  nodesMongo(scope.mongo);
-
-// A name is trimmed and checked; a refused one is a field issue of `name`.
-function nameOf(raw: string): string {
-  const checked = checkName(raw);
-  if ("issue" in checked) {
-    throw invalidInput([
-      {
-        path: "name",
-        code: checked.issue,
-        ...(checked.issue === "validation.errors.too-short" && {
-          params: { min: 1 },
-        }),
-      },
-    ]);
-  }
-  return checked.name;
-}
+import {
+  createFolder,
+  foldersOf,
+  listNodes,
+  moveNodes,
+  ownedNode,
+  pathTo,
+  renameNode,
+  rootsOf,
+} from "./services";
+import {
+  nameOf,
+  nodeView,
+  recordFolderCreate,
+  recordMove,
+  recordRename,
+} from "./utils";
 
 export const nodesResolvers: Resolvers = {
   Folder: { owner: (node, _, ctx) => ownerOf(node, ctx) },
@@ -40,7 +29,7 @@ export const nodesResolvers: Resolvers = {
         ctx,
         "nodes:read",
       );
-      const roots = await rootsOf(workspaceDb(scope), principal.accountId);
+      const roots = await rootsOf(nodesMongo(scope.mongo), principal.accountId);
       return roots.map(nodeView);
     },
     folders: async (_, { parentId }, ctx) => {
@@ -49,7 +38,7 @@ export const nodesResolvers: Resolvers = {
         "nodes:read",
       );
       const folders = await foldersOf(
-        workspaceDb(scope),
+        nodesMongo(scope.mongo),
         parentId,
         principal.accountId,
       );
@@ -60,7 +49,11 @@ export const nodesResolvers: Resolvers = {
         ctx,
         "nodes:read",
       );
-      const path = await pathTo(workspaceDb(scope), id, principal.accountId);
+      const path = await pathTo(
+        nodesMongo(scope.mongo),
+        id,
+        principal.accountId,
+      );
       return path.map(nodeView);
     },
     node: async (_, { id }, ctx) => {
@@ -69,7 +62,7 @@ export const nodesResolvers: Resolvers = {
         "nodes:read",
       );
       return nodeView(
-        await ownedNode(workspaceDb(scope), id, principal.accountId),
+        await ownedNode(nodesMongo(scope.mongo), id, principal.accountId),
       );
     },
     nodes: async (_, { parentId, filter, sort, first, after }, ctx) => {
@@ -77,7 +70,7 @@ export const nodesResolvers: Resolvers = {
         ctx,
         "nodes:read",
       );
-      const page = await listNodes(workspaceDb(scope), {
+      const page = await listNodes(nodesMongo(scope.mongo), {
         parentId,
         accountId: principal.accountId,
         filter,
@@ -102,7 +95,7 @@ export const nodesResolvers: Resolvers = {
         ctx,
         "nodes:manage",
       );
-      const node = await createFolder(workspaceDb(scope), {
+      const node = await createFolder(nodesMongo(scope.mongo), {
         parentId,
         name: nameOf(name),
         accountId: principal.accountId,
@@ -123,7 +116,7 @@ export const nodesResolvers: Resolvers = {
         ctx,
         "nodes:manage",
       );
-      const { node, before } = await renameNode(workspaceDb(scope), {
+      const { node, before } = await renameNode(nodesMongo(scope.mongo), {
         id,
         name: nameOf(name),
         version,
@@ -146,7 +139,7 @@ export const nodesResolvers: Resolvers = {
         ctx,
         "nodes:manage",
       );
-      const moved = await moveNodes(workspaceDb(scope), {
+      const moved = await moveNodes(nodesMongo(scope.mongo), {
         ids,
         parentId,
         accountId: principal.accountId,
