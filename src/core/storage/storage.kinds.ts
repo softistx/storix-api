@@ -33,7 +33,7 @@ export const AVATARS_MAX_BYTES = 10 * MIB;
 // Only `files` is counted against the quota: an avatar is not recorded as a
 // file and weighs at most 10 MiB.
 // `files` names its sizes (`thumb`, `preview` and the four crops) and the worker writes them
-// (src/modules/files/services/renditions.work.service.ts): @softistx/alxia-media serves
+// (src/modules/files/services/renditions.service.ts): @softistx/alxia-media serves
 // `GET /media/files/<key>/<size>` once one is stored, a 404 before.
 export function mediaKinds(options: {
   limit: UploadLimit;
