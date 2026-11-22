@@ -3,9 +3,8 @@ import {
   type MemberJoinWiring,
   type MembersMongo,
   memberJoined,
-  type WorkspaceRole,
-  workspaceRoles,
-} from "../members";
+} from "../../members";
+import { isRole } from "../utils/role.utils";
 
 // An invitation that was accepted: the account that accepted it joins its
 // workspace with the invited role. janus runs this inside the accept, after
@@ -36,6 +35,3 @@ export async function joinWorkspace(
   });
   await memberJoined(wiring, member);
 }
-
-export const isRole = (role: string): role is WorkspaceRole =>
-  (workspaceRoles as readonly string[]).includes(role);

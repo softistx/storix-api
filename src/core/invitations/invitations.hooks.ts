@@ -4,7 +4,7 @@ import { requireWorkspacePermission } from "../access";
 import type { InvitationHooks } from "../identity";
 import { membershipOf, membersMongo } from "../members";
 import { activeWorkspaceName, workspacesMongo } from "../workspaces";
-import { isRole } from "./invitations.service";
+import { isRole } from "./utils/role.utils";
 
 // What the invitation fields ask of the application. Everything an owner-side
 // field does needs `members:manage` in the request's workspace (the

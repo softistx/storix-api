@@ -1,6 +1,6 @@
 import { defineCollection, id, objectId } from "@softistx/mongo";
 import { z } from "zod";
-import { workspaceRoles } from "./roles";
+import { workspaceRoles } from "../roles";
 
 // A person's membership of a workspace, in the core database (so that "my
 // workspaces" is one query and a header can be checked before the workspace's

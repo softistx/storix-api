@@ -1,29 +1,6 @@
 import type { Context } from "@/http/context";
-import { memberActor } from "../audit";
-
-// What janus-graphql answers of an invitation: never the code (that is
-// `JanusIssuedInvitation.code`, which this file never reads).
-interface Invitation {
-  id: string;
-  scope: string;
-  email: string;
-  name?: string;
-  role: string;
-}
-
-// `issueInvitation` and `resendInvitation` answer `{ invitation, code }`,
-// `revokeInvitation` the invitation itself. Null when the answer is neither:
-// the write has committed, so an unreadable answer only means no event.
-export const invitationOf = (answer: unknown): Invitation | null => {
-  if (typeof answer !== "object" || answer === null) return null;
-  const nested = (answer as { invitation?: unknown }).invitation;
-  const found = nested ?? answer;
-  if (typeof found !== "object" || found === null) return null;
-  const { id, scope } = found as Partial<Invitation>;
-  return typeof id === "string" && typeof scope === "string"
-    ? (found as Invitation)
-    : null;
-};
+import { memberActor } from "../../audit";
+import { type Invitation, invitationOf } from "../utils/invitation.utils";
 
 // The inviter's events: the target is the invitation (named by its address),
 // the actor the signed-in member who did it.

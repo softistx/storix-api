@@ -6,8 +6,8 @@ import {
   type MemberDoc,
   type MemberJoinWiring,
   memberJoined,
-} from "../members";
-import { slugTaken } from "./slug-taken";
+} from "../../members";
+import { slugTaken } from "../workspaces.errors";
 import { type Workspace, workspaceOf } from "./workspaces.registry";
 
 // The module's handle on the core database: its own collection and `members`.

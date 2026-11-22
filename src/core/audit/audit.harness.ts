@@ -1,5 +1,5 @@
 import { store } from "@/config/tenancy";
-import type { AuditMongo } from "./audit.record";
+import type { AuditMongo } from "./services";
 
 // What a spec reads of a workspace's audit log, straight from its database,
 // oldest first: the stored documents, as the module wrote them.

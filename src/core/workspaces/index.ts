@@ -1,34 +1,28 @@
-export { workspacesModule } from "./module";
 export {
   DEFAULT_QUOTA_BYTES,
   DEFAULT_SETTINGS,
   GIB,
-} from "./workspaces.collection";
-export { workspacesMongo } from "./workspaces.handle";
-export {
-  type Workspace,
-  workspaceOf,
-  workspaceRegistry,
-} from "./workspaces.registry";
+  workspacesMongo,
+} from "./models";
+export { workspacesModule } from "./module";
 export {
   activeWorkspaceName,
-  createWorkspace,
-  type Provisioner,
-  type WorkspacesMongo,
-} from "./workspaces.service";
-export {
-  type Settings,
-  settingsOf,
-  updateSettings,
-  type WorkspaceView,
-} from "./workspaces.settings";
-export {
   addUsage,
+  createWorkspace,
   hasRoom,
+  type Provisioner,
   quotaExceeded,
+  type Settings,
   type Storage,
   setQuota,
+  settingsOf,
   setUsage,
   storageOf,
   type Usage,
-} from "./workspaces.usage";
+  updateSettings,
+  type Workspace,
+  type WorkspacesMongo,
+  type WorkspaceView,
+  workspaceOf,
+  workspaceRegistry,
+} from "./services";

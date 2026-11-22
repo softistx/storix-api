@@ -1,6 +1,6 @@
 import { toObjectId } from "@softistx/mongo";
 import { fail } from "@/i18n/fail";
-import { DEFAULT_QUOTA_BYTES } from "./workspaces.collection";
+import { DEFAULT_QUOTA_BYTES } from "../models/workspaces.model";
 import type { WorkspacesMongo } from "./workspaces.service";
 
 // A workspace's storage: its quota and what it holds (plan §3.9). `bytes`

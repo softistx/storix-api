@@ -5,8 +5,8 @@ import { store } from "@/config/tenancy";
 import { world } from "../../../test/workspaces.harness";
 import { AUDIT_RETENTION_SECONDS } from "./audit.collection";
 import { storedEvents } from "./audit.harness";
-import { hashAddress } from "./audit.ip-hash";
 import { createAuditor } from "./index";
+import { hashAddress } from "./utils";
 
 const ADDRESS = "203.0.113.77";
 

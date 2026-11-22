@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { tenancy } from "@/config/tenancy";
 import { world } from "../../../test/workspaces.harness";
-import { membersMongo } from "./members.handle";
-import { endMembership } from "./members.service";
+import { membersMongo } from "./models";
+import { endMembership } from "./services";
 
 const mongo = () => membersMongo(tenancy.core);
 

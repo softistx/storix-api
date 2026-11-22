@@ -1,7 +1,7 @@
 import type { CollectionsOf, ModuleHandle } from "@softistx/alxia-modules";
 import type { Mongo } from "@softistx/mongo";
-import type { auditActorTypes } from "./audit.collection";
-import { hashAddress } from "./audit.ip-hash";
+import type { auditActorTypes } from "../audit.collection";
+import { hashAddress } from "../utils/ip-hash.utils";
 
 // The module's handle on a workspace's database: its own collection only.
 export type AuditMongo = ModuleHandle<
