@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
-import { FIELD_CODES } from "@nxgt/graphql-validation";
 import { catalogueOf, uncovered } from "@softistx/alxia-i18n";
 import { codesOf } from "@softistx/alxia-modules";
+import { FIELD_CODES } from "@softistx/graphql-validation";
 import { migrate } from "@softistx/mongo/migrations";
 import { Glob } from "bun";
 import { connection, core } from "../config/db";
@@ -77,7 +77,7 @@ describe("the error codes and their translations", () => {
     expect([...codesOf(modules)].sort()).toEqual([...errorCodes].sort());
   });
 
-  test("the codes of @nxgt/graphql-validation's field issues are in the inventory", () => {
+  test("the codes of @softistx/graphql-validation's field issues are in the inventory", () => {
     const known = new Set<string>(errorCodes);
     expect(
       Object.values(FIELD_CODES).filter((code) => !known.has(code)),

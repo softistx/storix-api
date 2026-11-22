@@ -345,7 +345,7 @@ An input refused as a whole is one error, `validation.errors.invalid-input` (HTT
 }
 ```
 
-The refusals of a schema `@constraint` arrive in this same shape: the plugin in `src/http/api-errors.ts` converts them with `invalidInputOf` of `@nxgt/graphql-validation`, which maps each argument to its code and params (`minLength` is `too-short` with `params.min`, `maxLength` `too-long` with `params.max`, `min`/`max` `out-of-range`, and so on); the `@nxgt/graphql-validation` guide `docs/guide/invalid-input.md` has the full table.
+The refusals of a schema `@constraint` arrive in this same shape: the plugin in `src/http/api-errors.ts` converts them with `invalidInputOf` of `@softistx/graphql-validation`, which maps each argument to its code and params (`minLength` is `too-short` with `params.min`, `maxLength` `too-long` with `params.max`, `min`/`max` `out-of-range`, and so on); the `@softistx/graphql-validation` guide `docs/guide/invalid-input.md` has the full table.
 
 ### Thumbnails and previews (the worker)
 

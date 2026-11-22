@@ -1,8 +1,8 @@
 import type { CodegenConfig } from "@graphql-codegen/cli";
-import { codegenScalars } from "@nxgt/graphql-scalars";
+import { codegenScalars } from "@softistx/graphql-scalars";
 
 // `bun run generate` writes, from every src/**/*.graphqls and the SDL of
-// @nxgt/graphql-scalars and @constraint (generated/graphql/):
+// @softistx/graphql-scalars and @constraint (generated/graphql/):
 // - src/generated/graphql/resolvers.ts: the schema's types and `Resolvers`,
 //   whose context is the app's own (`Context`, src/http/context.ts). A module maps
 //   a type to the document its collection stores with `mappers`.
@@ -40,8 +40,8 @@ const config: CodegenConfig = {
       },
     },
     "src/generated/graphql/zod.ts": {
-      plugins: ["@nxgt/graphql-codegen-zod"],
-      config: { scalarSchemas: "@nxgt/graphql-scalars" },
+      plugins: ["@softistx/graphql-codegen-zod"],
+      config: { scalarSchemas: "@softistx/graphql-scalars" },
     },
   },
 };

@@ -1,8 +1,11 @@
 import { mergeResolvers, mergeTypeDefs } from "@graphql-tools/merge";
-import { scalarResolvers, scalarTypeDefs } from "@nxgt/graphql-scalars";
-import { constraintTypeDefs, withValidation } from "@nxgt/graphql-validation";
 import { freshPerMutation } from "@softistx/alxia-graphql";
 import { type Module, resolversOf, typeDefsOf } from "@softistx/alxia-modules";
+import { scalarResolvers, scalarTypeDefs } from "@softistx/graphql-scalars";
+import {
+  constraintTypeDefs,
+  withValidation,
+} from "@softistx/graphql-validation";
 import { createSchema, type Resolvers } from "@softistx/graxia";
 import { modules } from "../modules/registry";
 import type { Context } from "./context";
