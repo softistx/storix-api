@@ -5,7 +5,7 @@ import { janusImporters } from "./janus-imports-check";
 describe("janusImporters", () => {
   test("allows the identity seam and nothing else", () => {
     const files = {
-      "src/core/identity/identity.janus.ts":
+      "src/core/identity/services/identity.janus.ts":
         'import { createJanus } from "@softistx/janus";',
       "src/config/auth.ts": 'import { x } from "@softistx/janus-mongo";',
       "src/modules/nodes/services/nodes.service.ts":

@@ -17,18 +17,18 @@ import {
 } from "@softistx/janus-mongo";
 import type { Mailer } from "@softistx/mail";
 import type { Db } from "mongodb";
-import { createInvitationResolvers } from "./identity.invitations";
-import type { Account, Identity } from "./identity.port";
-import { accountSecurityFlows } from "./janus.account-security";
-import { type Accepted, createAccounts } from "./janus.accounts";
+import type { Account, Identity } from "../identity.port";
+import { createInvitationResolvers } from "./invitations/invitations.resolvers";
+import { accountSecurityFlows } from "./janus/janus.account-security";
+import { type Accepted, createAccounts } from "./janus/janus.accounts";
 
-import { authCall } from "./janus.errors";
-import { createMail, securityNotices } from "./janus.mail";
-import { secondFactorFlows } from "./janus.second-factor";
-import { type AccountUser, localeOf, principalOf } from "./janus.shared";
-import { signInFlows } from "./janus.sign-in";
-import { signUpFlows } from "./janus.sign-up";
-import { stepUpFlows } from "./janus.step-up";
+import { authCall } from "./janus/janus.errors";
+import { createMail, securityNotices } from "./janus/janus.mail";
+import { secondFactorFlows } from "./janus/janus.second-factor";
+import { type AccountUser, localeOf, principalOf } from "./janus/janus.shared";
+import { signInFlows } from "./janus/janus.sign-in";
+import { signUpFlows } from "./janus/janus.sign-up";
+import { stepUpFlows } from "./janus/janus.step-up";
 
 export interface IdentityOptions {
   // The database janus keeps its users, sessions, tokens and keys in.

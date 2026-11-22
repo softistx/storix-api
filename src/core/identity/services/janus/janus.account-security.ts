@@ -1,5 +1,5 @@
 import { JanusError } from "@softistx/janus";
-import type { Identity, Principal } from "./identity.port";
+import type { Identity, Principal } from "../../identity.port";
 import { PASSWORD_MIN_LENGTH } from "./janus.accounts";
 import {
   authCall,

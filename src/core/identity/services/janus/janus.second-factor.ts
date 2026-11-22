@@ -1,6 +1,7 @@
 import { fail } from "@/i18n/fail";
-import type { Identity, Principal } from "./identity.port";
+import type { Identity, Principal } from "../../identity.port";
 import { authCall } from "./janus.errors";
+import { disableSecondFactor } from "./janus.second-factor.disable";
 import type { Deps } from "./janus.shared";
 import { assertFresh } from "./janus.step-up";
 
@@ -12,10 +13,6 @@ type Flows = Pick<
   | "disableSecondFactor"
   | "secondFactorStatus"
 >;
-
-// The code of an authenticator app: six digits. Anything else is read as a
-// recovery code.
-const APP_CODE = /^\d{6}$/;
 
 // The TOTP second factor (an authenticator app, with ten recovery codes), over
 // janus. janus counts the tries and the replays; this adds the application's
@@ -81,30 +78,8 @@ export function secondFactorFlows(deps: Deps): Flows {
       });
     },
 
-    // Turns the factor off on a current code of the app (a step-up of the
-    // request's session checks it, five attempts per challenge), or, for a lost
-    // phone, on a recovery code (spent: no session, no event,
-    // five tries per window). Either way the session must be fresh.
-    disableSecondFactor: async (request, principal, code) => {
-      fresh(principal);
-      return authCall(async () => {
-        const user = await users.get(principal.accountId);
-        if (!user.hasSecondFactor) {
-          throw fail("identity.errors.second-factor-state", { status: 409 });
-        }
-        if (APP_CODE.test(code.trim())) {
-          const issued = await users.stepUp.request(user);
-          if (issued.via !== "secondFactor") {
-            throw fail("identity.errors.second-factor-state", { status: 409 });
-          }
-          await users.stepUp.confirm(request, issued.challenge, code);
-        } else {
-          await users.secondFactor.spendRecoveryCode(user, code);
-        }
-        await users.secondFactor.disable(user);
-        return true as const;
-      });
-    },
+    disableSecondFactor: (request, principal, code) =>
+      disableSecondFactor(deps, request, principal, code),
 
     secondFactorStatus: async (principal) => {
       if (!principal.secondFactor) {

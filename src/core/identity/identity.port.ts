@@ -1,5 +1,5 @@
 // The identity port (plan §3.11): the only thing the rest of the API knows of
-// who is signing in. `identity.janus.ts` implements it with @softistx/janus;
+// who is signing in. `services/identity.janus.ts` implements it with @softistx/janus;
 // a clavix adapter replaces it later. No type here names janus, and a refusal
 // leaves the port already worded as the API's own error (a GraphQLError with
 // an `identity.errors.*` or `auth.errors.*` code).

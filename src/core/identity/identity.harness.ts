@@ -11,8 +11,11 @@ import { createApp } from "@/app";
 import { connection } from "@/config/db";
 import { clientHeader } from "@/http/csrf";
 import type { Limits } from "@/http/rate-limits";
-import { createJanusIdentity, type IdentityOptions } from "./identity.janus";
-import { createAccounts } from "./janus.accounts";
+import {
+  createJanusIdentity,
+  type IdentityOptions,
+} from "./services/identity.janus";
+import { createAccounts } from "./services/janus/janus.accounts";
 
 export const PASSWORD = "correct horse battery staple";
 

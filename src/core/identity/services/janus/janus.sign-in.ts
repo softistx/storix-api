@@ -1,4 +1,4 @@
-import type { Identity } from "./identity.port";
+import type { Identity } from "../../identity.port";
 import { authCall, signInCall } from "./janus.errors";
 import { type Deps, mailLocaleOf, resultOf } from "./janus.shared";
 

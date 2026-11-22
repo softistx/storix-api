@@ -1,5 +1,9 @@
 import { assertFresh as janusAssertFresh } from "@softistx/janus";
-import { FRESH_FOR_MS, type Identity, type Principal } from "./identity.port";
+import {
+  FRESH_FOR_MS,
+  type Identity,
+  type Principal,
+} from "../../identity.port";
 import { authCall, stepUpRequired } from "./janus.errors";
 import { type Deps, mailLocaleOf } from "./janus.shared";
 
