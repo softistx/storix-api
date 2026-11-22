@@ -53,7 +53,7 @@ than one request (see Q1), realtime updates, custom rendition presets, a platfor
 - Packages: `@softistx/alxia`, `graphql`, `env`, `i18n`, `language`, `modules`, `tenancy`, `access`,
   `media`; `@softistx/mongo`, `redis`, `s3`, `image`, `mail`, `mail-smtp`, `janus`, `janus-mongo`,
   `janus-graphql`, `janus-mail`, `telemetry`, `ai-core`, `ai-anthropic`, `ai-ollama`,
-  `ai-telemetry`, `ai-testing`; `@nxgt/graphql-scalars`, `graphql-validation`, `graphql-client`;
+  `ai-telemetry`, `ai-testing`; `@softistx/graphql-scalars`, `graphql-validation`, `graphql-client`;
   UI: `@softistx/alxia-react-router`, `@softistx/alxia-secure-headers`, `@softistx/material`, `material-core`,
   `@softistx/zod`. No third-party client where one of these exists.
 - Type checking is `bun check`; Biome's scripts are `lint` and `fix`. The green bar is

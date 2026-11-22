@@ -1,4 +1,7 @@
-import { invalidInputError, type Translate } from "@nxgt/graphql-validation";
+import {
+  invalidInputError,
+  type Translate,
+} from "@softistx/graphql-validation";
 import { GraphQLError, type GraphQLErrorOptions } from "graphql";
 import type { ErrorCode } from "./codes";
 import { i18n } from "./index";
@@ -60,7 +63,7 @@ export const translate: Translate = (code, params) =>
 // An input refused as a whole, with every field that refused it: one error
 // whatever the module, `validation.errors.invalid-input`, status 400, and
 // `extensions.fields: [{ path, code, message, params? }]`, each message
-// translated (@nxgt/graphql-validation's `invalidInputError`).
+// translated (@softistx/graphql-validation's `invalidInputError`).
 export const invalidInput = (
   issues: FieldIssue[],
   options: GraphQLErrorOptions = {},
