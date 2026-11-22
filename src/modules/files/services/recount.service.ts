@@ -1,4 +1,4 @@
-import type { FilesMongo } from "./files.handle";
+import type { FilesMongo } from "../models";
 
 // What the workspace database really holds: the bytes of the blobs some node,
 // version or copy still references (`refs > 0`, each blob once, so a copy that

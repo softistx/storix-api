@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import { fail } from "@/i18n/fail";
 import type { NodeDoc } from "@/modules/nodes/public";
 import { decodeCursor, encodeCursor } from "@/modules/nodes/public";
-import type { FilesMongo } from "./files.handle";
+import type { FilesMongo } from "../models";
 
 // What a member's personal lists (favourites, recents) have in common: a row
 // points at a node and sits at a position `[date, _id]`, newest first. A row

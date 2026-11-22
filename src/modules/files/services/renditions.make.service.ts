@@ -1,7 +1,7 @@
 import { renderImage } from "@softistx/image";
 import { renderPdfFirstPage } from "@softistx/image/pdf";
 import { FILES_MAX_BYTES } from "@/core/storage";
-import { CROP_SPECS, cropBox, type Focal, targetSize } from "./files.crops";
+import { CROP_SPECS, cropBox, type Focal, targetSize } from "../files.crops";
 import {
   CROP_SIZES,
   PREVIEW_SIZES,
@@ -9,7 +9,7 @@ import {
   RENDITION_SIDES,
   type RenditionKind,
   type RenditionSize,
-} from "./files.renditions";
+} from "../files.renditions";
 
 export interface MadeRendition {
   size: RenditionSize;

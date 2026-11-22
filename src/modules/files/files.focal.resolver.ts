@@ -4,9 +4,9 @@ import type { Resolvers } from "@/generated/graphql/resolvers";
 import { nodeView } from "@/modules/nodes/public";
 import { recordFileFocal } from "./files.audit";
 import { notAFile } from "./files.errors";
-import { setFocalPoint as moveFocalPoint } from "./files.focal";
-import { filesMongo } from "./files.handle";
 import { renditionsOf } from "./files.renditions.list";
+import { filesMongo } from "./models";
+import { setFocalPoint as moveFocalPoint } from "./services";
 
 // `File.renditions` and `File.rendition(preset)`: derived from the node.
 export const fileRenditionResolvers: NonNullable<Resolvers["File"]> = {

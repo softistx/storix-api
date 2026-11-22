@@ -3,7 +3,7 @@ import { defineMigration } from "@softistx/mongo/migrations";
 // The versions' indexes (slice E3): a database whose indexes are not synced at
 // boot (production without MONGO_AUTO_SYNC) builds them here. A database that
 // already has them (synced at boot) is left alone. Keep in step with
-// `versions` in `files.collection.ts`.
+// `versions` in `models/files.model.ts`.
 const VERSIONS = [
   { name: "versions_number", key: { fileId: 1, number: 1 }, unique: true },
   { name: "versions_blob", key: { blobKey: 1 }, unique: false },

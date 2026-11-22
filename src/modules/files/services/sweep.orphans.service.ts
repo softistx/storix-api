@@ -1,6 +1,6 @@
 import { isMediaKey } from "@softistx/alxia-media";
 import { ConflictError } from "@softistx/mongo";
-import { removeObjects, type Sweep } from "./files.sweep.run";
+import { removeObjects, type Sweep } from "./sweep.run.service";
 
 /**
  * A page of this many old, distinct keys that no blob records, in a workspace

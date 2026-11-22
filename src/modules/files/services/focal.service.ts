@@ -1,9 +1,9 @@
 import { type NodeDoc, named, ownedNode } from "@/modules/nodes/public";
-import type { Focal } from "./files.crops";
-import { enqueue } from "./files.enqueue";
-import { invalidFocal, notAFile, notRenderable } from "./files.errors";
-import type { FilesMongo } from "./files.handle";
-import { type RenditionsQueue, renditionKindOf } from "./files.renditions";
+import type { Focal } from "../files.crops";
+import { invalidFocal, notAFile, notRenderable } from "../files.errors";
+import { type RenditionsQueue, renditionKindOf } from "../files.renditions";
+import type { FilesMongo } from "../models";
+import { enqueue } from "./enqueue.service";
 
 // A coordinate is a number from 0 to 1 (fractions of the picture).
 export const isFocal = (focal: Focal) =>

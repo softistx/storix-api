@@ -5,14 +5,14 @@ import type { Resolvers } from "@/generated/graphql/resolvers";
 import { nodeView } from "@/modules/nodes/public";
 import { recordVersion } from "./files.audit";
 import { notAFile } from "./files.errors";
-import { filesMongo } from "./files.handle";
-import { recordRecent } from "./files.recents";
+import { filesMongo } from "./models";
 import {
   addVersion,
   deleteVersion,
   listVersions,
+  recordRecent,
   restoreVersion,
-} from "./files.versions";
+} from "./services";
 
 type Mutations = NonNullable<Resolvers["Mutation"]>;
 

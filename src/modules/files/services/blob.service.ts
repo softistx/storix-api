@@ -1,5 +1,5 @@
 import { ConflictError } from "@softistx/mongo";
-import type { FilesMongo } from "./files.handle";
+import type { FilesMongo } from "../models";
 
 // A key that a blob already holds, raised inside the transaction so that the
 // node's own `ConflictError` (`name-taken`) is not mistaken for it.

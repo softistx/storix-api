@@ -141,7 +141,7 @@ export const files = defineCodes("files", [
   "invalid-focal",
 ]);
 
-// The versions of a file (src/modules/files, `files.versions.*`).
+// The versions of a file (src/modules/files, `services/versions*.service.ts`).
 export const versions = defineCodes("versions", [
   // 404: the file has no version with this id (an unknown id, another file's
   // version and a malformed id are one answer).

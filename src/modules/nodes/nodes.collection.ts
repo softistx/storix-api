@@ -66,10 +66,10 @@ export const nodes = defineCollection({
       .default(null),
     // The version row (`versions`, the files module) whose blob the node
     // holds; null on a file recorded before versions existed or copied, until
-    // its first version is made (`files.versions.first.ts`).
+    // its first version is made (`services/versions.first.service.ts`).
     currentVersionId: objectId().nullable().default(null),
     // How often the sweep queued the renditions job of a file stuck
-    // `PROCESSING` again (`files.sweep.stuck.ts`); at the limit it is `FAILED`.
+    // `PROCESSING` again (`services/sweep.stuck.service.ts`); at the limit it is `FAILED`.
     renditionRequeues: z.number().int().nonnegative().default(0),
     // When the file last entered `PROCESSING`, or its renditions job last
     // showed life (the heartbeat, a sweep requeue). The stuck sweep reads it,

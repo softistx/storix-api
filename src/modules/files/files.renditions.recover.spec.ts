@@ -10,10 +10,9 @@ import {
   png,
 } from "../../../test/files.harness";
 import { NODE, setup } from "../nodes/nodes.harness";
-import { filesMongo } from "./files.handle";
-import { makeRenditions } from "./files.renditions.make";
-import { requeueStuck } from "./files.sweep.stuck";
+import { filesMongo } from "./models";
 import { type RenditionsQueue, renditionsHandler } from "./public";
+import { makeRenditions, requeueStuck } from "./services";
 
 // The queue is a switch the spec drives: jobs are held, not run, and the spec
 // calls the handler itself, so each attempt of a job is its own step. `refuse`

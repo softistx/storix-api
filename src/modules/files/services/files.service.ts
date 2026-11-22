@@ -9,14 +9,14 @@ import {
   type OnConflict,
   sameNameSibling,
 } from "@/modules/nodes/public";
-import { KeyRecorded, recordBlob } from "./files.blob";
-import { enqueue } from "./files.enqueue";
-import { keyUnknown } from "./files.errors";
-import type { FilesMongo } from "./files.handle";
-import { discardObject, storedObject } from "./files.object";
-import { type RenditionsQueue, renditionKindOf } from "./files.renditions";
-import { makeFirstVersion } from "./files.versions.first";
-import { pushVersion } from "./files.versions.push";
+import { keyUnknown } from "../files.errors";
+import { discardObject, storedObject } from "../files.object";
+import { type RenditionsQueue, renditionKindOf } from "../files.renditions";
+import type { FilesMongo } from "../models";
+import { KeyRecorded, recordBlob } from "./blob.service";
+import { enqueue } from "./enqueue.service";
+import { makeFirstVersion } from "./versions.first.service";
+import { pushVersion } from "./versions.push.service";
 
 // Tries `KEEP_BOTH` again when a writer took the free name first.
 const ATTEMPTS = 3;

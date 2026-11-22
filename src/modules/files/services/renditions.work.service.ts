@@ -6,9 +6,9 @@ import {
 import { ImageError } from "@softistx/image";
 import { type Handler, JobError } from "@softistx/redis";
 import { parseRenditionJobId, type renditionJob } from "@/queues/renditions";
-import type { FilesMongo } from "./files.handle";
-import { renditionKindOf } from "./files.renditions";
-import { makeRenditions } from "./files.renditions.make";
+import { renditionKindOf } from "../files.renditions";
+import type { FilesMongo } from "../models";
+import { makeRenditions } from "./renditions.make.service";
 
 // What the worker runs for each job of the `renditions` queue (plan §3.14):
 // read the original, make `thumb` and `preview` and the four crops (centred

@@ -1,7 +1,7 @@
 import type { NodeDoc } from "@/modules/nodes/public";
 import { type RenditionJob, renditionJobId } from "@/queues/renditions";
-import type { FilesMongo } from "./files.handle";
-import type { RenditionsQueue } from "./files.renditions";
+import type { RenditionsQueue } from "../files.renditions";
+import type { FilesMongo } from "../models";
 
 // Adds the node's `renditions` job (`redo` names a repeat of the same blob's
 // job, see `renditionJobId`). When Redis refuses it, the previews are given

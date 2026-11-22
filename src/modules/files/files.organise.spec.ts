@@ -9,7 +9,7 @@ import {
   UPDATE,
 } from "../../../test/files.harness";
 import { MOVE, type NodeView, RENAME } from "../nodes/nodes.harness";
-import { filesMongo } from "./files.handle";
+import { filesMongo } from "./models";
 
 const files = filesWorld();
 
