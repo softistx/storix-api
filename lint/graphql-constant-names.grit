@@ -1,0 +1,6 @@
+language js
+
+`const $name = graphql($_)` where {
+  $name <: not r"[A-Z][A-Z0-9_]*",
+  register_diagnostic(span=$name, message="A graphql() document is held in a SCREAMING_SNAKE_CASE constant (USER_QUERY, CREATE_USER_MUTATION); codegen derives the PascalCase types.", severity="error")
+}

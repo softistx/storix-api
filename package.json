@@ -35,7 +35,7 @@
   "dependencies": {
     "@graphql-tools/merge": "^10.0.6",
     "@napi-rs/canvas": "^1.1.0",
-    "@nxgt/graphql-client": "^0.7.0",
+    "@nxgt/graphql-client": "^0.8.0",
     "@nxgt/graphql-scalars": "^0.7.1",
     "@nxgt/graphql-validation": "^0.9.0",
     "@softistx/ai-anthropic": "^0.4.2",
@@ -60,7 +60,7 @@
     "@softistx/janus-mongo": "^0.33.0",
     "@softistx/mail": "^1.6.1",
     "@softistx/mail-smtp": "^1.1.1",
-    "@softistx/mongo": "^0.30.1",
+    "@softistx/mongo": "^0.31.0",
     "@softistx/redis": "^0.24.1",
     "@softistx/s3": "^0.13.1",
     "@softistx/telemetry": "^0.5.0",
