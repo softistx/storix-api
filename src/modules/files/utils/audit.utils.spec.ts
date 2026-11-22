@@ -78,7 +78,7 @@ describe("the files audit events", () => {
       action: "file.version-restore",
       meta: { number: 3, from: 1 },
     });
-    expect(events[1]).toMatchObject({ action: "file.copy" });
+    expect(events[1]).toMatchObject({ action: "node.copy" });
   });
 });
 
