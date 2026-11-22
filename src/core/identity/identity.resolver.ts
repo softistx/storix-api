@@ -1,76 +1,11 @@
 import type { Resolvers } from "@/generated/graphql/resolvers";
-import type { Context } from "@/http/context";
-import { fail, unauthenticated } from "@/i18n/fail";
 import {
-  FRESH_FOR_MS,
-  type Principal,
-  type SignInOptions,
-  type SignInResult,
-} from "./identity.port";
-
-// An operation of the account (sign-in, a second factor, a password reset…) is
-// never called with a personal API key: a key is for the API's data, so a
-// stolen one cannot change who the account is. 401
-// `auth.errors.api-key-not-accepted`.
-function refuseKey(ctx: Context) {
-  if (ctx.viewer?.apiKeyId != null) {
-    throw fail("auth.errors.api-key-not-accepted", { status: 401 });
-  }
-}
-
-// The caller, or the 401 of an anonymous request.
-export function requireViewer(ctx: Context): Principal {
-  if (!ctx.viewer) throw unauthenticated();
-  return ctx.viewer;
-}
-
-// The signed-in person behind a session (not a key) for the operations of the
-// account itself.
-export function requireSession(ctx: Context): Principal {
-  refuseKey(ctx);
-  return requireViewer(ctx);
-}
-
-// What the session list shows for the sign-in: the client's User-Agent.
-const deviceOf = (ctx: Context): SignInOptions => {
-  const agent = ctx.request.headers.get("user-agent")?.trim();
-  return agent ? { deviceLabel: agent } : {};
-};
-
-export const viewerOf = (principal: Principal) => ({
-  id: principal.accountId,
-  email: principal.email,
-  name: principal.name,
-  emailVerified: principal.emailVerified,
-  locale: principal.locale === "fr" ? ("FR" as const) : ("EN" as const),
-  hasSecondFactor: principal.secondFactor,
-  sessionExpiresAt: principal.sessionExpiresAt,
-  sessionConfirmedUntil:
-    principal.authenticatedAt === null
-      ? null
-      : new Date(principal.authenticatedAt.getTime() + FRESH_FOR_MS),
-  apiKeyId: principal.apiKeyId,
-});
-
-const payloadOf = (result: SignInResult) => {
-  switch (result.status) {
-    case "SIGNED_IN":
-      return {
-        status: result.status,
-        token: result.token,
-        expiresAt: result.expiresAt,
-        viewer: viewerOf(result.principal),
-      };
-    case "SECOND_FACTOR":
-      return {
-        status: result.status,
-        challenge: result.challenge,
-        expiresAt: result.expiresAt,
-      };
-    case "VERIFICATION_SENT":
-      return { status: result.status };
-  }
-};
+  deviceOf,
+  payloadOf,
+  refuseKey,
+  requireSession,
+  viewerOf,
+} from "./utils";
 
 // The identity operations, over the port the request's context carries. Each
 // refuses a personal API key (`viewer` alone answers one); the anonymous ones

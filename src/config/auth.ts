@@ -1,4 +1,4 @@
-import { createJanusIdentity } from "../core/identity/identity.janus";
+import { createJanusIdentity } from "../core/identity/services/identity.janus";
 import { joinWorkspace } from "../core/invitations";
 import { membersMongo } from "../core/members";
 import { core } from "./db";
