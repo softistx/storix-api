@@ -8,7 +8,3 @@ export function loaded(ctx: Context): Translations {
 }
 
 export const languageValue = (code: string) => (code === "fr" ? "FR" : "EN");
-
-// The error catalogue is public: no guard. `version` and `language` read
-// nothing; `messages` is its own field, so a query that selects only `version`
-// builds no list.

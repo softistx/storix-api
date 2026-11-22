@@ -2,6 +2,9 @@ import type { Resolvers } from "@/generated/graphql/resolvers";
 import { i18n } from "@/i18n";
 import { languageValue, loaded } from "./translations.utils";
 
+// The error catalogue is public: no guard. `version` and `language` read
+// nothing; `messages` is its own field, so a query that selects only `version`
+// builds no list.
 export const translationResolvers: Resolvers = {
   Query: {
     errorCatalogue: (_, { language }, ctx) =>
