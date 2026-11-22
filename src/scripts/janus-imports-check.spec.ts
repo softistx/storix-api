@@ -8,7 +8,7 @@ describe("janusImporters", () => {
       "src/core/identity/identity.janus.ts":
         'import { createJanus } from "@softistx/janus";',
       "src/config/auth.ts": 'import { x } from "@softistx/janus-mongo";',
-      "src/modules/nodes/nodes.service.ts":
+      "src/modules/nodes/services/nodes.service.ts":
         'import { StoreFailure } from "@softistx/janus";',
       "src/modules/files/services/files.service.ts":
         'import("@softistx/janus-graphql");',
@@ -16,7 +16,7 @@ describe("janusImporters", () => {
     };
     expect(janusImporters(files)).toEqual([
       "src/modules/files/services/files.service.ts",
-      "src/modules/nodes/nodes.service.ts",
+      "src/modules/nodes/services/nodes.service.ts",
     ]);
   });
 

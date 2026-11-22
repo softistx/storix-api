@@ -1,37 +1,38 @@
 // The nodes surface: the module, and what the `files` module records a file
 // with. Everything else in this folder is private.
+
+export type { NodeDoc, NodeState, NodesMongo } from "./models";
+export { nodesMongo } from "./models";
 export { nodesModule, nodesOnHandover, nodesOnJoin } from "./module";
-export { decodeCursor, encodeCursor } from "./nodes.cursor";
-export type { FileFamily } from "./nodes.family";
-export { familyOf } from "./nodes.family";
 export {
-  copyName,
-  freeName,
-  insertFile,
-  type NewFile,
-  type OnConflict,
-  sameNameSibling,
-} from "./nodes.file";
-export { nodesMongo } from "./nodes.handle";
-export { moveOne } from "./nodes.move";
-export { ownerOf } from "./nodes.owner";
-export { checkName, MAX_DEPTH, MAX_MOVE_NODES } from "./nodes.rules";
-export {
-  assertMovable,
   cycle,
-  depthOf,
-  ensureRoot,
-  lockTree,
   moveTooLarge,
-  type NodeDoc,
-  type NodeState,
-  type NodesMongo,
   named,
   nameTaken,
   nodeNotFound,
-  ownedFolder,
-  ownedNode,
   rootLocked,
   tooDeep,
-} from "./nodes.service";
-export { type FileNode, fileView, nodeView } from "./nodes.tree";
+} from "./nodes.errors";
+export { ownerOf } from "./nodes.owner";
+export type { FileFamily } from "./rules";
+export {
+  checkName,
+  decodeCursor,
+  encodeCursor,
+  familyOf,
+  MAX_DEPTH,
+  MAX_MOVE_NODES,
+} from "./rules";
+export type { NewFile, OnConflict } from "./services";
+export {
+  assertMovable,
+  ensureRoot,
+  freeName,
+  insertFile,
+  lockTree,
+  moveOne,
+  ownedFolder,
+  ownedNode,
+  sameNameSibling,
+} from "./services";
+export { copyName, depthOf, type FileNode, fileView, nodeView } from "./utils";

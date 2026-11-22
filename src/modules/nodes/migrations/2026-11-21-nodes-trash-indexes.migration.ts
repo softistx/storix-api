@@ -3,7 +3,7 @@ import { defineMigration } from "@softistx/mongo/migrations";
 // The trash's indexes (slice A17): a database whose indexes are not synced at
 // boot (production without MONGO_AUTO_SYNC) builds them here. A database that
 // already has them (synced at boot) is left alone. Keep in step with
-// `nodes.collection.ts`.
+// `models/nodes.model.ts`.
 const TRASH = [
   {
     name: "nodes_trash",
