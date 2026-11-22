@@ -16,7 +16,7 @@ const MIB = 1024 * 1024;
 export const FILES_MAX_BYTES = 95 * MIB;
 // The sizes of a file the worker makes (plan §3.4): `thumb` and `preview`, then
 // the four crops centred on the focal point. Kept equal to the worker's
-// `RENDITION_SIZES` (src/modules/files/files.renditions.ts) by a spec.
+// `RENDITION_SIZES` (src/modules/files/rules/renditions.rules.ts) by a spec.
 export const FILES_SIZES = [
   "thumb",
   "preview",
@@ -86,7 +86,7 @@ export function mediaKinds(options: {
     }),
     // Not recorded: no node, no sweep, no quota (storix-api#94). Do not mount
     // this kind until a slice records avatars (or sweeps and counts them);
-    // storage.media.spec.ts, files.add.refusals.spec.ts and
+    // storage.media.spec.ts, services/files.add.refusals.service.spec.ts and
     // storage.access.ts still use it, so it stays mounted for now.
     defineMediaKind<MediaRequires>({
       name: "avatars",

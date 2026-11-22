@@ -1,15 +1,13 @@
 import { type NodeDoc, named, ownedNode } from "@/modules/nodes/public";
-import type { Focal } from "../files.crops";
 import { invalidFocal, notAFile, notRenderable } from "../files.errors";
-import { type RenditionsQueue, renditionKindOf } from "../files.renditions";
 import type { FilesMongo } from "../models";
+import {
+  type Focal,
+  isFocal,
+  type RenditionsQueue,
+  renditionKindOf,
+} from "../rules";
 import { enqueue } from "./enqueue.service";
-
-// A coordinate is a number from 0 to 1 (fractions of the picture).
-export const isFocal = (focal: Focal) =>
-  [focal.x, focal.y].every(
-    (value) => Number.isFinite(value) && value >= 0 && value <= 1,
-  );
 
 // Moves the focal point of a picture of the caller's tree (`null` is the
 // centre) and has the worker redo its four crops from the stored original.

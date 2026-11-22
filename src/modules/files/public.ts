@@ -2,13 +2,13 @@
 // the orphan sweep.
 // Everything else in this folder is private.
 
-export {
-  type RenditionsQueue,
-  renditionKindOf,
-} from "./files.renditions";
 export type { FilesMongo } from "./models";
 export { filesMongo } from "./models";
 export { filesModule } from "./module";
+export {
+  type RenditionsQueue,
+  renditionKindOf,
+} from "./rules";
 export type {
   SweepBucket,
   SweepOptions,

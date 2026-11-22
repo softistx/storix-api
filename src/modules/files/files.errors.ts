@@ -10,3 +10,8 @@ export const invalidFocal = () =>
   fail("files.errors.invalid-focal", { status: 400, field: "focalPoint" });
 export const copyTooLarge = () =>
   fail("files.errors.copy-too-large", { status: 409 });
+
+export const versionNotFound = () =>
+  fail("versions.errors.not-found", { status: 404, field: "versionId" });
+export const isCurrent = () =>
+  fail("versions.errors.is-current", { status: 409, field: "versionId" });
