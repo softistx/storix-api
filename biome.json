@@ -26,6 +26,12 @@
       "complexity": {
         "useLiteralKeys": "off"
       },
+      "suspicious": {
+        "noDoubleEquals": {
+          "level": "error",
+          "options": { "ignoreNull": false }
+        }
+      },
       "nursery": {
         "noFloatingPromises": "error"
       }

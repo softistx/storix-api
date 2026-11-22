@@ -107,9 +107,15 @@ export const workspacesResolvers: Resolvers = {
       );
       const core = workspacesMongo(ctx.tenancy.core);
       const patch = {
-        ...(input.trashDays != null && { trashDays: input.trashDays }),
-        ...(input.versionsMax != null && { versionsMax: input.versionsMax }),
-        ...(input.versionsDays != null && { versionsDays: input.versionsDays }),
+        ...(typeof input.trashDays === "number" && {
+          trashDays: input.trashDays,
+        }),
+        ...(typeof input.versionsMax === "number" && {
+          versionsMax: input.versionsMax,
+        }),
+        ...(typeof input.versionsDays === "number" && {
+          versionsDays: input.versionsDays,
+        }),
       };
       const settings = await updateSettings(core, scope.tenant.id, patch);
       if (!settings) throw notFound();

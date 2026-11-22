@@ -1,6 +1,6 @@
 import type { Context } from "@/http/context";
-import { fail } from "@/i18n/fail";
 import type { Identity, InvitationResolverMap } from "../../identity";
+import { invalidInvitation } from "../invitations.errors";
 import { invitationHooks } from "../invitations.hooks";
 import { recordInvitationWrite } from "../services/invitations.audit";
 
@@ -42,7 +42,7 @@ export const field =
 // opening) is as dead as a spent one: `invitations.errors.invalid`, for the
 // preview and for the accept alike. The preview names the workspace only when
 // it is active, so a null name is that state.
-const closed = () => fail("invitations.errors.invalid", { status: 400 });
+const closed = invalidInvitation;
 
 // The invitation a code names, as the preview answers it.
 export interface Previewed {

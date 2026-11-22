@@ -1,5 +1,5 @@
 import type { Context } from "@/http/context";
-import { fail, unauthenticated } from "@/i18n/fail";
+import { apiKeyNotAccepted, unauthenticated } from "@/i18n/fail";
 import type { Principal } from "../identity.port";
 
 // An operation of the account (sign-in, a second factor, a password reset…) is
@@ -7,8 +7,8 @@ import type { Principal } from "../identity.port";
 // stolen one cannot change who the account is. 401
 // `auth.errors.api-key-not-accepted`.
 export function refuseKey(ctx: Context) {
-  if (ctx.viewer?.apiKeyId != null) {
-    throw fail("auth.errors.api-key-not-accepted", { status: 401 });
+  if (typeof ctx.viewer?.apiKeyId === "string") {
+    throw apiKeyNotAccepted();
   }
 }
 

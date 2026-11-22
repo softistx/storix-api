@@ -3,7 +3,7 @@ import { scalarResolvers, scalarTypeDefs } from "@nxgt/graphql-scalars";
 import { constraintTypeDefs, withValidation } from "@nxgt/graphql-validation";
 import { freshPerMutation } from "@softistx/alxia-graphql";
 import { type Module, resolversOf, typeDefsOf } from "@softistx/alxia-modules";
-import { createSchema } from "@softistx/graxia";
+import { createSchema, type Resolvers } from "@softistx/graxia";
 import { modules } from "../modules/registry";
 import type { Context } from "./context";
 
@@ -23,8 +23,12 @@ export function schemaOf(list: readonly Module[]) {
       ]),
       resolvers: [
         scalarResolvers,
-        freshPerMutation(mergeResolvers(resolversOf(list))),
-      ] as never,
+        // graphql-tools merges to its own `IResolvers`, which has no index
+        // signature; each module's map is already typed against `Context`.
+        freshPerMutation(
+          mergeResolvers(resolversOf(list)) as Resolvers<Context>,
+        ),
+      ],
     }),
   );
 }

@@ -85,7 +85,8 @@ export const teamsResolvers: Resolvers = {
       );
       const mongo = workspaceDb(scope);
       await getTeam(mongo, id);
-      const name = input.name == null ? undefined : nameOf(input.name);
+      const name =
+        typeof input.name === "string" ? nameOf(input.name) : undefined;
       const wanted = input.memberIds
         ? await knownMembers(scope, input.memberIds)
         : undefined;

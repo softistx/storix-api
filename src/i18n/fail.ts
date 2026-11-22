@@ -40,6 +40,9 @@ export function rateLimited(retryAfter: number): GraphQLError {
   return error;
 }
 
+export const apiKeyNotAccepted = () =>
+  fail("auth.errors.api-key-not-accepted", { status: 401 });
+
 export const forbidden = () => fail("auth.errors.forbidden", { status: 403 });
 
 // One refused field of an input: `path` is relative to the input

@@ -1,5 +1,5 @@
 import { defineModule } from "@softistx/alxia-modules";
-import { members as codes } from "@/i18n/codes";
+import { members as codes } from "./members.errors";
 import typeDefs from "./members.graphqls" with { type: "text" };
 import { membersResolvers } from "./members.resolver";
 import { members } from "./models/members.model";

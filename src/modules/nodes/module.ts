@@ -1,9 +1,9 @@
 import { defineModule } from "@softistx/alxia-modules";
 import type { HandoverListener, JoinListener } from "@/core/members";
-import { nodes as codes } from "@/i18n/codes";
 import { nodesListingCollation } from "./migrations/2026-11-15-nodes-listing-collation.migration";
 import { nodesTrashIndexes } from "./migrations/2026-11-21-nodes-trash-indexes.migration";
 import { nodes, nodesMongo } from "./models";
+import { nodes as codes } from "./nodes.errors";
 import typeDefs from "./nodes.graphqls" with { type: "text" };
 import { nodesResolvers } from "./nodes.resolver";
 import { ensureRoot, transferTree } from "./services";

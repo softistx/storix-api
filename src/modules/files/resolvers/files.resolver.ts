@@ -210,7 +210,7 @@ export const filesResolvers: Resolvers = {
         accountId: principal.accountId,
         ...(tags && { tags }),
         ...(meta !== undefined && { meta: meta as Record<string, unknown> }),
-        ...(input.version != null && { version: input.version }),
+        ...(typeof input.version === "number" && { version: input.version }),
       });
       await recordFileUpdate(
         {

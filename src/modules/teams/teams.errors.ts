@@ -1,7 +1,20 @@
+import { defineCodes } from "@softistx/alxia-i18n";
 import { ConflictError } from "@softistx/mongo";
 import { fail } from "@/i18n/fail";
 
-// The module's refusals (the codes are listed in src/i18n/codes.ts).
+// The teams of a workspace (src/modules/teams).
+export const teams = defineCodes("teams", [
+  // 404: no team with this id in the workspace (a team of another workspace
+  // is the same answer).
+  "not-found",
+  // 409: another team of the workspace has this name, in any case (field
+  // `name`).
+  "name-taken",
+  // 400: an id is not a current member of the workspace (field `memberIds`).
+  "member-unknown",
+]);
+
+// The module's refusals (the codes above).
 export const teamNotFound = () =>
   fail("teams.errors.not-found", { status: 404 });
 export const nameTaken = () =>

@@ -40,7 +40,7 @@ product (French is offered). Terms join this table slice by slice; the full mode
 ## Error codes
 
 A refusal carries a code `<module>.errors.<slug>`, declared per module with `defineCodes` and
-gathered in `ErrorCode` (`src/i18n/codes.ts`). Its message is data: one row per code and language
+declared by each module's `<name>.errors.ts` and gathered in `ErrorCode` (`src/i18n/codes.ts`). Its message is data: one row per code and language
 in the `translations` collection, written by a data migration, served by `Query.errorCatalogue`.
 `bun run context:check` fails when a declared code has no row here, and `src/i18n/coverage.spec.ts`
 when a code lacks a message in English or French.

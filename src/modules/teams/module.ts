@@ -1,8 +1,8 @@
 import { defineModule } from "@softistx/alxia-modules";
 import type { RemovalListener } from "@/core/members";
-import { teams as codes } from "@/i18n/codes";
 import { teams, teamsMongo } from "./models";
 import { removeMemberFromTeams } from "./services";
+import { teams as codes } from "./teams.errors";
 import typeDefs from "./teams.graphqls" with { type: "text" };
 import { teamsResolvers } from "./teams.resolver";
 

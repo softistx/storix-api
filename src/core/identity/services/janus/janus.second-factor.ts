@@ -1,6 +1,5 @@
-import { fail } from "@/i18n/fail";
 import type { Identity, Principal } from "../../identity.port";
-import { authCall } from "./janus.errors";
+import { authCall, emailUnverified } from "./janus.errors";
 import { disableSecondFactor } from "./janus.second-factor.disable";
 import type { Deps } from "./janus.shared";
 import { assertFresh } from "./janus.step-up";
@@ -25,7 +24,7 @@ export function secondFactorFlows(deps: Deps): Flows {
 
   const verified = (principal: Principal) => {
     if (!principal.emailVerified) {
-      throw fail("identity.errors.email-unverified", { status: 403 });
+      throw emailUnverified();
     }
   };
 
