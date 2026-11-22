@@ -1,3 +1,4 @@
+export * from "./workspaces.mine";
 export * from "./workspaces.registry";
 export * from "./workspaces.rename";
 export * from "./workspaces.service";

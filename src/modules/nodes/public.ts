@@ -1,6 +1,7 @@
 // The nodes surface: the module, and what the `files` module records a file
 // with. Everything else in this folder is private.
 
+export { ownerOf } from "./data-loaders";
 export type { NodeDoc, NodeState, NodesMongo } from "./models";
 export { nodesMongo } from "./models";
 export { nodesModule, nodesOnHandover, nodesOnJoin } from "./module";
@@ -13,7 +14,6 @@ export {
   rootLocked,
   tooDeep,
 } from "./nodes.errors";
-export { ownerOf } from "./nodes.owner";
 export type { FileFamily } from "./rules";
 export {
   checkName,

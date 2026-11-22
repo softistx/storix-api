@@ -1,4 +1,4 @@
-import { toObjectId } from "@softistx/mongo";
+import { toObjectId, tryObjectId } from "@softistx/mongo";
 import { DEFAULT_SETTINGS } from "../models/workspaces.model";
 import type { WorkspacesMongo } from "./workspaces.service";
 
@@ -15,6 +15,22 @@ export async function settingsOf(
 ): Promise<Settings | undefined> {
   const doc = await mongo.db.workspaces.findById(workspaceId);
   return doc && { ...DEFAULT_SETTINGS, ...doc.settings };
+}
+
+// `settingsOf` for many workspaces in one read: the settings by workspace id; an
+// unknown workspace is absent from the map.
+export async function settingsOfMany(
+  mongo: WorkspacesMongo,
+  workspaceIds: readonly string[],
+): Promise<Map<string, Settings>> {
+  const docs = await mongo.db.workspaces.findMany({
+    filter: {
+      _id: { $in: workspaceIds.flatMap((id) => tryObjectId(id) ?? []) },
+    },
+  });
+  return new Map(
+    docs.map((doc) => [doc.id, { ...DEFAULT_SETTINGS, ...doc.settings }]),
+  );
 }
 
 // Sets the settings the patch names and leaves the others, without touching

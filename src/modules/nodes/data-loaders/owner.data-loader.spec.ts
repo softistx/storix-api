@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Context } from "@/http/context";
-import { setup } from "./nodes.harness";
-import { ownerOf } from "./nodes.owner";
+import { setup } from "../nodes.harness";
+import { ownerOf } from "./owner.data-loader";
 
 const OWNER = "ownerId owner { accountId name }";
 const NODE_OWNER = `query($id: ID!) { node(id: $id) { id ${OWNER} } }`;

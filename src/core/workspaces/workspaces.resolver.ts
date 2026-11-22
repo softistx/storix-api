@@ -2,28 +2,20 @@ import type { Resolvers } from "@/generated/graphql/resolvers";
 import { invalidInput } from "@/i18n/fail";
 import { requireAccountSession, requireWorkspacePermission } from "../access";
 import { memberActor } from "../audit";
-import { membershipsOfAccount } from "../members";
+import { settingsOfWorkspace } from "./data-loaders";
 import { isObjectIdLike, workspacesMongo } from "./models";
 import {
   createWorkspace,
   renameWorkspace,
-  settingsOf,
   updateSettings,
-  workspaceOf,
+  workspacesOfAccount,
 } from "./services";
 import { view } from "./utils";
 import { notFound } from "./workspaces.errors";
 
 export const workspacesResolvers: Resolvers = {
   Workspace: {
-    settings: async (workspace, _, ctx) => {
-      const settings = await settingsOf(
-        workspacesMongo(ctx.tenancy.core),
-        workspace.id,
-      );
-      if (!settings) throw notFound();
-      return settings;
-    },
+    settings: (workspace, _, ctx) => settingsOfWorkspace(workspace, ctx),
   },
   Query: {
     workspace: async (_, __, ctx) => {
@@ -32,21 +24,11 @@ export const workspacesResolvers: Resolvers = {
     },
     myWorkspaces: async (_, __, ctx) => {
       const { accountId } = requireAccountSession(ctx);
-      const mongo = workspacesMongo(ctx.tenancy.core);
-      const memberships = await membershipsOfAccount(mongo, accountId);
-      const roles = new Map(
-        memberships.map((m) => [m.workspaceId.toHexString(), m.role]),
+      const mine = await workspacesOfAccount(
+        workspacesMongo(ctx.tenancy.core),
+        accountId,
       );
-      const found = await mongo.db.workspaces.findMany({
-        filter: {
-          _id: { $in: memberships.map((m) => m.workspaceId) },
-          status: "active",
-        },
-        sort: { name: 1 },
-      });
-      return found.map((doc) =>
-        view(workspaceOf(doc), roles.get(doc.id) ?? "MEMBER"),
-      );
+      return mine.map(({ workspace, role }) => view(workspace, role));
     },
   },
   Mutation: {

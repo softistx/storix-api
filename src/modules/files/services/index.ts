@@ -13,4 +13,5 @@ export * from "./recount.service";
 export * from "./renditions.service";
 export * from "./sweep.service";
 export * from "./update.service";
+export * from "./versions.batch.service";
 export * from "./versions.service";

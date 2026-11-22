@@ -1,28 +1,22 @@
 import { requireWorkspacePermission } from "@/core/access";
 import { workspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
+import { versionsOf } from "../data-loaders";
 import { filesMongo } from "../models";
 import {
   addVersion,
   deleteVersion,
-  listVersions,
   recordRecent,
   restoreVersion,
 } from "../services";
 import { doneBy, fileOf, recordVersion } from "../utils";
 import type { Mutations } from "./support";
 
-// `File.versions`: newest first (needs `nodes:read`).
+// `File.versions`: newest first (needs `nodes:read`), batched per request by
+// the versions loader.
 export const fileVersionResolvers: NonNullable<Resolvers["File"]> = {
   versions: async (file, _, ctx) => {
-    const { principal, scope } = await requireWorkspacePermission(
-      ctx,
-      "nodes:read",
-    );
-    const { rows, currentId } = await listVersions(filesMongo(scope.mongo), {
-      id: file.id,
-      accountId: principal.accountId,
-    });
+    const { rows, currentId } = await versionsOf(file, ctx);
     return rows.map((row) => ({
       id: row.id,
       number: row.number,
