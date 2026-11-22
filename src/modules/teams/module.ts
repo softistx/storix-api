@@ -1,11 +1,10 @@
 import { defineModule } from "@softistx/alxia-modules";
 import type { RemovalListener } from "@/core/members";
 import { teams as codes } from "@/i18n/codes";
-import { teams } from "./teams.collection";
+import { teams, teamsMongo } from "./models";
+import { removeMemberFromTeams } from "./services";
 import typeDefs from "./teams.graphqls" with { type: "text" };
-import { teamsMongo } from "./teams.handle";
 import { teamsResolvers } from "./teams.resolver";
-import { removeMemberFromTeams } from "./teams.service";
 
 // Teams of members, in the workspace's own database. Owns `teams:read` (every
 // role: any member shares with a team, so any member lists them) and
