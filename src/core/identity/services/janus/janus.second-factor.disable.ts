@@ -1,6 +1,5 @@
-import { fail } from "@/i18n/fail";
 import type { Identity } from "../../identity.port";
-import { authCall } from "./janus.errors";
+import { authCall, secondFactorState } from "./janus.errors";
 import type { Deps } from "./janus.shared";
 import { assertFresh } from "./janus.step-up";
 
@@ -21,12 +20,12 @@ export async function disableSecondFactor(
   return authCall(async () => {
     const user = await users.get(principal.accountId);
     if (!user.hasSecondFactor) {
-      throw fail("identity.errors.second-factor-state", { status: 409 });
+      throw secondFactorState();
     }
     if (APP_CODE.test(code.trim())) {
       const issued = await users.stepUp.request(user);
       if (issued.via !== "secondFactor") {
-        throw fail("identity.errors.second-factor-state", { status: 409 });
+        throw secondFactorState();
       }
       await users.stepUp.confirm(request, issued.challenge, code);
     } else {

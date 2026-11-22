@@ -20,6 +20,12 @@ export const currentPasswordWrong = () =>
 export const sessionNotFound = () =>
   fail("identity.errors.session-not-found", { status: 404 });
 
+export const secondFactorState = () =>
+  fail("identity.errors.second-factor-state", { status: 409 });
+
+export const emailUnverified = () =>
+  fail("identity.errors.email-unverified", { status: 403 });
+
 export const tooShort = (min: number, path = "password") =>
   invalidInput([
     { path, code: "validation.errors.too-short", params: { min } },
@@ -54,7 +60,7 @@ export function fromJanus(error: JanusError): GraphQLError | undefined {
       return stepUpRequired();
     case "SECOND_FACTOR_NOT_ENROLLED":
     case "SECOND_FACTOR_ACTIVE":
-      return fail("identity.errors.second-factor-state", { status: 409 });
+      return secondFactorState();
     case "TOKEN_UNKNOWN":
     case "TOKEN_SPENT":
     case "TOKEN_EXPIRED":
@@ -64,7 +70,7 @@ export function fromJanus(error: JanusError): GraphQLError | undefined {
     case "PASSWORD_TOO_SHORT":
       return tooShort(error.minLength ?? 8);
     case "EMAIL_UNVERIFIED":
-      return fail("identity.errors.email-unverified", { status: 403 });
+      return emailUnverified();
     case "USER_INACTIVE":
     case "NOT_FOUND":
       return fail("auth.errors.forbidden", { status: 403 });

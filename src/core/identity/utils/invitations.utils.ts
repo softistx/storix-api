@@ -1,6 +1,6 @@
 import { StoreFailure } from "@softistx/janus";
 import { GraphQLError } from "graphql";
-import { fail } from "@/i18n/fail";
+import { apiKeyNotAccepted } from "@/i18n/fail";
 import type { Principal } from "../identity.port";
 import { invitationRefusal } from "../services/invitations/invitations.refusal";
 import { unavailable } from "../services/janus/janus.errors";
@@ -27,7 +27,7 @@ export const withJanus = <C extends InvitationCtx>(ctx: C) =>
       user: async () => {
         if (!ctx.viewer) return null;
         if (ctx.viewer.apiKeyId !== null) {
-          throw fail("auth.errors.api-key-not-accepted", { status: 401 });
+          throw apiKeyNotAccepted();
         }
         return { type: "user", id: ctx.viewer.accountId };
       },

@@ -32,7 +32,7 @@ export const membersResolvers: Resolvers = {
           startCursor: after ?? null,
           endCursor: page.endCursor,
           hasNextPage: page.endCursor !== null,
-          hasPreviousPage: after != null,
+          hasPreviousPage: typeof after === "string",
         },
         totalCount: page.totalCount,
       };

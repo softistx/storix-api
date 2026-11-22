@@ -12,7 +12,7 @@ export const pageOf = (
     startCursor: null,
     endCursor: page.endCursor,
     hasNextPage: page.endCursor !== null,
-    hasPreviousPage: after != null,
+    hasPreviousPage: typeof after === "string",
   },
 });
 

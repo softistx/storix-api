@@ -28,7 +28,7 @@ const attempts = (fallback: string) =>
 
 // Required in production; elsewhere `fallback` stands in.
 const inProduction = <T extends z.ZodType>(schema: T, fallback: string) =>
-  production ? schema : schema.prefault(fallback as never);
+  production ? schema : schema.prefault(fallback as z.input<T>);
 
 // Optional outside production, required in it: an empty value is unset.
 const orUnset = (schema: z.ZodType<string, string>) =>

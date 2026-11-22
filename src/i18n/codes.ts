@@ -1,201 +1,21 @@
-import { defineCodes } from "@softistx/alxia-i18n";
+// Every code the API answers with, in module order: the inventory. Each module
+// declares its own codes in its `<module>.errors.ts`; this file only gathers
+// them. tsc refuses a code that is not in it (`fail`, `FieldIssue`), the
+// coverage spec requires a message for each in every shipped language and a row
+// in CONTEXT.md, and that every registered module's `codes` are in it. A slice
+// that adds a module with codes adds its `codes` here, beside the manifest's.
+import { identity } from "@/core/identity/identity.errors";
+import { invitations } from "@/core/invitations/invitations.errors";
+import { members } from "@/core/members/members.errors";
+import { storage } from "@/core/storage/storage.errors";
+import { auth, validation } from "@/core/system/system.errors";
+import { workspaces } from "@/core/workspaces/workspaces.errors";
+import { files, versions } from "@/modules/files/files.errors";
+import { nodes } from "@/modules/nodes/nodes.errors";
+import { quotas } from "@/modules/quotas/quotas.errors";
+import { teams } from "@/modules/teams/teams.errors";
+import { trash } from "@/modules/trash/trash.errors";
 
-// Who is asking: shared by every module, so declared here (plan §3.13).
-export const auth = defineCodes("auth", [
-  "unauthenticated",
-  "forbidden",
-  "step-up-required",
-  "second-factor-required",
-  "rate-limited",
-  // 401: an API key on a path it may not reach.
-  "api-key-not-accepted",
-  "client-header-required",
-]);
-
-// Malformed input: shared by every module, so declared here. The first five
-// are the plan's; the next five are the codes of @nxgt/graphql-validation's
-// `FIELD_CODES` (what `fieldIssueOf` answers for a Zod issue), which a
-// `invalid-input` error lists per field (the coverage spec keeps them in sync).
-export const validation = defineCodes("validation", [
-  "invalid-input",
-  "invalid",
-  "out-of-range",
-  "invalid-cursor",
-  "invalid-filter",
-  "too-short",
-  "too-long",
-  "too-few",
-  "too-many",
-  "invalid-format",
-]);
-
-// The account flows (src/core/identity). A refusal says what the client can
-// act on, never which of janus's reasons it was: an unknown address, a
-// deactivated account and a wrong password are one `invalid-credentials`.
-export const identity = defineCodes("identity", [
-  "invalid-credentials",
-  "email-unverified",
-  "token-invalid",
-  "second-factor-invalid",
-  "second-factor-state",
-  "unavailable",
-  // 400: the current password of a password change is wrong (not a 401: the
-  // caller is signed in).
-  "current-password-wrong",
-  // 404: no session of the caller's account has this id (another account's,
-  // unknown or already ended, all alike).
-  "session-not-found",
-]);
-
-// The workspaces (src/core/workspaces). `not-found` is also the answer for a
-// workspace the caller is not a member of, so none is told from an unknown one.
-export const workspaces = defineCodes("workspaces", [
-  "not-found",
-  // 400: a workspace operation without the `x-storix-workspace` header.
-  "workspace-required",
-  "slug-taken",
-  // 409: the change would leave the workspace without an owner.
-  "last-owner",
-]);
-
-// The memberships of a workspace (src/core/members).
-export const members = defineCodes("members", ["not-found"]);
-
-// The invitations to a workspace (src/core/invitations). The code of an
-// invitation that is unknown or malformed is `invalid`; one that names a real
-// invitation says why it cannot be used: `expired`, `already-accepted` or
-// `revoked` (the code is the invitee's secret, so it tells nothing to others).
-export const invitations = defineCodes("invitations", [
-  // 404: no invitation with this id in the workspace (or the caller may not
-  // see it).
-  "not-found",
-  // 400: the code names no invitation (unknown or malformed), or one of a
-  // workspace that is not open.
-  "invalid",
-  // 400: the invitation's 7 days have passed.
-  "expired",
-  // 400: the invitation was already accepted.
-  "already-accepted",
-  // 400: the invitation was withdrawn (revoked) by an admin.
-  "revoked",
-  // 409: the invitation was accepted or revoked, so it cannot be sent again or
-  // revoked.
-  "not-pending",
-  // 409: the workspace already has the most pending invitations it may have.
-  "limit",
-  // 409: the address already belongs to a member of the workspace.
-  "already-member",
-  // 400: the invitee has no account yet and gave no password (field
-  // `password`).
-  "password-required",
-]);
-
-// The teams of a workspace (src/modules/teams).
-export const teams = defineCodes("teams", [
-  // 404: no team with this id in the workspace (a team of another workspace
-  // is the same answer).
-  "not-found",
-  // 409: another team of the workspace has this name, in any case (field
-  // `name`).
-  "name-taken",
-  // 400: an id is not a current member of the workspace (field `memberIds`).
-  "member-unknown",
-]);
-
-// The tree of folders (src/modules/nodes).
-export const nodes = defineCodes("nodes", [
-  // 404: no node with this id in the caller's tree (an unknown id, another
-  // workspace's and another member's node are one answer).
-  "not-found",
-  // 409: a sibling already has this name, in any case (field `name`).
-  "name-taken",
-  // 409: the folder would sit deeper than 16 levels.
-  "too-deep",
-  // 409: a folder moved into itself or its own subtree.
-  "cycle",
-  // 409: the node changed since the version the caller read.
-  "conflict",
-  // 400: the parent is not a folder (field `parentId`).
-  "not-a-folder",
-  // 409: the subtree has more than 5,000 nodes.
-  "move-too-large",
-  // 409: a root is never renamed nor moved.
-  "root-locked",
-]);
-
-// Recording uploaded files (src/modules/files).
-export const files = defineCodes("files", [
-  // 400 (field `key`): the key names no object that can be recorded: it is not
-  // a media key, no object of the `files` kind lies under it in this workspace
-  // (another workspace's key and another kind's are the same), or a file
-  // already holds it.
-  "key-unknown",
-  // 400 (field `id`): `updateFile` or `setFocalPoint` named a folder.
-  "not-a-file",
-  // 409: the copied folder, with what it holds, has more than 5,000 nodes.
-  "copy-too-large",
-  // 400 (field `id`): `setFocalPoint` named a file that is not a JPEG, PNG or
-  // WebP picture: only these have crops.
-  "not-renderable",
-  // 400 (field `focalPoint`): a coordinate that is not a number from 0 to 1.
-  "invalid-focal",
-]);
-
-// The versions of a file (src/modules/files, `services/versions*.service.ts`).
-export const versions = defineCodes("versions", [
-  // 404: the file has no version with this id (an unknown id, another file's
-  // version and a malformed id are one answer).
-  "not-found",
-  // 409: the operation names the current version: it is never deleted, and
-  // restoring it would change nothing.
-  "is-current",
-]);
-
-// The trash (src/modules/trash).
-export const trash = defineCodes("trash", [
-  // 409: the node is not in the trash (restore and purge take what was trashed).
-  "not-trashed",
-]);
-
-// The workspace's storage quota (src/core/workspaces, src/modules/quotas).
-export const quotas = defineCodes("quotas", [
-  // 413: the file does not fit in what the workspace has left. Raised by the
-  // `/media` PUT from the declared length, before the body is read, and by
-  // `addFile`, which decides.
-  "exceeded",
-]);
-
-// The object store behind /media (src/core/storage). The refusals of the media
-// routes, in the GraphQL error shape.
-export const storage = defineCodes("storage", [
-  // 413: the upload is larger than its kind allows (`params.limitMib`).
-  "too-large",
-  // 415: the content type is not one the kind accepts, or its first bytes are
-  // not the declared type's.
-  "unsupported-type",
-  // 400: the upload has no bytes.
-  "empty",
-  // 429: too many uploads (`params.seconds`, and `extensions.retryAfter`).
-  "rate-limited",
-  // 503: the store did not answer, or is not configured.
-  "unavailable",
-  // 422: a picture could not be decoded or made into its sizes.
-  "unprocessable",
-  // 408: the client sent nothing for too long.
-  "stalled",
-  // 404: no such file in the workspace (also the answer for a refused reader).
-  "not-found",
-  // 416: the Range starts past the end of the file.
-  "range-not-satisfiable",
-  // 400: the body ended short of its declared length, or was cut.
-  "interrupted",
-]);
-
-// Every code the API answers with, in module order: the inventory. tsc refuses
-// a code that is not in it (`fail`, `FieldIssue`), the coverage spec requires
-// a message for each in every shipped language and a row in CONTEXT.md, and
-// that every registered module's `codes` are in it. A slice that adds a module
-// with codes adds its `codes` here, beside the manifest's.
 export const errorCodes = [
   ...auth,
   ...validation,

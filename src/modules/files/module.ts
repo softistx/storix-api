@@ -1,5 +1,5 @@
 import { defineModule } from "@softistx/alxia-modules";
-import { files, versions } from "@/i18n/codes";
+import { files, versions } from "./files.errors";
 import typeDefs from "./files.graphqls" with { type: "text" };
 import { versionsIndexes } from "./migrations/2026-11-21-versions-indexes.migration";
 import { nodesListingDescIndexes } from "./migrations/2026-11-24-nodes-listing-desc-indexes.migration";
