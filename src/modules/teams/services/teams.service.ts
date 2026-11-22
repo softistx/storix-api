@@ -1,32 +1,11 @@
-import type { CollectionsOf, ModuleHandle } from "@softistx/alxia-modules";
-import {
-  ConflictError,
-  type Mongo,
-  toObjectId,
-  tryObjectId,
-} from "@softistx/mongo";
-import { fail } from "@/i18n/fail";
-import { NAME_COLLATION } from "./teams.collection";
-
-// The module's handle on a workspace's database: its own collection only.
-export type TeamsMongo = ModuleHandle<
-  "teams",
-  Mongo<{ collections: CollectionsOf }>
->;
-
-export type TeamDoc = Awaited<ReturnType<TeamsMongo["db"]["teams"]["getById"]>>;
-
-export const teamNotFound = () =>
-  fail("teams.errors.not-found", { status: 404 });
-export const nameTaken = () =>
-  fail("teams.errors.name-taken", { status: 409, field: "name" });
-export const memberUnknown = () =>
-  fail("teams.errors.member-unknown", { status: 400, field: "memberIds" });
+import { toObjectId, tryObjectId } from "@softistx/mongo";
+import { NAME_COLLATION, type TeamDoc, type TeamsMongo } from "../models";
+import { named, teamNotFound } from "../teams.errors";
 
 // The team with this id in this workspace's database, or 404: a malformed id
 // and an id of another workspace's team are the same answer, and the database
 // is the request's own, so no other workspace's team can be reached.
-async function teamOf(
+export async function getTeam(
   mongo: Pick<TeamsMongo, "db">,
   id: string,
 ): Promise<TeamDoc> {
@@ -36,20 +15,8 @@ async function teamOf(
   return team;
 }
 
-export const getTeam = teamOf;
-
 export const listTeams = (mongo: TeamsMongo) =>
   mongo.db.teams.findMany({ sort: { name: 1 }, collation: NAME_COLLATION });
-
-// Runs a write that may break the unique name index (`name-taken`).
-async function named<T>(write: () => Promise<T>): Promise<T> {
-  try {
-    return await write();
-  } catch (error) {
-    if (error instanceof ConflictError) throw nameTaken();
-    throw error;
-  }
-}
 
 export const createTeam = (mongo: TeamsMongo, name: string, actorId: string) =>
   named(() => mongo.db.teams.as(actorId).create({ name, memberIds: [] }));
@@ -59,7 +26,7 @@ export async function renameTeam(
   mongo: TeamsMongo,
   input: { id: string; name: string; actorId: string },
 ) {
-  const before = await teamOf(mongo, input.id);
+  const before = await getTeam(mongo, input.id);
   const team = await named(() =>
     mongo.db.teams.as(input.actorId).update(before._id, { name: input.name }),
   );
@@ -73,7 +40,7 @@ export async function setTeamMembers(
   mongo: TeamsMongo,
   input: { id: string; memberIds: readonly string[]; actorId: string },
 ) {
-  const before = await teamOf(mongo, input.id);
+  const before = await getTeam(mongo, input.id);
   const unique = [...new Set(input.memberIds)];
   const team = await mongo.db.teams
     .as(input.actorId)
@@ -97,7 +64,7 @@ export async function updateTeam(
 ) {
   return named(() =>
     mongo.transaction(async (tx) => {
-      const before = await teamOf(tx, input.id);
+      const before = await getTeam(tx, input.id);
       const changes: {
         name?: string;
         memberIds?: ReturnType<typeof toObjectId>[];
@@ -122,7 +89,7 @@ export async function deleteTeam(
   id: string,
   actorId: string,
 ): Promise<TeamDoc> {
-  const team = await teamOf(mongo, id);
+  const team = await getTeam(mongo, id);
   await mongo.db.teams.as(actorId).delete(team._id);
   return team;
 }

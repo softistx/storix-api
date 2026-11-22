@@ -1,5 +1,5 @@
 import type { AuditActor, Auditor } from "@/core/audit";
-import type { TeamDoc } from "./teams.service";
+import type { TeamDoc } from "../models";
 
 interface Done {
   workspaceId: string;

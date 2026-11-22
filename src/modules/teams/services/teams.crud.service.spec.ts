@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { world } from "../../../test/workspaces.harness";
+import { world } from "../../../../test/workspaces.harness";
 
 const TEAM = "id name memberIds memberCount";
 const CREATE = `mutation($name: String!) { createTeam(name: $name) { ${TEAM} } }`;
