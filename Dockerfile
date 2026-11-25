@@ -5,7 +5,7 @@
 # imported as text by the module manifests): the image holds dist/ only, no
 # TypeScript and no node_modules (`bun build` copies the native renderer of
 # @napi-rs/canvas next to dist/worker.js as an asset, built for the image's own
-# platform). Pinned to Bun 1.4.4 exactly, moved together
+# platform). Pinned to Bun 1.4.5 exactly, moved together
 # with ci.yml's setup-bun and @types/bun.
 
 FROM oven/bun:1.4.5 AS build
