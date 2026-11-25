@@ -19,7 +19,14 @@ import {
   sameFocal,
   targetSize,
 } from "../rules";
-import { fitSide, limits, type MadeRendition, makeFromPdf } from "../utils";
+import {
+  FocalMoved,
+  fitSide,
+  limits,
+  type MadeRendition,
+  makeFromPdf,
+  storeUntilStable,
+} from "../utils";
 
 export interface MakeOptions {
   signal?: AbortSignal | undefined;
@@ -114,9 +121,9 @@ class OriginalMissing extends Error {}
 // `PROCESSING`-only rule. `READY` resets the requeue counter.
 //
 // `rendered` (the focal point the job's crops were made with, `null` for the
-// centre) settles only the nodes still at that point: a move during the job
-// leaves the node `PROCESSING` for the redo job queued by `setFocalPoint`,
-// which settles it with the moved crops.
+// centre) settles only the nodes still at that point. The job re-renders until
+// the point holds (`storeUntilStable`); this guard covers a move after its last
+// read, leaving the node `PROCESSING` for the redo job `setFocalPoint` queued.
 async function setStatus(
   mongo: FilesMongo,
   key: string,
@@ -191,22 +198,37 @@ export function renditionsHandler(
       if (node) await setStatus(mongo, key, "READY");
       return;
     }
+    let rendered = node.focalPoint;
     try {
       await touch(mongo, key);
       const bytes = await readOriginal(deps.bucket, workspaceId, key);
       const place = mediaPlace("files", `workspaces/${workspaceId}`);
-      const made = await makeRenditions(bytes, kind, {
-        signal,
-        focal: node.focalPoint,
-        cropsOnly: crops === true,
-      });
-      await touch(mongo, key);
-      for (const one of made) {
-        await deps.bucket.put({ key: place(key, one.size) }, one.bytes, {
-          type: one.contentType,
+      // Renders and stores the sizes for `focal`; a redo is crops only.
+      const renderAndStore = async (focal: Focal | null, again: boolean) => {
+        const made = await makeRenditions(bytes, kind, {
+          signal,
+          focal,
+          cropsOnly: again || crops === true,
         });
-      }
+        await touch(mongo, key);
+        for (const one of made) {
+          await deps.bucket.put({ key: place(key, one.size) }, one.bytes, {
+            type: one.contentType,
+          });
+        }
+      };
+      rendered = await storeUntilStable({
+        focal: node.focalPoint,
+        store: renderAndStore,
+        current: async () => {
+          const now = await mongo.db.nodes.findFirst({ blobKey: key });
+          return now ? now.focalPoint : undefined;
+        },
+      });
     } catch (error) {
+      // The point kept moving: PROCESSING stays for the redo; the last
+      // attempt returns, as throwing would end FAILED.
+      if (error instanceof FocalMoved && attempt >= attempts) return;
       const permanent =
         error instanceof ImageError || error instanceof OriginalMissing;
       if (permanent || attempt >= attempts)
@@ -220,7 +242,7 @@ export function renditionsHandler(
       throw error;
     }
     await setStatus(mongo, key, "READY", crops !== true, {
-      focal: node.focalPoint,
+      focal: rendered,
     });
   };
 }

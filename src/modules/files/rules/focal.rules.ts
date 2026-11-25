@@ -13,3 +13,10 @@ export const sameFocal = (focal: Focal | null | undefined) =>
   focal
     ? { "focalPoint.x": focal.x, "focalPoint.y": focal.y }
     : { focalPoint: null };
+
+// Whether two stored focal points are the same picture position (`null` and
+// absent are both the centre).
+export const focalEquals = (
+  a: Focal | null | undefined,
+  b: Focal | null | undefined,
+) => (a && b ? a.x === b.x && a.y === b.y : !a && !b);

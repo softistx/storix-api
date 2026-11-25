@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isFocal, sameFocal } from "./focal.rules";
+import { focalEquals, isFocal, sameFocal } from "./focal.rules";
 
 describe("isFocal", () => {
   test("takes coordinates from 0 to 1, bounds included", () => {
@@ -26,5 +26,14 @@ describe("sameFocal", () => {
   test("matches the centre as null, whether stored null or absent", () => {
     expect(sameFocal(null)).toEqual({ focalPoint: null });
     expect(sameFocal(undefined)).toEqual({ focalPoint: null });
+  });
+});
+
+describe("focalEquals", () => {
+  test("compares coordinates, and the centre as null or absent", () => {
+    expect(focalEquals({ x: 0.2, y: 0.3 }, { x: 0.2, y: 0.3 })).toBe(true);
+    expect(focalEquals({ x: 0.2, y: 0.3 }, { x: 0.2, y: 0.4 })).toBe(false);
+    expect(focalEquals(null, undefined)).toBe(true);
+    expect(focalEquals(null, { x: 0.5, y: 0.5 })).toBe(false);
   });
 });

@@ -26,7 +26,8 @@ describe("focal point rules", () => {
     expect(actionsOf(events)).toContain("file.focal");
     const event = events.find((one) => one.action === "file.focal");
     expect(event?.target?.name).toBe("shared.png");
-    expect(JSON.stringify(event)).not.toContain("0.9");
+    // The meta alone: the event's timestamp may hold "0.9" by chance.
+    expect(JSON.stringify(event?.meta)).not.toContain("0.9");
   });
 
   test("a folder, a non-picture and a bad point are refused", async () => {
