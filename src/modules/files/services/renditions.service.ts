@@ -16,6 +16,7 @@ import {
   RENDITION_SIDES,
   type RenditionKind,
   renditionKindOf,
+  sameFocal,
   targetSize,
 } from "../rules";
 import { fitSide, limits, type MadeRendition, makeFromPdf } from "../utils";
@@ -111,15 +112,22 @@ class OriginalMissing extends Error {}
 // sweep gave up on (`FAILED`): the sizes are stored, a backlog that outlived
 // `maxRequeues` must not leave them `FAILED` for good. A crops job keeps the
 // `PROCESSING`-only rule. `READY` resets the requeue counter.
+//
+// `rendered` (the focal point the job's crops were made with, `null` for the
+// centre) settles only the nodes still at that point: a move during the job
+// leaves the node `PROCESSING` for the redo job queued by `setFocalPoint`,
+// which settles it with the moved crops.
 async function setStatus(
   mongo: FilesMongo,
   key: string,
   status: "READY" | "FAILED",
   authoritative = false,
+  rendered?: { focal: Focal | null },
 ) {
   await mongo.db.nodes.updateMany(
     {
       blobKey: key,
+      ...(rendered && sameFocal(rendered.focal)),
       status: authoritative ? { $in: ["PROCESSING", "FAILED"] } : "PROCESSING",
     },
     status === "READY" ? { status, renditionRequeues: 0 } : { status },
@@ -211,6 +219,8 @@ export function renditionsHandler(
       }
       throw error;
     }
-    await setStatus(mongo, key, "READY", crops !== true);
+    await setStatus(mongo, key, "READY", crops !== true, {
+      focal: node.focalPoint,
+    });
   };
 }
