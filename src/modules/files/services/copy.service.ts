@@ -1,14 +1,15 @@
+import { accountOf, type Who } from "@/core/members";
 import { addUsage, type WorkspacesMongo } from "@/core/workspaces";
 import {
   cycle,
   depthOf,
+  folderFor,
   freeName,
-  lockTree,
+  lockTreesOf,
   MAX_DEPTH,
   type NodeDoc,
   named,
-  ownedFolder,
-  ownedNode,
+  nodeFor,
   rootLocked,
   tooDeep,
 } from "@/modules/nodes/public";
@@ -39,18 +40,23 @@ export async function copyNodes(
   input: {
     ids: readonly string[];
     parentId: string;
-    accountId: string;
+    accountId: Who;
     workspaceId: string;
   },
   limits: CopyLimits = LIMITS,
 ): Promise<{ node: NodeDoc; from: string }[]> {
   return named(() =>
     mongo.transaction(async (tx) => {
-      await lockTree(tx, input.accountId);
-      const target = await ownedFolder(tx, input.parentId, input.accountId);
+      await lockTreesOf(tx, [input.parentId, ...input.ids]);
+      const target = await folderFor(
+        tx,
+        input.parentId,
+        input.accountId,
+        "EDITOR",
+      );
       const selected: NodeDoc[] = [];
       for (const id of new Set(input.ids)) {
-        selected.push(await ownedNode(tx, id, input.accountId));
+        selected.push(await nodeFor(tx, id, input.accountId, "VIEWER"));
       }
       const chosen = new Set(selected.map((node) => node.id));
       const tops = selected.filter(
@@ -85,7 +91,7 @@ export async function copyNodes(
           below,
           name,
           target,
-          accountId: input.accountId,
+          accountId: accountOf(input.accountId),
         });
         for (const node of [top, ...below]) {
           if (node.blobKey) {

@@ -7,6 +7,13 @@ export type FileNode = Extract<
   { __typename: "File" }
 >;
 
+// A `Folder` as `nodeView` makes it, without the fields resolved apart
+// (`owner`, `myRole`, `grants`): the parent of its resolvers.
+export type FolderNode = Extract<
+  ReturnType<typeof nodeView>,
+  { __typename: "Folder" }
+>;
+
 const commonOf = (node: NodeDoc) => ({
   id: node.id,
   type: node.type,

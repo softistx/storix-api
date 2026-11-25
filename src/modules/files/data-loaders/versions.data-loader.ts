@@ -1,6 +1,7 @@
 import DataLoader from "dataloader";
 import { requireWorkspacePermission } from "@/core/access";
 import type { Context } from "@/http/context";
+import { callerSeat } from "@/modules/shares/public";
 import { filesMongo } from "../models";
 import { listVersionsBatch, type VersionsOfFile } from "../services";
 
@@ -28,7 +29,7 @@ export function versionsOf(
           );
           return await listVersionsBatch(filesMongo(scope.mongo), {
             ids,
-            accountId: principal.accountId,
+            accountId: await callerSeat(scope, principal.accountId),
           });
         } catch (error) {
           return ids.map(() => error as Error);

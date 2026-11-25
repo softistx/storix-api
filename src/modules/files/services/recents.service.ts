@@ -1,4 +1,5 @@
-import { type NodeDoc, nodeNotFound, ownedNode } from "@/modules/nodes/public";
+import { accountOf, type Who } from "@/core/members";
+import { type NodeDoc, nodeFor, nodeNotFound } from "@/modules/nodes/public";
 import { notAFile } from "../files.errors";
 import type { FilesMongo } from "../models";
 import { afterPosition } from "../utils";
@@ -31,16 +32,20 @@ export async function recordRecent(
   }
 }
 
-// Opens a file of the caller's tree: it is noted as recent, and answered.
-// `not-a-file` for a folder, 404 for a trashed or another member's node.
+// Opens a file the caller owns or reads through a share: it is noted as recent,
+// and answered. `not-a-file` for a folder, 404 for a trashed node or one the
+// caller cannot read.
 export async function openFile(
   mongo: FilesMongo,
-  input: { id: string; accountId: string },
+  input: { id: string; accountId: Who },
 ): Promise<NodeDoc> {
-  const node = await ownedNode(mongo, input.id, input.accountId);
+  const node = await nodeFor(mongo, input.id, input.accountId, "VIEWER");
   if (node.trashedAt) throw nodeNotFound();
   if (node.type !== "FILE") throw notAFile();
-  await recordRecent(mongo, { accountId: input.accountId, nodeId: node._id });
+  await recordRecent(mongo, {
+    accountId: accountOf(input.accountId),
+    nodeId: node._id,
+  });
   return node;
 }
 

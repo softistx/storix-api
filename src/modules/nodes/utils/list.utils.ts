@@ -1,4 +1,5 @@
 import type { Filter } from "mongodb";
+import type { Who } from "@/core/members";
 import { fileFamilies } from "../models";
 import type { FileFamily } from "../rules";
 
@@ -6,7 +7,7 @@ export type SortBy = "NAME" | "DATE" | "SIZE" | "KIND";
 
 export interface ListInput {
   parentId: string;
-  accountId: string;
+  accountId: Who;
   filter?:
     | {
         families?: readonly FileFamily[] | null | undefined;

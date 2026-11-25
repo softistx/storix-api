@@ -38,9 +38,9 @@ type NodeOwner {
 }
 
 """
-A folder or a file of the workspace's tree. Only the caller's own tree is
-readable until sharing lands: another member's node is a 404, like an unknown
-one.
+A folder or a file of the workspace's tree. The caller reads their own tree
+and what is shared with them (or one of their teams): any other node is a 404,
+like an unknown one.
 """
 interface Node {
   id: ID!
@@ -68,6 +68,13 @@ interface Node {
   can read the node.
   """
   owner: NodeOwner
+  "The caller's effective role on this node: owner, or the highest grant on it or a folder above it."
+  myRole: Role!
+  """
+  The shares on this node itself (not those inherited from a folder above).
+  Empty unless the caller owns the node or edits it.
+  """
+  grants: [Grant!]!
 }
 
 type Folder implements Node {
@@ -84,6 +91,8 @@ type Folder implements Node {
   trashedBy: String
   ownerId: ID
   owner: NodeOwner
+  myRole: Role!
+  grants: [Grant!]!
 }
 
 "A file: a node that holds a stored object (`addFile` records it)."
@@ -101,6 +110,8 @@ type File implements Node {
   trashedBy: String
   ownerId: ID
   owner: NodeOwner
+  myRole: Role!
+  grants: [Grant!]!
   "The media key of the object: `GET /media/files/<key>` reads it. Never a URL."
   key: String!
   "The content type the storage reported when the file was uploaded."
@@ -167,7 +178,7 @@ extend type Query {
   """
   nodePath(id: ID!): [Node!]!
   """
-  One live node of the caller's tree (a trashed one is a 404). Needs
+  One live node the caller owns or can read through a share (a trashed one is a 404). Needs
   `nodes:read`. 404 `nodes.errors.not-found`.
   """
   node(id: ID!): Node!

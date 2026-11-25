@@ -100,3 +100,15 @@ export const removeMemberFromTeams = (mongo: TeamsMongo, memberId: string) =>
     { memberIds: toObjectId(memberId) },
     { $pull: { memberIds: toObjectId(memberId) } },
   );
+
+// The ids of the teams a member belongs to (the access check's input: a grant
+// on a team reaches each of its members).
+export async function teamIdsOfMember(
+  mongo: Pick<TeamsMongo, "db">,
+  memberId: string,
+): Promise<TeamDoc["_id"][]> {
+  const teams = await mongo.db.teams.findMany({
+    filter: { memberIds: toObjectId(memberId) },
+  });
+  return teams.map((team) => team._id);
+}

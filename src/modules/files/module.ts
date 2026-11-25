@@ -13,7 +13,7 @@ import { filesResolvers } from "./resolvers";
 // `fileReader` (public.ts), handed to the routes by the app.
 export const filesModule = defineModule({
   name: "files",
-  dependsOn: ["nodes", "members", "workspaces", "audit", "storage"],
+  dependsOn: ["nodes", "members", "workspaces", "audit", "storage", "shares"],
   migrations: [versionsIndexes, nodesListingDescIndexes],
   collections: { blobs, stars, recents, versions: versionRows },
   codes: [...files, ...versions],

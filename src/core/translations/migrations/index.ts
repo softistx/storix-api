@@ -13,6 +13,7 @@ import { versionsErrors } from "./2026-11-21-versions-errors.migration";
 import { trashErrors } from "./2026-11-21-versions-trash-errors.migration";
 import { invitationsStatesErrors } from "./2026-11-22-invitations-states-errors.migration";
 import { accountSecurityErrors } from "./2026-11-23-account-security-errors.migration";
+import { sharesErrors } from "./2026-11-24-shares-errors.migration";
 
 // The core database's migrations, in order. The list only grows at its end; an
 // id is permanent. `db:migrate` applies them (src/scripts/db-migrate.ts).
@@ -32,4 +33,5 @@ export const translationMigrations = [
   trashErrors,
   invitationsStatesErrors,
   accountSecurityErrors,
+  sharesErrors,
 ];

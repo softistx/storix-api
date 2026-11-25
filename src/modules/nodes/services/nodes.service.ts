@@ -1,4 +1,6 @@
 import { ConflictError, tryObjectId } from "@softistx/mongo";
+import { accountOf, type Who } from "@/core/members";
+import { type Role, reaches, roleOn } from "@/modules/shares/public";
 import type { NodeDoc, NodeState, NodesMongo } from "../models";
 import {
   moveTooLarge,
@@ -11,14 +13,17 @@ import {
 import { MAX_DEPTH, MAX_MOVE_NODES, ROOT_NAME } from "../rules";
 import { depthOf } from "../utils";
 
-// The node with this id that the account owns, or 404: a malformed id, an id
-// of another workspace, the node of another member and (unless `state` says
-// otherwise) a trashed node are one answer. Nothing is shared yet (the shares
-// module widens this one function).
-export async function ownedNode(
+// The node with this id that the caller reaches with at least the role `need`
+// (the effective role, plan §3.6: the owner of the tree, or a grant on the node
+// or a folder above it, to the caller or one of their teams), or 404: a
+// malformed id, an id of another workspace, a node the caller has no role on, a
+// role below `need` and (unless `state` says otherwise) a trashed node are one
+// answer. The grants of a trashed node have no effect: only its owner reaches it.
+export async function nodeFor(
   mongo: NodesMongo,
   id: string,
-  accountId: string,
+  who: Who,
+  need: Role,
   state: NodeState = "live",
 ): Promise<NodeDoc> {
   const objectId = tryObjectId(id);
@@ -26,24 +31,45 @@ export async function ownedNode(
     objectId &&
     (await mongo.db.nodes.findFirst({
       _id: objectId,
-      ownerId: accountId,
       ...(state === "live" && { trashedAt: null }),
       ...(state === "trashed" && { trashedAt: { $ne: null } }),
     }));
   if (!node) throw nodeNotFound();
+  const role =
+    node.trashedAt && node.ownerId !== accountOf(who)
+      ? null
+      : await roleOn(mongo, who, node);
+  if (!reaches(role, need)) throw nodeNotFound();
   return node;
 }
 
-// As `ownedNode`, and a folder: `not-a-folder` otherwise.
-export async function ownedFolder(
+// As `nodeFor`, and a folder: `not-a-folder` otherwise.
+export async function folderFor(
   mongo: NodesMongo,
   id: string,
-  accountId: string,
+  who: Who,
+  need: Role,
 ): Promise<NodeDoc> {
-  const node = await ownedNode(mongo, id, accountId);
+  const node = await nodeFor(mongo, id, who, need);
   if (node.type !== "FOLDER") throw notAFolder();
   return node;
 }
+
+// The node with this id that the account owns, or 404 (what only an owner does:
+// the trash's own operations).
+export const ownedNode = (
+  mongo: NodesMongo,
+  id: string,
+  who: Who,
+  state: NodeState = "live",
+): Promise<NodeDoc> => nodeFor(mongo, id, who, "OWNER", state);
+
+// As `ownedNode`, and a folder: `not-a-folder` otherwise.
+export const ownedFolder = (
+  mongo: NodesMongo,
+  id: string,
+  who: Who,
+): Promise<NodeDoc> => folderFor(mongo, id, who, "OWNER");
 
 // The account's root ("My files"), made on first need. It is made when the
 // member joins (`nodesOnJoin`), and here for a member who joined before
@@ -86,6 +112,18 @@ export async function lockTree(tx: NodesMongo, accountId: string) {
   );
 }
 
+// Serialises the writes under the trees these nodes sit in: every node's owner
+// has their root raised, in a fixed order so two writers cannot wait on each
+// other. A shared tree is locked as its owner's (the writer is not its owner).
+export async function lockTreesOf(tx: NodesMongo, ids: readonly string[]) {
+  const objectIds = ids.flatMap((id) => tryObjectId(id) ?? []);
+  const found = await tx.db.nodes.findMany({
+    filter: { _id: { $in: objectIds } },
+  });
+  const owners = new Set(found.flatMap((node) => node.ownerId ?? []));
+  for (const owner of [...owners].sort()) await lockTree(tx, owner);
+}
+
 // Refuses a folder with more than `MAX_MOVE_NODES` nodes under it
 // (`nodes.errors.move-too-large`): the size a move, a trash and a restore
 // all keep within, so what is trashed can always be restored.
@@ -97,15 +135,20 @@ export async function assertMovable(tx: NodesMongo, folder: NodeDoc) {
 // A new folder under `parentId`, in the caller's tree.
 export async function createFolder(
   mongo: NodesMongo,
-  input: { parentId: string; name: string; accountId: string },
+  input: { parentId: string; name: string; accountId: Who },
 ): Promise<NodeDoc> {
-  await ensureRoot(mongo, input.accountId);
+  await ensureRoot(mongo, accountOf(input.accountId));
   return named(() =>
     mongo.transaction(async (tx) => {
-      await lockTree(tx, input.accountId);
-      const parent = await ownedFolder(tx, input.parentId, input.accountId);
+      await lockTreesOf(tx, [input.parentId]);
+      const parent = await folderFor(
+        tx,
+        input.parentId,
+        input.accountId,
+        "EDITOR",
+      );
       if (depthOf(parent) + 1 > MAX_DEPTH) throw tooDeep();
-      return tx.db.nodes.as(input.accountId).create({
+      return tx.db.nodes.as(accountOf(input.accountId)).create({
         type: "FOLDER",
         name: input.name,
         parentId: parent._id,
@@ -121,13 +164,13 @@ export async function createFolder(
 // the node as renamed and as it was.
 export async function renameNode(
   mongo: NodesMongo,
-  input: { id: string; name: string; version: number; accountId: string },
+  input: { id: string; name: string; version: number; accountId: Who },
 ) {
-  const before = await ownedNode(mongo, input.id, input.accountId);
+  const before = await nodeFor(mongo, input.id, input.accountId, "EDITOR");
   if (before.parentId === null) throw rootLocked();
   const node = await named(() =>
     mongo.db.nodes
-      .as(input.accountId)
+      .as(accountOf(input.accountId))
       .update(before._id, { name: input.name, version: input.version }),
   );
   return { node, before };

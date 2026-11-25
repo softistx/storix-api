@@ -13,6 +13,7 @@ import { workspaces } from "@/core/workspaces/workspaces.errors";
 import { files, versions } from "@/modules/files/files.errors";
 import { nodes } from "@/modules/nodes/nodes.errors";
 import { quotas } from "@/modules/quotas/quotas.errors";
+import { shares } from "@/modules/shares/shares.errors";
 import { teams } from "@/modules/teams/teams.errors";
 import { trash } from "@/modules/trash/trash.errors";
 
@@ -23,6 +24,7 @@ export const errorCodes = [
   ...workspaces,
   ...members,
   ...invitations,
+  ...shares,
   ...teams,
   ...nodes,
   ...files,

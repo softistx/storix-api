@@ -3,6 +3,7 @@ import { workspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { filesMongo } from "@/modules/files/public";
 import { nodesMongo, nodeView } from "@/modules/nodes/public";
+import { callerSeat } from "@/modules/shares/public";
 import {
   emptyTrash,
   listTrash,
@@ -44,7 +45,11 @@ export const trashResolvers: Resolvers = {
       const trashed = await trashNodes(
         filesMongo(scope.mongo),
         workspacesMongo(ctx.tenancy.core),
-        { workspaceId: scope.tenant.id, accountId: principal.accountId, ids },
+        {
+          workspaceId: scope.tenant.id,
+          accountId: await callerSeat(scope, principal.accountId),
+          ids,
+        },
       );
       const done = doneBy(ctx, scope.tenant.id, principal);
       for (const node of trashed) await recordTrash(done, "node.trash", node);

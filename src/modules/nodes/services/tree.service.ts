@@ -1,13 +1,14 @@
+import { accountOf, type Who } from "@/core/members";
 import type { NodeDoc, NodesMongo } from "../models";
 import { byName } from "../utils";
-import { ensureRoot, ownedFolder, ownedNode } from "./nodes.service";
+import { ensureRoot, folderFor, nodeFor } from "./nodes.service";
 
 // The caller's roots: their "My files", made if it is missing.
 export async function rootsOf(
   mongo: NodesMongo,
-  accountId: string,
+  accountId: Who,
 ): Promise<NodeDoc[]> {
-  return [await ensureRoot(mongo, accountId)];
+  return [await ensureRoot(mongo, accountOf(accountId))];
 }
 
 // The live folders directly under a folder of the caller's tree, by name; with
@@ -15,10 +16,10 @@ export async function rootsOf(
 export async function foldersOf(
   mongo: NodesMongo,
   parentId: string | null | undefined,
-  accountId: string,
+  accountId: Who,
 ): Promise<NodeDoc[]> {
   if (!parentId) return rootsOf(mongo, accountId);
-  const parent = await ownedFolder(mongo, parentId, accountId);
+  const parent = await folderFor(mongo, parentId, accountId, "VIEWER");
   return mongo.db.nodes.findMany({
     filter: { parentId: parent._id, type: "FOLDER", trashedAt: null },
     ...byName,
@@ -29,9 +30,9 @@ export async function foldersOf(
 export async function pathTo(
   mongo: NodesMongo,
   id: string,
-  accountId: string,
+  accountId: Who,
 ): Promise<NodeDoc[]> {
-  const node = await ownedNode(mongo, id, accountId);
+  const node = await nodeFor(mongo, id, accountId, "VIEWER");
   const above = await mongo.db.nodes.findMany({
     filter: { _id: { $in: node.ancestors } },
   });
