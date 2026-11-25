@@ -1,5 +1,6 @@
 import { requireWorkspacePermission } from "@/core/access";
 import { memberActor } from "@/core/audit";
+import { callerSeat } from "@/core/members";
 import { workspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { invalidInput } from "@/i18n/fail";
@@ -10,10 +11,9 @@ import {
   nodeView,
   ownerOf,
 } from "@/modules/nodes/public";
-import { callerSeat } from "@/modules/shares/public";
-import { notAFile } from "../files.errors";
+import { metaTooLong, notAFile } from "../files.errors";
 import { filesMongo } from "../models";
-import { checkTags, MAX_META_BYTES, metaFits } from "../rules";
+import { checkTags, metaFits } from "../rules";
 import {
   addFile,
   copyNodes,
@@ -208,11 +208,7 @@ export const filesResolvers: Resolvers = {
       }
       const meta = input.meta ?? undefined;
       if (meta !== undefined && !metaFits(meta)) {
-        issues.push({
-          path: "input.meta",
-          code: "validation.errors.too-long" as const,
-          params: { max: MAX_META_BYTES },
-        });
+        issues.push(metaTooLong());
       }
       if (issues.length > 0) throw invalidInput(issues);
       const { node } = await updateFile(filesMongo(scope.mongo), {

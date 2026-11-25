@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { roleArea } from "../../../../test/roles.harness";
-import { roleOn } from "./role.service";
+import { roleOn, rolesOn } from "./role.service";
 
 describe("roleOn", () => {
   test("the account that owns the tree is its OWNER, with no grant", async () => {
@@ -49,5 +49,35 @@ describe("roleOn", () => {
     await a.grant(a.folder.id, { type: "MEMBER", id: memberId }, "VIEWER");
     const node = await a.nodeOf(a.folder.id);
     expect(await roleOn(a.database, "someone", node)).toBeNull();
+  });
+});
+
+describe("rolesOn", () => {
+  test("answers one role per node, in order, from one read of the grants", async () => {
+    const a = await roleArea();
+    const { memberId } = await a.w.join(a.workspace, "MEMBER");
+    await a.grant(a.folder.id, { type: "MEMBER", id: memberId }, "EDITOR");
+    const seat = { accountId: "someone", memberId };
+    const nodes = await Promise.all(
+      [a.child.id, a.sibling.id, a.folder.id].map(a.nodeOf),
+    );
+    expect(await rolesOn(a.database, seat, nodes)).toEqual([
+      "EDITOR",
+      null,
+      "EDITOR",
+    ]);
+  });
+
+  test("a trashed node is its owner's alone: a grant gives nobody a role on it", async () => {
+    const a = await roleArea();
+    const { memberId } = await a.w.join(a.workspace, "MEMBER");
+    await a.grant(a.folder.id, { type: "MEMBER", id: memberId }, "EDITOR");
+    const node = await a.nodeOf(a.folder.id);
+    const seat = { accountId: "someone", memberId };
+    const trashed = { ...node, trashed: true };
+    expect(await rolesOn(a.database, seat, [trashed])).toEqual([null]);
+    expect(
+      await rolesOn(a.database, node.ownerId as string, [trashed]),
+    ).toEqual(["OWNER"]);
   });
 });

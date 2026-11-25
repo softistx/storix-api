@@ -1,7 +1,13 @@
 import { createAuditor } from "../core/audit";
 import type { MemberWiring } from "../core/members";
 import { nodesOnHandover, nodesOnJoin } from "../modules/nodes/public";
-import { sharesOnRemoved } from "../modules/shares/public";
+import { notificationsOnRemoved } from "../modules/notifications/public";
+import {
+  sharesOnJoined,
+  sharesOnRemoved,
+  sharesOnTeamDeleted,
+} from "../modules/shares/public";
+import type { TeamsWiring } from "../modules/teams/public";
 import { teamsOnRemoved } from "../modules/teams/public";
 import { env } from "./env";
 import { store } from "./tenancy";
@@ -12,15 +18,20 @@ import { store } from "./tenancy";
 // request context (`createApp`), and by the identity
 // (`src/config/auth.ts`): no module of the kernel keeps a registry of its own.
 
-// Who is told when a member joins (their root folder is made) or leaves (their
-// teams drop them, their files go to a receiver), and where a workspace's
-// database is found.
+// Who is told when a member joins (their root folder is made, the grants that
+// still name their row end) or leaves (their grants end before the removal
+// commits, their teams drop them, their files go to a receiver), and where a
+// workspace's database is found.
 export const members: MemberWiring = {
   databaseOf: (workspaceId) => store.databaseOf(workspaceId),
-  onJoined: [nodesOnJoin],
-  onRemoved: [teamsOnRemoved, sharesOnRemoved],
+  onJoined: [nodesOnJoin, sharesOnJoined],
+  onRemoving: [sharesOnRemoved],
+  onRemoved: [teamsOnRemoved, notificationsOnRemoved],
   onHandover: [nodesOnHandover],
 };
+
+// Who is told when a team is deleted: the grants made to it end.
+export const teams: TeamsWiring = { onDeleted: [sharesOnTeamDeleted] };
 
 // The audit log: events go to the workspace's own database, and addresses are
 // hashed under AUDIT_IP_KEY.

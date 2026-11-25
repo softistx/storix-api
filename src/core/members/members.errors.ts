@@ -9,3 +9,7 @@ export const memberNotFound = () =>
   fail("members.errors.not-found", { status: 404 });
 export const lastOwner = () =>
   fail("workspaces.errors.last-owner", { status: 409 });
+// The workspace seen by a caller who is no longer a member of it (the same
+// answer as an unknown workspace).
+export const workspacesNotFound = () =>
+  fail("workspaces.errors.not-found", { status: 404 });

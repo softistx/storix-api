@@ -35,10 +35,36 @@ export type RemovalListener = (
 // What a removal tells the business modules that own data per member, handed in
 // by the app's wiring (src/config/wiring.ts): the kernel cannot import them
 // (the layers of test/boundaries.spec.ts). `nodes` receives a leaver's tree
-// (`onHandover`), `teams` takes the member out of its teams (`onRemoved`).
+// (`onHandover`), `shares` ends the grants that name the member
+// (`onRemoving`: it runs before the removal commits and its failure fails the
+// call, as a handover does, since a grant that outlives its member is an access
+// hole), `teams` takes the member out of its teams (`onRemoved`, best effort).
 export interface MemberRemovalWiring {
   onHandover: readonly HandoverListener[];
+  onRemoving: readonly RemovalListener[];
   onRemoved: readonly RemovalListener[];
+}
+
+export const removalOf = (
+  scope: WorkspaceScope,
+  member: MemberDoc,
+): MemberRemoval => ({
+  workspaceId: scope.tenant.id,
+  memberId: member.id,
+  accountId: member.accountId,
+});
+
+// Runs the listeners that must succeed for the removal to happen (just before
+// the removal commits, not rolled back with it: callers run it as their last
+// step): the first that throws
+// fails the call and the membership stays.
+export async function removing(
+  wiring: MemberRemovalWiring,
+  scope: WorkspaceScope,
+  member: MemberDoc,
+): Promise<void> {
+  const removal = removalOf(scope, member);
+  for (const listener of wiring.onRemoving) await listener(scope, removal);
 }
 
 // Runs the handovers; answers whether any moved something.
@@ -64,11 +90,7 @@ export async function memberRemoved(
   scope: WorkspaceScope,
   member: MemberDoc,
 ): Promise<void> {
-  const removal: MemberRemoval = {
-    workspaceId: scope.tenant.id,
-    memberId: member.id,
-    accountId: member.accountId,
-  };
+  const removal = removalOf(scope, member);
   for (const listener of wiring.onRemoved) {
     try {
       await listener(scope, removal);

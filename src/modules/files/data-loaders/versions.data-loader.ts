@@ -1,7 +1,7 @@
 import DataLoader from "dataloader";
 import { requireWorkspacePermission } from "@/core/access";
+import { callerSeat } from "@/core/members";
 import type { Context } from "@/http/context";
-import { callerSeat } from "@/modules/shares/public";
 import { filesMongo } from "../models";
 import { listVersionsBatch, type VersionsOfFile } from "../services";
 

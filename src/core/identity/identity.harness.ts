@@ -29,6 +29,7 @@ export async function harness(
     media?: NonNullable<Parameters<typeof createApp>[0]>["media"];
     renditions?: NonNullable<Parameters<typeof createApp>[0]>["renditions"];
     members?: NonNullable<Parameters<typeof createApp>[0]>["members"];
+    teams?: NonNullable<Parameters<typeof createApp>[0]>["teams"];
     audit?: NonNullable<Parameters<typeof createApp>[0]>["audit"];
     translations?: NonNullable<Parameters<typeof createApp>[0]>["translations"];
   } = {},
@@ -38,6 +39,7 @@ export async function harness(
     media,
     renditions,
     members,
+    teams,
     audit,
     translations,
     ...identityOptions
@@ -73,6 +75,7 @@ export async function harness(
     ...(media && { media }),
     ...(renditions && { renditions }),
     ...(members && { members }),
+    ...(teams && { teams }),
     ...(audit && { audit }),
   });
   const client = graphqlClient(app, { headers: { [clientHeader]: "spec" } });

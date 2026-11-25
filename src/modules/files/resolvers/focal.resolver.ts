@@ -1,8 +1,8 @@
 import { requireWorkspacePermission } from "@/core/access";
 import { memberActor } from "@/core/audit";
+import { callerSeat } from "@/core/members";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { nodeView } from "@/modules/nodes/public";
-import { callerSeat } from "@/modules/shares/public";
 import { notAFile } from "../files.errors";
 import { filesMongo } from "../models";
 import { renditionsOf } from "../rules";

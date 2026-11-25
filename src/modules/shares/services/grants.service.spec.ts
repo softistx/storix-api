@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { nodesMongo } from "@/modules/nodes/public";
 import { roleArea } from "../../../../test/roles.harness";
 import {
   dropGrants,
@@ -67,6 +68,20 @@ describe("the grants of a node", () => {
     await dropGrants(a.database, [a.folder.id]);
     expect(await grantsOnNode(a.database, a.folder.id)).toEqual([]);
     expect(await grantsOnNode(a.database, a.sibling.id)).toHaveLength(1);
+  });
+
+  test("dropGrants rolls back with the purge that fails after it", async () => {
+    const a = await roleArea();
+    const { memberId } = await a.w.join(a.workspace, "MEMBER");
+    await a.grant(a.folder.id, { type: "MEMBER", id: memberId }, "VIEWER");
+    await expect(
+      nodesMongo(a.database).transaction(async (tx) => {
+        await dropGrants(tx, [a.folder.id]);
+        expect(await grantsOnNode(tx, a.folder.id)).toEqual([]);
+        throw new Error("purge failed");
+      }),
+    ).rejects.toThrow("purge failed");
+    expect(await grantsOnNode(a.database, a.folder.id)).toHaveLength(1);
   });
 
   test("dropMemberGrants ends the grants a member holds and gave, and keeps the others", async () => {

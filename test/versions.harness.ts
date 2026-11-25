@@ -38,8 +38,8 @@ export async function versionsArea(files: ReturnType<typeof filesWorld>) {
   };
   const versions = async (fileId: string) => {
     const result = await send(LIST, { id: fileId });
-    return ((result.data ?? {})["node"] as { versions: VersionView[] })
-      .versions;
+    const versions: VersionView[] = result.data?.["node"].versions;
+    return versions;
   };
   const usage = async () =>
     (await workspacesMongo(tenancy.core).db.workspaces.getById(id)).usage;

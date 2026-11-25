@@ -1,5 +1,6 @@
 import { defineCodes } from "@softistx/alxia-i18n";
 import { fail } from "@/i18n/fail";
+import { MAX_META_BYTES } from "./rules";
 
 // Recording uploaded files (src/modules/files).
 export const files = defineCodes("files", [
@@ -44,3 +45,11 @@ export const versionNotFound = () =>
   fail("versions.errors.not-found", { status: 404, field: "versionId" });
 export const isCurrent = () =>
   fail("versions.errors.is-current", { status: 409, field: "versionId" });
+
+// The field issue of a `meta` that is over its size (`validation.errors.too-long`
+// on `input.meta`), thrown with the call's other issues as one invalid input.
+export const metaTooLong = () => ({
+  path: "input.meta",
+  code: "validation.errors.too-long" as const,
+  params: { max: MAX_META_BYTES },
+});

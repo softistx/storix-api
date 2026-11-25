@@ -61,7 +61,7 @@ describe("versions of a file: adding", () => {
       });
     const created = await make(first.key, "NEW_VERSION");
     expect(created.errors).toBeUndefined();
-    const id = ((created.data ?? {})["addFile"] as { id: string }).id;
+    const id: string = created.data?.["addFile"].id;
     const second = await files.upload(a.owner, a.id, "three");
     const again = await make(second.key, "NEW_VERSION");
     expect(again.errors).toBeUndefined();

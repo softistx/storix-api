@@ -11,6 +11,7 @@ import {
   recordLeave,
   recordRemoval,
   recordRoleChange,
+  removing,
 } from "./services";
 import { accountOf, accountsOf, handleOf, memberView, nameOf } from "./utils";
 
@@ -86,36 +87,36 @@ export const membersResolvers: Resolvers = {
         actorId: principal.accountId,
         canManageOwners: ctx.access.roleCan(scope.member, "owners:manage"),
         // The receiver is read inside the transaction (a bad one fails the
-        // call before anything is removed). The files move before the removal
-        // commits: a failed handover fails the call and nobody is removed.
-        ...(transferTo
-          ? {
-              transferTo,
-              beforeCommit: async (
-                target: MemberDoc,
-                receiver: MemberDoc | undefined,
-              ) => {
-                if (!receiver) return;
-                name = await nameOf(ctx, target);
-                if (
-                  await handOver(ctx.members, scope, {
-                    workspaceId: scope.tenant.id,
-                    from: {
-                      memberId: target.id,
-                      accountId: target.accountId,
-                      name,
-                    },
-                    to: {
-                      memberId: receiver.id,
-                      accountId: receiver.accountId,
-                    },
-                  })
-                ) {
-                  transferredTo = receiver.accountId;
-                }
+        // call before anything is removed). What must end with the membership
+        // (the grants naming the member) and the files that move to the
+        // receiver run before the removal commits: a failure fails the call
+        // and nobody is removed.
+        ...(transferTo ? { transferTo } : {}),
+        beforeCommit: async (
+          target: MemberDoc,
+          receiver: MemberDoc | undefined,
+        ) => {
+          if (!receiver) return removing(ctx.members, scope, target);
+          name = await nameOf(ctx, target);
+          if (
+            await handOver(ctx.members, scope, {
+              workspaceId: scope.tenant.id,
+              from: {
+                memberId: target.id,
+                accountId: target.accountId,
+                name,
               },
-            }
-          : {}),
+              to: {
+                memberId: receiver.id,
+                accountId: receiver.accountId,
+              },
+            })
+          ) {
+            transferredTo = receiver.accountId;
+          }
+          // Last step: a failed handover leaves the grants in place.
+          await removing(ctx.members, scope, target);
+        },
       });
       name = name === undefined ? await nameOf(ctx, removed) : name;
       await memberRemoved(ctx.members, scope, removed);
@@ -137,6 +138,7 @@ export const membersResolvers: Resolvers = {
         accountId: principal.accountId,
         actorId: principal.accountId,
         canManageOwners: true,
+        beforeCommit: (target) => removing(ctx.members, scope, target),
       });
       await memberRemoved(ctx.members, scope, left);
       await recordLeave({

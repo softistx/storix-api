@@ -20,6 +20,22 @@ describe("who a grant reaches", () => {
     expect(reached).toEqual([guest.user.principal.accountId]);
   });
 
+  test("a team grant leaves out the node's owner, who sits in the team", async () => {
+    const a = await roleArea();
+    const owner = await a.w.join(a.workspace, "MEMBER");
+    const other = await a.w.join(a.workspace, "MEMBER");
+    const teamId = await a.team("Crew", [owner.memberId, other.memberId]);
+    const reached = await recipientsOfGrant(
+      { members: members(), database: a.database, workspaceId: a.workspace.id },
+      {
+        principal: { type: "TEAM", id: teamId },
+        actorId: a.workspace.owner.principal.accountId,
+        node: { ownerId: owner.user.principal.accountId },
+      },
+    );
+    expect(reached).toEqual([other.user.principal.accountId]);
+  });
+
   test("a team grant reaches each member once, the actor left out", async () => {
     const a = await roleArea();
     const one = await a.w.join(a.workspace, "MEMBER");
