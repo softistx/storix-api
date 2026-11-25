@@ -1,5 +1,5 @@
 import { toObjectId, tryObjectId } from "@softistx/mongo";
-import type { MembersMongo } from "@/core/members";
+import { activeMemberOf, type MembersMongo } from "@/core/members";
 import { getTeam, teamsMongo } from "@/modules/teams/public";
 import { type GrantDoc, sharesMongo } from "../models";
 import type { GrantRole } from "../rules";
@@ -26,13 +26,11 @@ export async function assertPrincipal(
 ): Promise<void> {
   if (!tryObjectId(principal.id)) throw principalUnknown();
   if (principal.type === "MEMBER") {
-    const [member] = await where.core.db.members.findMany({
-      filter: {
-        workspaceId: toObjectId(where.workspaceId),
-        _id: toObjectId(principal.id),
-        removedAt: null,
-      },
-    });
+    const member = await activeMemberOf(
+      where.core,
+      where.workspaceId,
+      principal.id,
+    );
     if (!member || member.accountId === where.ownerId) throw principalUnknown();
     return;
   }

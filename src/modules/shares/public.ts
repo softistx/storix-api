@@ -7,7 +7,7 @@ export {
   sharesOnRemoved,
   sharesOnTeamDeleted,
 } from "./module";
-export type { GrantRole, Role } from "./rules";
+export type { GrantRole, Role, RoleNode, RoleNodeInput } from "./rules";
 export { reaches, strongest } from "./rules";
 export {
   dropGrants,
@@ -17,8 +17,6 @@ export {
   grantedNodeIds,
   grantsOnNode,
   grantsOnNodes,
-  type RoleNode,
-  type RoleNodeInput,
   roleOn,
   rolesOn,
 } from "./services";

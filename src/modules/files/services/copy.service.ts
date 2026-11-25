@@ -1,6 +1,7 @@
 import { accountOf, type Who } from "@/core/members";
-import type { WorkspacesMongo } from "@/core/workspaces";
+import { addUsage, type WorkspacesMongo } from "@/core/workspaces";
 import {
+  cycle,
   folderFor,
   freeName,
   lockTreesOf,
@@ -8,18 +9,16 @@ import {
   type NodeDoc,
   named,
   nodeFor,
+  rootLocked,
+  tooDeep,
 } from "@/modules/nodes/public";
+import { copyTooLarge } from "../files.errors";
 import type { FilesMongo } from "../models";
-import { checkedBelow, holdCopiedBlobs } from "./copy.steps.service";
+import { type CopyLimits, copyBlocker, copyOverflow } from "../rules";
 
 // The most nodes one copy makes: a copied folder and everything under it.
 export const MAX_COPY_NODES = 5_000;
 
-// The caps a copy keeps; a spec passes lower ones to reach them cheaply.
-export interface CopyLimits {
-  maxNodes: number;
-  maxDepth: number;
-}
 const LIMITS: CopyLimits = { maxNodes: MAX_COPY_NODES, maxDepth: MAX_DEPTH };
 
 // Copies nodes under a folder of the caller's tree, all or nothing. A copy of
@@ -76,6 +75,51 @@ export async function copyNodes(
       return copies;
     }),
   );
+}
+
+// What a copy of `top` would add under `target`, checked before anything is
+// written (the rules say what is refused). Answers the live nodes under `top`.
+async function checkedBelow(
+  tx: FilesMongo,
+  input: { top: NodeDoc; target: NodeDoc; made: number; limits: CopyLimits },
+): Promise<NodeDoc[]> {
+  const { top, target, made, limits } = input;
+  const blocker = copyBlocker(top, target);
+  if (blocker === "root-locked") throw rootLocked();
+  if (blocker === "cycle") throw cycle();
+  const below =
+    top.type === "FOLDER"
+      ? await tx.db.nodes.findMany({
+          filter: { ancestors: top._id, trashedAt: null },
+          limit: limits.maxNodes + 1,
+        })
+      : [];
+  const overflow = copyOverflow({ top, target, below, made, limits });
+  if (overflow === "copy-too-large") throw copyTooLarge();
+  if (overflow === "too-deep") throw tooDeep();
+  return below;
+}
+
+// The copies share the blobs: each key is held once more per copy. The
+// workspace holds no more bytes (a shared blob counts once) and as many more
+// files as there are copies of files.
+async function holdCopiedBlobs(
+  tx: FilesMongo,
+  core: WorkspacesMongo,
+  workspaceId: string,
+  refs: ReadonlyMap<string, number>,
+): Promise<void> {
+  let copiedFiles = 0;
+  for (const [key, count] of refs) {
+    await tx.db.blobs.updateMany({ key }, { $inc: { refs: count } });
+    copiedFiles += count;
+  }
+  if (copiedFiles > 0) {
+    await addUsage(core.withSession(tx.session), workspaceId, {
+      bytes: 0,
+      files: copiedFiles,
+    });
+  }
 }
 
 // The nodes a copy starts from: each selected node the caller may read, but

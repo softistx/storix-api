@@ -17,3 +17,18 @@ export const strongest = (roles: readonly Role[]): Role | null =>
 // sharing; OWNER is the same plus what only the owner does.
 export const reaches = (role: Role | null, need: Role): boolean =>
   role !== null && RANK[role] >= RANK[need];
+
+// What the role of a node is computed from: its id, the ids above it and the
+// account that owns its tree.
+export interface RoleNode {
+  _id: { toHexString(): string };
+  ancestors: readonly { toHexString(): string }[];
+  ownerId: string | null;
+}
+
+// A node whose role is asked for the page of a list: `trashed` nodes give
+// their owner OWNER and nobody else a role (the grants of a trashed node have
+// no effect, as `nodeFor` reads them).
+export interface RoleNodeInput extends RoleNode {
+  trashed?: boolean;
+}

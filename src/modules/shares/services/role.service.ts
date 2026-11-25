@@ -2,22 +2,12 @@ import { toObjectId } from "@softistx/mongo";
 import { accountOf, memberOf, type Who } from "@/core/members";
 import { teamIdsOfMember, teamsMongo } from "@/modules/teams/public";
 import { sharesMongo } from "../models";
-import { type Role, strongest } from "../rules";
-
-// What the role of a node is computed from: its id, the ids above it and the
-// account that owns its tree.
-export interface RoleNode {
-  _id: { toHexString(): string };
-  ancestors: readonly { toHexString(): string }[];
-  ownerId: string | null;
-}
-
-// A node whose role is asked for the page of a list: `trashed` nodes give
-// their owner OWNER and nobody else a role (the grants of a trashed node have
-// no effect, as `nodeFor` reads them).
-export interface RoleNodeInput extends RoleNode {
-  trashed?: boolean;
-}
+import {
+  type Role,
+  type RoleNode,
+  type RoleNodeInput,
+  strongest,
+} from "../rules";
 
 // The caller's effective role on each node (plan §3.6): OWNER for the account
 // that owns the tree, otherwise the highest of the grants on the node or on any

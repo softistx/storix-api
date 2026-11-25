@@ -8,10 +8,8 @@ import {
   type RoleNodeInput,
   rolesOn,
 } from "@/modules/shares/public";
-import { roleNodeOf } from "../utils";
 
 type GrantList = Awaited<ReturnType<typeof grantsOnNodes>>[number];
-type NodeView = Parameters<typeof roleNodeOf>[0];
 
 export interface RoleLoaders {
   roles: DataLoader<RoleNodeInput, Role | null, string>;
@@ -47,20 +45,4 @@ export function rolesLoadersOf(ctx: Context): Promise<RoleLoaders> {
   })();
   loaders.set(ctx, built);
   return built;
-}
-
-// The caller's role on a node of a page (null: no access).
-export async function roleOfNode(
-  view: NodeView,
-  ctx: Context,
-): Promise<Role | null> {
-  return (await rolesLoadersOf(ctx)).roles.load(roleNodeOf(view));
-}
-
-// The grants on a node, batched by node id.
-export async function grantsOfNode(
-  nodeId: string,
-  ctx: Context,
-): Promise<GrantList> {
-  return (await rolesLoadersOf(ctx)).grants.load(nodeId);
 }

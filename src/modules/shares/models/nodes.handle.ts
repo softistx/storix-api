@@ -1,4 +1,4 @@
-import type { RoleNode } from "../services/role.service";
+import type { RoleNode } from "../rules";
 
 // A node as the grants read it: the shape `roleOn` needs, its type and its
 // name (the audit trail's), and the owner.
@@ -19,6 +19,9 @@ export interface NodesRead {
   };
 }
 
+// The cast below is the deliberate exception to "no `as` at a call site": it
+// lives in this one handle function because nodes depends on shares, so the
+// typed nodes handle cannot be imported here without a cycle.
 // The one place a workspace database becomes that read handle (as
 // `sharesMongo` is for the module's own collection).
 export const nodesRead = (database: unknown): NodesRead =>

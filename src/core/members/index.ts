@@ -12,6 +12,7 @@ export { type WorkspaceRole, workspaceRoles } from "./roles";
 export {
   accountOf,
   activeMemberIds,
+  activeMemberOf,
   addMember,
   callerSeat,
   type HandoverListener,

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { tenancy } from "@/config/tenancy";
 import { world } from "../../../../test/workspaces.harness";
 import { membersMongo } from "../index";
+import { activeMemberOf } from "./members.queries";
 import { accountOf, callerSeat, memberOf, seatOf } from "./members.seat";
 
 describe("Who", () => {
@@ -50,5 +51,18 @@ describe("callerSeat", () => {
     expect(refused).toMatchObject({
       extensions: { code: "workspaces.errors.not-found" },
     });
+  });
+});
+
+describe("activeMemberOf", () => {
+  test("is the member row of the workspace, null for a malformed or unknown id", async () => {
+    const w = await world();
+    const workspace = await w.workspaceOf();
+    const joined = await w.join(workspace, "MEMBER");
+    const core = membersMongo(tenancy.core);
+    const found = await activeMemberOf(core, workspace.id, joined.memberId);
+    expect(found?.accountId).toBe(joined.user.principal.accountId);
+    expect(await activeMemberOf(core, workspace.id, "nope")).toBeNull();
+    expect(await activeMemberOf(core, workspace.id, "0".repeat(24))).toBeNull();
   });
 });
