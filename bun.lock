@@ -14,7 +14,7 @@
         "@softistx/alxia": "^0.28.0",
         "@softistx/alxia-access": "^0.3.0",
         "@softistx/alxia-env": "^0.6.0",
-        "@softistx/alxia-graphql": "^0.19.0",
+        "@softistx/alxia-graphql": "^0.20.1",
         "@softistx/alxia-i18n": "^0.7.0",
         "@softistx/alxia-language": "^0.4.0",
         "@softistx/alxia-media": "^0.12.0",
@@ -23,13 +23,13 @@
         "@softistx/graphql-client": "^0.9.0",
         "@softistx/graphql-scalars": "^0.8.0",
         "@softistx/graphql-validation": "^0.10.0",
-        "@softistx/graxia": "^0.15.0",
-        "@softistx/graxia-graphiql": "^0.3.0",
+        "@softistx/graxia": "^0.17.0",
+        "@softistx/graxia-graphiql": "^0.4.1",
         "@softistx/image": "^0.6.1",
-        "@softistx/janus": "^0.80.0",
-        "@softistx/janus-graphql": "^0.38.0",
-        "@softistx/janus-mail": "^0.26.24",
-        "@softistx/janus-mongo": "^0.33.0",
+        "@softistx/janus": "^0.81.0",
+        "@softistx/janus-graphql": "^0.38.2",
+        "@softistx/janus-mail": "^0.26.25",
+        "@softistx/janus-mongo": "^0.33.1",
         "@softistx/mail": "^1.6.1",
         "@softistx/mail-smtp": "^1.1.1",
         "@softistx/mongo": "^0.31.0",
@@ -308,7 +308,7 @@
 
     "@softistx/alxia-env": ["@softistx/alxia-env@0.6.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" }, "bin": { "alxia-env": "dist/cli/index.js" } }, "sha512-7PRc/IL13/nG5AzluXHQRvy8yFy9GapSWbyuY732Xb4dR8MJUchP6gFBLjNP6kFBZXFHNJKozG4l5VGiwPCtLw=="],
 
-    "@softistx/alxia-graphql": ["@softistx/alxia-graphql@0.19.0", "", { "peerDependencies": { "@softistx/alxia": "^0.28.0", "@softistx/graxia": "^0.15.0", "@softistx/graxia-graphiql": "^0.3.0", "graphql": "^17.1.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-WHrOlmxY92epbae/EVzcRrn6I7UbSbgjgZKNiHcM3vghbZCBcrOwn/F1MEbbheHlrSsNU0/yLalpeI4vl9hUig=="],
+    "@softistx/alxia-graphql": ["@softistx/alxia-graphql@0.20.1", "", { "peerDependencies": { "@softistx/alxia": "^0.28.0", "@softistx/graxia": "^0.16.0 || ^0.17.0", "@softistx/graxia-graphiql": "^0.4.0", "graphql": "^17.1.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-jYv/Mq4IcWe6xeEKSWpKvFyv2LYk0anuEXUDV6OKEkp2UAOGOEXXbT/O6C5lLbBEvV7MaMKWJ63cXFRSz/qMQg=="],
 
     "@softistx/alxia-i18n": ["@softistx/alxia-i18n@0.7.0", "", { "peerDependencies": { "@softistx/alxia": "^0.28.0", "@softistx/alxia-language": "^0.4.0", "@softistx/i18n": "^3.2.1", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-njWVPZqOHn0bMW+fBdoMCN3Lom5+XM3OH2JnecH6/sClV8BWCBOsEQ5PXmaFYysivxWyR8c5OB9r3DWm2j6hcQ=="],
 
@@ -328,21 +328,21 @@
 
     "@softistx/graphql-validation": ["@softistx/graphql-validation@0.10.0", "", { "peerDependencies": { "graphql": "^16.11.0 || ^17.0.0", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "bin": { "nxgt-graphql-validation": "dist/cli.js" } }, "sha512-LulbRXKRAK/fBPG+Kjcz2WYsQohfD56OADZr4e5D/dpQu6GwYY4mOhzdy+kjJGHrYhbjKE9orE6JMrBWRIlJ7g=="],
 
-    "@softistx/graxia": ["@softistx/graxia@0.15.0", "", { "peerDependencies": { "@softistx/telemetry": "^0.5.0", "graphql": "^17.1.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/telemetry", "typescript"] }, "sha512-qcQgoydTyabEMtQ13d/yJpzEWuBVMGPnWbFVt6AFDyB4P1lIqlKOO+E7iPhwWg262FCL5me9Xmm0HmA3DKi+ug=="],
+    "@softistx/graxia": ["@softistx/graxia@0.17.0", "", { "peerDependencies": { "@softistx/telemetry": "^0.5.0", "graphql": "^17.1.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/telemetry", "typescript"] }, "sha512-QwS0rU6MNnlHYlUS9y3jDN4tmYBAej4v95XhScy3Ec6LCP8U3HFZPhdefd2aVcBogOYzrXQau/IBZD6zoBbOGQ=="],
 
-    "@softistx/graxia-graphiql": ["@softistx/graxia-graphiql@0.3.0", "", { "peerDependencies": { "@softistx/graxia": "^0.15.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["typescript"] }, "sha512-/WTBQosK41qWBrZ29pZ3kIF86aTzsxF32wC0e4d+mkUwnYKFmzf4mYjHVDfLqIs8IT5+BBAVP+G2L1BbTWf4TQ=="],
+    "@softistx/graxia-graphiql": ["@softistx/graxia-graphiql@0.4.1", "", { "peerDependencies": { "@softistx/graxia": "^0.17.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["typescript"] }, "sha512-SdO+Ee5XPElg4njwPfbX7A2H+BF6/tiYxYTK3yFKZrChc2YwF67d6SkB7djtPhnifU9AWiIIdUhxZDJu6vv+Bg=="],
 
     "@softistx/i18n": ["@softistx/i18n@3.2.1", "", { "dependencies": { "@formatjs/icu-messageformat-parser": "^3.5.20", "intl-messageformat": "^12.1.2", "lodash": "^4.18.1" }, "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-J953DgsHW/yRPAMB4YnwU4HIVAejdrKnAPwC7BHLHWUAF2b+OARXycSAzfpGVm1ycV00qYxq6O8FFqkNcMbkxg=="],
 
     "@softistx/image": ["@softistx/image@0.6.1", "", { "peerDependencies": { "@napi-rs/canvas": "^1.1.0", "@softistx/s3": "^0.13.1", "pdfjs-dist": "^6.5.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@napi-rs/canvas", "@softistx/s3", "pdfjs-dist"] }, "sha512-FdNKEs6mlSU22b+ux+ImMyYwARZ0norTbY7ttlCN1YjXEENENyXQ+II7+dnuDhmR6XegRTCsNYAI4+z0E3f5DA=="],
 
-    "@softistx/janus": ["@softistx/janus@0.80.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-rODlsKDEm9iexGBvG/w2dfqJzmHswHAtTXtGPY44jPOZsu9PxlfWo7wcrwtpf9G1QuBKora2Fb0BWf6CJ/ypRw=="],
+    "@softistx/janus": ["@softistx/janus@0.81.0", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-DI1CHIjmRN5rHuvJtlupXMNLLxKVlzLmSYmXjMkC0nua/56xSE020kD6rOdwMESCpjk59weuTtW3e47GUHk/FA=="],
 
-    "@softistx/janus-graphql": ["@softistx/janus-graphql@0.38.0", "", { "peerDependencies": { "@envelop/core": "^5.0.0 || ^6.0.0", "@graphql-tools/utils": ">=10.0.0 <14", "@softistx/graxia": "^0.15.0", "@softistx/janus": "^0.80.0", "graphql": "^16.9.0 || ^17.0.0", "graphql-ws": "^6.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/graxia", "graphql-ws"] }, "sha512-rryowUsDV2xjjB9rK+IpiQ7VWxSa8KMfmxFTFQgXLm/1E3BQpXJP5PUnovOaZc8J7CJ8BSjzxt4jBnk71Xa94w=="],
+    "@softistx/janus-graphql": ["@softistx/janus-graphql@0.38.2", "", { "peerDependencies": { "@envelop/core": "^5.0.0 || ^6.0.0", "@graphql-tools/utils": ">=10.0.0 <14", "@softistx/graxia": "^0.15.0 || ^0.16.0 || ^0.17.0", "@softistx/janus": "^0.81.0", "graphql": "^16.9.0 || ^17.0.0", "graphql-ws": "^6.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/graxia", "graphql-ws"] }, "sha512-X1FcgO95LrjVW3x5da1EYoLCM3YgO45hfPMdja3zN4mSDC2Ke9rPJq5ZaO3Y+vu+4cU5qVauNwBgoubIR3GE3g=="],
 
-    "@softistx/janus-mail": ["@softistx/janus-mail@0.26.24", "", { "peerDependencies": { "@softistx/janus": "^0.80.0", "@softistx/mail": ">=1.5.0 <2", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-IV+lsTQ+qSQP7FIDeaeWdoJ8gdK/ZaE0XBo26zfazpJ1iaG5M9Mo4x169gTEL4rNLFwzRO2fu8Yc7lolAs/29w=="],
+    "@softistx/janus-mail": ["@softistx/janus-mail@0.26.25", "", { "peerDependencies": { "@softistx/janus": "^0.81.0", "@softistx/mail": ">=1.5.0 <2", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-Rw+TaLaetmotwJDF6IOKlL0OSJVMEZJFT+7bKGhs7lniK9RlPfgQoUWmfsEvkUuxpoCXupSxxVqdTXa3H4TGyw=="],
 
-    "@softistx/janus-mongo": ["@softistx/janus-mongo@0.33.0", "", { "peerDependencies": { "@softistx/janus": "^0.80.0", "@softistx/mongo": ">=0.27.0 <1", "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-aQdpYEzyjSvseuYqa/Qo836pzLAm7c/VKRz5hPuojPZE/cWtxcFhiG1zzOjIZXlIZPnc689DSCXOwIv/qYHyRg=="],
+    "@softistx/janus-mongo": ["@softistx/janus-mongo@0.33.1", "", { "peerDependencies": { "@softistx/janus": "^0.81.0", "@softistx/mongo": ">=0.27.0 <1", "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-5vrSFpLeADaLWXN9BPOXng31sZuXL+FY5HpBlgjjl1LQzgBGb4ffNjtwUjdt8K5PMiYj5fUKGfsTkDgENfz+QA=="],
 
     "@softistx/mail": ["@softistx/mail@1.6.1", "", { "peerDependencies": { "@opentelemetry/api": "^1.9.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-Vqys7bLz6QZpbjiGNezTgpi5VEvPUSCQq4B0ehdrqoCnAxaYXy7ENPZjoUYWu9Lng9AOFDH4qAdJhzujDODPxQ=="],
 
