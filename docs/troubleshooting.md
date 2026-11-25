@@ -43,6 +43,8 @@ bun run db:migrate --status
 bun run db:migrate --rollback-to 2026-11-13-auth-validation-errors
 ```
 
+A rollback goes to the list that holds the id: an id of the core list undoes only core migrations and leaves the workspace migrations untouched (and the reverse). Preview it first with `--rollback-to <id> --dry-run`. The core states print as a table (`console.table`), one row per migration (`id`, `state`, `appliedAt`); the workspaces print one line each.
+
 ## `translations: no fallback-language text for <code> (en), ...`
 
 The server stops at startup while it loads the translations.

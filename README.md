@@ -26,7 +26,7 @@ curl localhost:3000/health
 | `bun run verify`       | the green bar: generate, schema check, Biome, context and dependency checks, `bun check`, tests, build |
 | `bun run verify:pr`    | the same with only the specs a diff against `origin/develop` affects                                   |
 | `bun run generate`     | scalars and validation SDL, then resolver types and Zod schemas into `src/generated/`                  |
-| `bun run db:migrate`   | applies the pending core and workspace migrations (`--dry-run`, `--status`, `--rollback-to <id>`)                    |
+| `bun run db:migrate`   | applies the pending core and workspace migrations (`--dry-run`, `--status`, `--rollback-to <id>`)      |
 | `bun run db:sync`      | creates the indexes and validators of the core and identity collections (`--dry-run` to preview)      |
 | `bun run workspace:quota` | sets a workspace's quota: `<slug> <bytes\|20GiB\|default>`                                       |
 | `bun run quota:reconcile` | recounts every workspace's usage and fixes any drift                                                |

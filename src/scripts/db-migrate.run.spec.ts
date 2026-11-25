@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterAll, describe, expect, test } from "bun:test";
 import type { MigrateMode, TenantMigration } from "@softistx/alxia-tenancy";
 import { defineMigration } from "@softistx/mongo/migrations";
 import { connection } from "../config/db";
@@ -20,14 +20,18 @@ const bad: TenantMigration = {
   error: new Error("boom"),
 };
 
-function run(mode: MigrateMode, results: TenantMigration[]) {
+function run(
+  mode: MigrateMode,
+  results: TenantMigration[],
+  tenantIds: string[] = ["2026-02-02-ws"],
+) {
   const seen: MigrateMode[] = [];
   return {
     seen,
     done: runMigrate({
       core: db,
       coreList: [first],
-      tenantIds: ["2026-02-02-ws"],
+      tenantIds,
       tenants: async (m) => {
         seen.push(m);
         return results;
@@ -36,6 +40,10 @@ function run(mode: MigrateMode, results: TenantMigration[]) {
     }),
   };
 }
+
+afterAll(async () => {
+  await db.dropDatabase();
+});
 
 describe("the db:migrate script", () => {
   test("applies the core list and every workspace, exit 0", async () => {
@@ -57,9 +65,33 @@ describe("the db:migrate script", () => {
     const r = run({ kind: "rollback", to: "2026-02-02-ws", dryRun: true }, [
       good,
     ]);
-    const { lines } = await r.done;
-    expect(lines.some((l) => l.startsWith("core:"))).toBe(false);
-    expect(r.seen).toHaveLength(1);
+    const { lines, coreStatus } = await r.done;
+    expect(coreStatus).toBeUndefined();
+    expect(lines.some((l) => l.includes("core"))).toBe(false);
+    expect(r.seen).toEqual([
+      { kind: "rollback", to: "2026-02-02-ws", dryRun: true },
+    ]);
+  });
+
+  test("a rollback id only the core list holds skips the workspaces", async () => {
+    const r = run({ kind: "rollback", to: first.id, dryRun: true }, [good]);
+    const { lines, coreStatus, exitCode } = await r.done;
+    expect(r.seen).toHaveLength(0);
+    expect(lines.some((l) => l.startsWith("workspace"))).toBe(false);
+    expect(coreStatus?.map((s) => s.id)).toEqual([first.id]);
+    expect(exitCode).toBe(0);
+  });
+
+  test("a rollback id both lists hold reaches the core and the workspaces", async () => {
+    const r = run(
+      { kind: "rollback", to: first.id, dryRun: true },
+      [good],
+      [first.id],
+    );
+    const { lines, coreStatus } = await r.done;
+    expect(coreStatus).toBeDefined();
+    expect(r.seen).toEqual([{ kind: "rollback", to: first.id, dryRun: true }]);
+    expect(lines.some((l) => l.startsWith("workspace w1"))).toBe(true);
   });
 
   test("a rollback id no list holds is refused before anything runs", async () => {
