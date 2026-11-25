@@ -1,6 +1,7 @@
 import { requireWorkspacePermission } from "@/core/access";
 import { workspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
+import { callerSeat } from "@/modules/shares/public";
 import { versionsOf } from "../data-loaders";
 import { filesMongo } from "../models";
 import {
@@ -50,7 +51,7 @@ export const versionMutations: Pick<
       ctx.renditions,
       {
         workspaceId: scope.tenant.id,
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
         id: fileId,
         key,
         note: note?.trim() || null,
@@ -79,7 +80,7 @@ export const versionMutations: Pick<
       ctx.renditions,
       {
         workspaceId: scope.tenant.id,
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
         id: fileId,
         versionId,
         note: note?.trim() || null,
@@ -103,7 +104,7 @@ export const versionMutations: Pick<
       workspacesMongo(ctx.tenancy.core),
       {
         workspaceId: scope.tenant.id,
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
         id: fileId,
         versionId,
       },

@@ -1,4 +1,5 @@
-import { type NodeDoc, ownedNode } from "@/modules/nodes/public";
+import { accountOf, type Who } from "@/core/members";
+import { type NodeDoc, nodeFor } from "@/modules/nodes/public";
 import type { FilesMongo } from "../models";
 import { afterPosition } from "../utils";
 import { type PersonalPage, personalPage } from "./personal.service";
@@ -9,22 +10,21 @@ import { type PersonalPage, personalPage } from "./personal.service";
 // removed. A node of another member is a 404 either way.
 export async function setStarred(
   mongo: FilesMongo,
-  input: { id: string; starred: boolean; accountId: string },
+  input: { id: string; starred: boolean; accountId: Who },
 ): Promise<NodeDoc> {
-  const node = await ownedNode(
+  const accountId = accountOf(input.accountId);
+  const node = await nodeFor(
     mongo,
     input.id,
     input.accountId,
+    "VIEWER",
     input.starred ? "live" : "any",
   );
   if (input.starred) {
-    await mongo.db.stars.upsert(
-      { accountId: input.accountId, nodeId: node._id },
-      {},
-    );
+    await mongo.db.stars.upsert({ accountId, nodeId: node._id }, {});
   } else {
     await mongo.db.stars.deleteMany({
-      accountId: input.accountId,
+      accountId,
       nodeId: node._id,
     });
   }

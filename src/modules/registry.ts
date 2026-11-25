@@ -13,6 +13,7 @@ import type { Context } from "../http/context";
 import { filesModule } from "./files/public";
 import { nodesModule } from "./nodes/public";
 import { quotasModule } from "./quotas/public";
+import { sharesModule } from "./shares/public";
 import { teamsModule } from "./teams/public";
 import { trashModule } from "./trash/public";
 
@@ -28,6 +29,7 @@ const registered = [
   workspacesModule,
   invitationsModule,
   teamsModule,
+  sharesModule,
   nodesModule,
   filesModule,
   trashModule,

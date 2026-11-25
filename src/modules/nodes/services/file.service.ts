@@ -1,14 +1,15 @@
+import { accountOf, type Who } from "@/core/members";
 import { NAME_COLLATION, type NodeDoc, type NodesMongo } from "../models";
 import { tooDeep } from "../nodes.errors";
 import { familyOf, MAX_DEPTH } from "../rules";
 import { copyName, depthOf } from "../utils";
-import { ownedFolder } from "./nodes.service";
+import { folderFor } from "./nodes.service";
 
 export type OnConflict = "REFUSE" | "KEEP_BOTH";
 
 export interface NewFile {
   parentId: string;
-  accountId: string;
+  accountId: Who;
   name: string;
   onConflict: OnConflict;
   blobKey: string;
@@ -45,9 +46,9 @@ export async function freeName(tx: NodesMongo, parent: NodeDoc, name: string) {
 // must be the caller's (`not-found`, `not-a-folder`).
 export async function sameNameSibling(
   tx: NodesMongo,
-  input: { parentId: string; accountId: string; name: string },
+  input: { parentId: string; accountId: Who; name: string },
 ): Promise<NodeDoc | undefined> {
-  const parent = await ownedFolder(tx, input.parentId, input.accountId);
+  const parent = await folderFor(tx, input.parentId, input.accountId, "EDITOR");
   return tx.db.nodes.findFirst(
     { parentId: parent._id, name: input.name, trashedAt: null },
     { collation: NAME_COLLATION },
@@ -61,13 +62,13 @@ export async function insertFile(
   tx: NodesMongo,
   input: NewFile,
 ): Promise<NodeDoc> {
-  const parent = await ownedFolder(tx, input.parentId, input.accountId);
+  const parent = await folderFor(tx, input.parentId, input.accountId, "EDITOR");
   if (depthOf(parent) + 1 > MAX_DEPTH) throw tooDeep();
   const name =
     input.onConflict === "KEEP_BOTH"
       ? await freeName(tx, parent, input.name)
       : input.name;
-  return tx.db.nodes.as(input.accountId).create({
+  return tx.db.nodes.as(accountOf(input.accountId)).create({
     type: "FILE",
     name,
     parentId: parent._id,

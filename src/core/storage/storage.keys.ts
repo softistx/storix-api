@@ -6,6 +6,10 @@
 export interface FileRead {
   key: string;
   accountId: string;
+  // The request's workspace and the core database, so the module that writes
+  // the check can resolve the caller's member row (shared files).
+  workspaceId: string;
+  core: unknown;
 }
 
 // `mongo` is the request's workspace database, as the module that writes the

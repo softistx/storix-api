@@ -10,6 +10,7 @@ export { membersMongo } from "./models";
 export { membersModule } from "./module";
 export { type WorkspaceRole, workspaceRoles } from "./roles";
 export {
+  accountOf,
   activeMemberIds,
   addMember,
   type HandoverListener,
@@ -23,7 +24,11 @@ export {
   type MemberRemovalWiring,
   type MembersMongo,
   memberJoined,
+  memberOf,
   membershipOf,
   membershipsOfAccount,
   type RemovalListener,
+  type Seat,
+  seatOf,
+  type Who,
 } from "./services";

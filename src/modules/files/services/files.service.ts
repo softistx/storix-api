@@ -1,8 +1,9 @@
 import type { MediaBucket } from "@softistx/alxia-media";
+import { accountOf, type Who } from "@/core/members";
 import { addUsage, type WorkspacesMongo } from "@/core/workspaces";
 import {
   insertFile,
-  lockTree,
+  lockTreesOf,
   type NodeDoc,
   named,
   nodesMongo,
@@ -36,7 +37,7 @@ export interface Added {
 // files module (the nodes module knows `REFUSE` and `KEEP_BOTH`).
 export interface AddInput {
   workspaceId: string;
-  accountId: string;
+  accountId: Who;
   key: string;
   name: string;
   parentId: string;
@@ -112,13 +113,13 @@ async function record(
   object: { size: number; mimeType: string },
   status: "READY" | "PROCESSING",
 ): Promise<Added> {
-  await lockTree(nodesMongo(tx), input.accountId);
+  await lockTreesOf(nodesMongo(tx), [input.parentId]);
   if (input.onConflict === "NEW_VERSION") {
     const same = await sameNameSibling(nodesMongo(tx), input);
     if (same?.type === "FILE") {
       const { node, number } = await pushVersion(tx, core, same, {
         workspaceId: input.workspaceId,
-        accountId: input.accountId,
+        accountId: accountOf(input.accountId),
         blob: { key: input.key, ...object },
         fresh: true,
         status,
@@ -144,7 +145,7 @@ async function record(
     status,
   });
   return {
-    node: await makeFirstVersion(tx, file, input.accountId),
+    node: await makeFirstVersion(tx, file, accountOf(input.accountId)),
     appended: null,
   };
 }

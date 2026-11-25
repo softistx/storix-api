@@ -1,0 +1,71 @@
+"What a node is shared as: VIEWER lists, previews and downloads; EDITOR adds upload, rename, move inside, new versions, trash and sharing."
+enum GrantRole {
+  VIEWER
+  EDITOR
+}
+
+"""
+The caller's effective role on a node. OWNER owns the tree the node sits in;
+EDITOR and VIEWER come from a grant on the node or a folder above it, to the
+caller or to one of their teams (the highest wins).
+"""
+enum Role {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+enum GrantPrincipalType {
+  "A member of the workspace: the id is a `Member.id`."
+  MEMBER
+  "A team of the workspace: the id is a `Team.id`."
+  TEAM
+}
+
+"Who a grant is for."
+type GrantPrincipal {
+  type: GrantPrincipalType!
+  id: ID!
+}
+
+input GrantPrincipalInput {
+  type: GrantPrincipalType!
+  id: ID!
+}
+
+"One share of a node: a member or a team, and the role they hold on it and everything under it."
+type Grant {
+  id: ID!
+  nodeId: ID!
+  principal: GrantPrincipal!
+  role: GrantRole!
+  "The account id of whoever shared."
+  grantedBy: String!
+  createdAt: DateTime!
+}
+
+extend type Mutation {
+  """
+  Shares a node (and, for a folder, everything under it) with a member or a
+  team. Needs `nodes:manage`, and the caller must own the node or edit it. 404
+  `shares.errors.not-found` for a node the caller cannot read; 403
+  `shares.errors.owner-only` for a viewer; 400 `shares.errors.principal-unknown`
+  (field `principal`) for a member who left, a team or member of another
+  workspace or a malformed id; 409 `shares.errors.already-shared` (field
+  `principal`) when the principal already has a grant on this node.
+  """
+  shareNode(id: ID!, principal: GrantPrincipalInput!, role: GrantRole!): Grant!
+  """
+  Changes the role of a grant. Needs `nodes:manage` and the same standing as
+  `shareNode`. 404 `shares.errors.not-found` for a node the caller cannot read
+  and for a grant that is not on this node; 403 `shares.errors.owner-only`.
+  """
+  changeGrant(id: ID!, grantId: ID!, role: GrantRole!): Grant!
+  """
+  Ends a grant: the principal's next read of the node is a 404. Needs
+  `nodes:manage` and the same standing as `shareNode`. 404
+  `shares.errors.not-found`; 403 `shares.errors.owner-only`. Answers the grant
+  that ended.
+  """
+  unshareNode(id: ID!, grantId: ID!): Grant!
+}

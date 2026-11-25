@@ -1,5 +1,6 @@
 import type { MediaBucket } from "@softistx/alxia-media";
 import { tryObjectId } from "@softistx/mongo";
+import { accountOf, type Who } from "@/core/members";
 import {
   DEFAULT_SETTINGS,
   settingsOf,
@@ -8,12 +9,14 @@ import {
 import {
   familyOf,
   lockTree,
+  lockTreesOf,
   type NodeDoc,
   named,
+  nodeFor,
   nodeNotFound,
   nodesMongo,
-  ownedNode,
 } from "@/modules/nodes/public";
+import type { Role } from "@/modules/shares/public";
 import {
   isCurrent,
   keyUnknown,
@@ -149,10 +152,11 @@ export type VersionDoc = Awaited<
   ReturnType<FilesMongo["db"]["versions"]["getById"]>
 >;
 
-// The file of the caller's tree, in the transaction: 404 for a node that is
-// not theirs or is trashed, `not-a-file` for a folder.
-async function liveFile(tx: FilesMongo, id: string, accountId: string) {
-  const node = await ownedNode(nodesMongo(tx), id, accountId);
+// The file the caller reaches with `need`, in the transaction: 404 for a node
+// they cannot read (or edit, for an editor's need) or that is trashed,
+// `not-a-file` for a folder.
+async function liveFile(tx: FilesMongo, id: string, who: Who, need: Role) {
+  const node = await nodeFor(nodesMongo(tx), id, who, need);
   if (node.trashedAt) throw nodeNotFound();
   if (node.type !== "FILE" || !node.blobKey) throw notAFile();
   return node;
@@ -171,16 +175,21 @@ async function versionOf(tx: FilesMongo, node: NodeDoc, versionId: string) {
 // version 1 here, once.
 export async function listVersions(
   mongo: FilesMongo,
-  input: { id: string; accountId: string },
+  input: { id: string; accountId: Who },
 ): Promise<{ rows: VersionDoc[]; currentId: string | null }> {
-  const node = await ownedNode(nodesMongo(mongo), input.id, input.accountId);
+  const node = await nodeFor(
+    nodesMongo(mongo),
+    input.id,
+    input.accountId,
+    "VIEWER",
+  );
   if (node.type !== "FILE") throw notAFile();
   if (node.trashedAt) throw nodeNotFound();
   const current = node.currentVersionId
     ? node
     : await mongo.transaction(async (tx) => {
-        await lockTree(nodesMongo(tx), input.accountId);
-        const fresh = await liveFile(tx, input.id, input.accountId);
+        await lockTreesOf(nodesMongo(tx), [input.id]);
+        const fresh = await liveFile(tx, input.id, input.accountId, "VIEWER");
         return ensureVersions(tx, fresh);
       });
   const rows = await mongo.db.versions.findMany({
@@ -202,7 +211,7 @@ export async function addVersion(
   renditions: RenditionsQueue | undefined,
   input: {
     workspaceId: string;
-    accountId: string;
+    accountId: Who;
     id: string;
     key: string;
     note: string | null;
@@ -213,11 +222,11 @@ export async function addVersion(
   try {
     const done = await named(() =>
       mongo.transaction(async (tx) => {
-        await lockTree(nodesMongo(tx), input.accountId);
-        const before = await liveFile(tx, input.id, input.accountId);
+        await lockTreesOf(nodesMongo(tx), [input.id]);
+        const before = await liveFile(tx, input.id, input.accountId, "EDITOR");
         const pushed = await pushVersion(tx, core, before, {
           workspaceId: input.workspaceId,
-          accountId: input.accountId,
+          accountId: accountOf(input.accountId),
           blob: { key: input.key, ...object },
           fresh: true,
           status: rendered ? "PROCESSING" : "READY",
@@ -256,7 +265,7 @@ export async function restoreVersion(
   renditions: RenditionsQueue | undefined,
   input: {
     workspaceId: string;
-    accountId: string;
+    accountId: Who;
     id: string;
     versionId: string;
     note: string | null;
@@ -264,17 +273,17 @@ export async function restoreVersion(
 ): Promise<{ node: NodeDoc; before: NodeDoc; from: number; number: number }> {
   const done = await named(() =>
     mongo.transaction(async (tx) => {
-      await lockTree(nodesMongo(tx), input.accountId);
+      await lockTreesOf(nodesMongo(tx), [input.id]);
       const before = await ensureVersions(
         tx,
-        await liveFile(tx, input.id, input.accountId),
+        await liveFile(tx, input.id, input.accountId, "EDITOR"),
       );
       const source = await versionOf(tx, before, input.versionId);
       if (before.currentVersionId?.equals(source._id)) throw isCurrent();
       const rendered = renditions && renditionKindOf(source.mimeType) !== null;
       const pushed = await pushVersion(tx, core, before, {
         workspaceId: input.workspaceId,
-        accountId: input.accountId,
+        accountId: accountOf(input.accountId),
         blob: {
           key: source.blobKey,
           size: source.size,
@@ -318,24 +327,24 @@ export async function removeVersion(
   });
 }
 
-// Deletes a non-current version of a file of the caller's tree. `not-found`,
+// Deletes a non-current version of a file the caller owns or edits. `not-found`,
 // `is-current`. Answers the file and the number removed.
 export async function deleteVersion(
   mongo: FilesMongo,
   core: WorkspacesMongo,
   input: {
     workspaceId: string;
-    accountId: string;
+    accountId: Who;
     id: string;
     versionId: string;
   },
 ): Promise<{ node: NodeDoc; number: number }> {
   return named(() =>
     mongo.transaction(async (tx) => {
-      await lockTree(nodesMongo(tx), input.accountId);
+      await lockTreesOf(nodesMongo(tx), [input.id]);
       const node = await ensureVersions(
         tx,
-        await liveFile(tx, input.id, input.accountId),
+        await liveFile(tx, input.id, input.accountId, "EDITOR"),
       );
       const row = await versionOf(tx, node, input.versionId);
       await removeVersion(tx, core, input.workspaceId, node, row);

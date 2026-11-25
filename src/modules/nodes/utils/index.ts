@@ -2,6 +2,7 @@ export * from "./audit.utils";
 export * from "./copy.utils";
 export * from "./list.utils";
 export * from "./name.utils";
+export * from "./roles.utils";
 export * from "./session.utils";
 export * from "./transfer.utils";
 export * from "./tree.utils";

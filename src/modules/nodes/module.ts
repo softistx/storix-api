@@ -14,7 +14,7 @@ import { ensureRoot, transferTree } from "./services";
 // root ("My files") when they join (`nodesOnJoin`).
 export const nodesModule = defineModule({
   name: "nodes",
-  dependsOn: ["members", "workspaces", "audit"],
+  dependsOn: ["members", "workspaces", "audit", "shares"],
   collections: { nodes },
   migrations: [nodesListingCollation, nodesTrashIndexes],
   codes,

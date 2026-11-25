@@ -15,7 +15,7 @@ export type Access =
       workspaceId: string;
       accountId: string;
       // The workspace's scope: its database, for the module that knows keys.
-      scope: { readonly mongo: unknown };
+      scope: { readonly mongo: unknown; readonly core: unknown };
     }
   | { ok: false; denial: MediaDenial };
 
@@ -62,8 +62,8 @@ export async function authorizeRead(ctx: MediaRequires) {
   return access.ok ? true : access.denial;
 }
 
-// Reads of `files`: a member of the workspace, and a key some node of the
-// caller's tree holds (the check is `files`'s, passed in: storage.keys.ts). An
+// Reads of `files`: a member of the workspace, and a key some node the
+// caller owns or reads through a share holds (the check is `files`'s, passed in: storage.keys.ts). An
 // object nobody recorded, another member's file and a missing key are one 404.
 export async function authorizeFileRead(
   ctx: MediaRequires,
@@ -75,6 +75,8 @@ export async function authorizeFileRead(
   const allowed = await fileReader(access.scope.mongo, {
     key,
     accountId: access.accountId,
+    workspaceId: access.workspaceId,
+    core: access.scope.core,
   });
   return allowed ? true : { code: "not_found", status: 404 };
 }

@@ -3,7 +3,14 @@ import { memberActor } from "@/core/audit";
 import { workspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { invalidInput } from "@/i18n/fail";
-import { checkName, fileView, nodeView, ownerOf } from "@/modules/nodes/public";
+import {
+  checkName,
+  fileView,
+  nodeRoleFields,
+  nodeView,
+  ownerOf,
+} from "@/modules/nodes/public";
+import { callerSeat } from "@/modules/shares/public";
 import { notAFile } from "../files.errors";
 import { filesMongo } from "../models";
 import { checkTags, MAX_META_BYTES, metaFits } from "../rules";
@@ -60,6 +67,7 @@ export const filesResolvers: Resolvers = {
     ...fileRenditionResolvers,
     ...fileVersionResolvers,
     owner: (node, _, ctx) => ownerOf(node, ctx),
+    ...nodeRoleFields,
   },
   Mutation: {
     ...versionMutations,
@@ -72,7 +80,7 @@ export const filesResolvers: Resolvers = {
       const node = await setStarred(filesMongo(scope.mongo), {
         id,
         starred,
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
       });
       return nodeView(node);
     },
@@ -83,7 +91,7 @@ export const filesResolvers: Resolvers = {
       );
       const node = await openFile(filesMongo(scope.mongo), {
         id,
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
       });
       const view = nodeView(node);
       if (view.__typename !== "File") throw notAFile();
@@ -121,7 +129,7 @@ export const filesResolvers: Resolvers = {
           ctx.renditions,
           {
             workspaceId: scope.tenant.id,
-            accountId: principal.accountId,
+            accountId: await callerSeat(scope, principal.accountId),
             key: input.key,
             name: checked.name,
             parentId: input.parentId,
@@ -162,7 +170,7 @@ export const filesResolvers: Resolvers = {
         {
           ids,
           parentId,
-          accountId: principal.accountId,
+          accountId: await callerSeat(scope, principal.accountId),
           workspaceId: scope.tenant.id,
         },
       );
@@ -207,7 +215,7 @@ export const filesResolvers: Resolvers = {
       if (issues.length > 0) throw invalidInput(issues);
       const { node } = await updateFile(filesMongo(scope.mongo), {
         id,
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
         ...(tags && { tags }),
         ...(meta !== undefined && { meta: meta as Record<string, unknown> }),
         ...(typeof input.version === "number" && { version: input.version }),

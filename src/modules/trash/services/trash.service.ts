@@ -1,13 +1,15 @@
+import { accountOf, type Who } from "@/core/members";
 import type { WorkspacesMongo } from "@/core/workspaces";
 import type { FilesMongo } from "@/modules/files/public";
 import {
   assertMovable,
   ensureRoot,
   lockTree,
+  lockTreesOf,
   type NodeDoc,
   named,
+  nodeFor,
   nodesMongo,
-  ownedNode,
   rootLocked,
 } from "@/modules/nodes/public";
 import { topsOf } from "../utils";
@@ -24,6 +26,14 @@ interface Done {
   ids: readonly string[];
 }
 
+// Who trashes: an owner or an editor of each node (a grant reaches the nodes
+// under a shared folder). The entry lands in the owner's trash.
+interface Trashing {
+  workspaceId: string;
+  accountId: Who;
+  ids: readonly string[];
+}
+
 // Moves nodes to the trash, all or nothing. A selected node that sits under
 // another selected node goes with it and is not listed. The top node gets
 // `trashedAt` and `trashedBy` and is the trash's entry; everything live under
@@ -35,15 +45,16 @@ interface Done {
 export async function trashNodes(
   mongo: FilesMongo,
   core: WorkspacesMongo,
-  input: Done,
+  input: Trashing,
 ): Promise<NodeDoc[]> {
+  const by = { ...input, accountId: accountOf(input.accountId) };
   return named(() =>
     mongo.transaction(async (tx) => {
       const nodes = nodesMongo(tx);
-      await lockTree(nodes, input.accountId);
+      await lockTreesOf(nodes, input.ids);
       const selected: NodeDoc[] = [];
       for (const id of new Set(input.ids)) {
-        selected.push(await ownedNode(nodes, id, input.accountId));
+        selected.push(await nodeFor(nodes, id, input.accountId, "EDITOR"));
       }
       if (selected.some((node) => node.parentId === null)) throw rootLocked();
       const tops = topsOf(selected);
@@ -54,7 +65,7 @@ export async function trashNodes(
         await assertMovable(nodes, top);
       }
       const at = new Date();
-      for (const top of tops) await trashTop(tx, core, input, top, at);
+      for (const top of tops) await trashTop(tx, core, by, top, at);
       return rereadNodes(tx, tops);
     }),
   );

@@ -1,13 +1,20 @@
+import { accountOf, type Who } from "@/core/members";
 import type { NodeDoc, NodesMongo } from "../models";
-import { cycle, named, rootLocked, tooDeep } from "../nodes.errors";
+import {
+  cycle,
+  named,
+  nodeNotFound,
+  rootLocked,
+  tooDeep,
+} from "../nodes.errors";
 import { MAX_DEPTH } from "../rules";
 import { depthOf, sessionOf } from "../utils";
 import {
   assertMovable,
   ensureRoot,
-  lockTree,
-  ownedFolder,
-  ownedNode,
+  folderFor,
+  lockTreesOf,
+  nodeFor,
 } from "./nodes.service";
 
 // Moves nodes under a folder of the caller's tree, all or nothing. A selected
@@ -18,16 +25,25 @@ import {
 // `name-taken` for a name the target already holds; `root-locked` for a root.
 export async function moveNodes(
   mongo: NodesMongo,
-  input: { ids: readonly string[]; parentId: string; accountId: string },
+  input: { ids: readonly string[]; parentId: string; accountId: Who },
 ): Promise<{ node: NodeDoc; from: string | null }[]> {
-  await ensureRoot(mongo, input.accountId);
+  await ensureRoot(mongo, accountOf(input.accountId));
   return named(() =>
     mongo.transaction(async (tx) => {
-      await lockTree(tx, input.accountId);
-      const target = await ownedFolder(tx, input.parentId, input.accountId);
+      await lockTreesOf(tx, [input.parentId, ...input.ids]);
+      const target = await folderFor(
+        tx,
+        input.parentId,
+        input.accountId,
+        "EDITOR",
+      );
       const selected: NodeDoc[] = [];
       for (const id of new Set(input.ids)) {
-        selected.push(await ownedNode(tx, id, input.accountId));
+        const node = await nodeFor(tx, id, input.accountId, "EDITOR");
+        // A move stays inside one owner's tree: a subtree changing owner would
+        // also change whose quota holds it. The target is out of reach.
+        if (node.ownerId !== target.ownerId) throw nodeNotFound();
+        selected.push(node);
       }
       const chosen = new Set(selected.map((node) => node.id));
       const tops = selected.filter(
@@ -49,7 +65,7 @@ export async function moveOne(
   tx: NodesMongo,
   node: NodeDoc,
   target: NodeDoc,
-  accountId: string,
+  accountId: Who,
 ): Promise<NodeDoc> {
   if (node.parentId === null) throw rootLocked();
   if (node._id.equals(target._id)) throw cycle();
@@ -64,7 +80,7 @@ export async function moveOne(
     }
   }
   const moved = await tx.db.nodes
-    .as(accountId)
+    .as(accountOf(accountId))
     .update(node._id, { parentId: target._id, ancestors });
   // The subtree keeps its place under the node: only the part above it changes.
   await tx.db.nodes.raw.updateMany(

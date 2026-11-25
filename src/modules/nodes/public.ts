@@ -14,6 +14,7 @@ export {
   rootLocked,
   tooDeep,
 } from "./nodes.errors";
+export { nodeRoleFields } from "./nodes.roles.resolver";
 export type { FileFamily } from "./rules";
 export {
   checkName,
@@ -27,10 +28,13 @@ export type { NewFile, OnConflict } from "./services";
 export {
   assertMovable,
   ensureRoot,
+  folderFor,
   freeName,
   insertFile,
   lockTree,
+  lockTreesOf,
   moveOne,
+  nodeFor,
   ownedFolder,
   ownedNode,
   sameNameSibling,
@@ -39,6 +43,7 @@ export {
   copyName,
   depthOf,
   type FileNode,
+  type FolderNode,
   fileView,
   nodeView,
   sessionOf,
