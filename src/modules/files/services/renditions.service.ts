@@ -20,6 +20,7 @@ import {
   targetSize,
 } from "../rules";
 import {
+  FocalMoved,
   fitSide,
   limits,
   type MadeRendition,
@@ -122,8 +123,7 @@ class OriginalMissing extends Error {}
 // `rendered` (the focal point the job's crops were made with, `null` for the
 // centre) settles only the nodes still at that point. The job re-renders until
 // the point holds (`storeUntilStable`); this guard covers a move after its last
-// read, which leaves the node `PROCESSING` for the redo job `setFocalPoint`
-// queued.
+// read, leaving the node `PROCESSING` for the redo job `setFocalPoint` queued.
 async function setStatus(
   mongo: FilesMongo,
   key: string,
@@ -226,6 +226,9 @@ export function renditionsHandler(
         },
       });
     } catch (error) {
+      // The point kept moving: PROCESSING stays for the redo; the last
+      // attempt returns, as throwing would end FAILED.
+      if (error instanceof FocalMoved && attempt >= attempts) return;
       const permanent =
         error instanceof ImageError || error instanceof OriginalMissing;
       if (permanent || attempt >= attempts)

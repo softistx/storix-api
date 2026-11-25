@@ -122,4 +122,34 @@ describe("a renditions job settles only the focal point it rendered", () => {
       right: "red",
     });
   });
+
+  test("a point that moves on every store of the last attempt leaves the node processing", async () => {
+    const a = await area();
+    const file = await a.record("endless.png");
+    const mongo = await databaseOf(a.workspace.id);
+    const real = files.ctx.bucket;
+    let moves = 0;
+    const bucket = {
+      open: (input: Parameters<MediaBucket["open"]>[0]) => real.open(input),
+      put: async (...args: Parameters<MediaBucket["put"]>) => {
+        moves += 1;
+        await a.send(FOCAL, {
+          id: file.id,
+          focalPoint: { x: 0.05 + moves / 100, y: 0.5 },
+        });
+        return real.put(...args);
+      },
+    } as unknown as MediaBucket;
+
+    await renditionsHandler({ bucket, mongoOf: databaseOf })({
+      data: { workspaceId: a.workspace.id, key: file.key },
+      attempt: 3,
+      attempts: 3,
+      signal: new AbortController().signal,
+    } as never);
+
+    expect(moves).toBeGreaterThan(1);
+    const node = await mongo.db.nodes.findFirst({ blobKey: file.key });
+    expect(node?.status).toBe("PROCESSING");
+  });
 });
