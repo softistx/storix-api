@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { roleArea } from "../../../../test/roles.harness";
 import {
+  allGrantedNodeIds,
   dropGrants,
   dropMemberGrants,
   grantNode,
@@ -68,14 +69,17 @@ describe("the grants of a node", () => {
     expect(await grantsOnNode(a.database, a.sibling.id)).toHaveLength(1);
   });
 
-  test("dropMemberGrants ends the grants a member holds and keeps the others", async () => {
+  test("dropMemberGrants ends the grants a member holds and gave, and keeps the others", async () => {
     const a = await roleArea();
     const gone = await a.w.join(a.workspace, "MEMBER");
     const kept = await a.w.join(a.workspace, "MEMBER");
     await a.grant(a.folder.id, { type: "MEMBER", id: gone.memberId }, "VIEWER");
     await a.grant(a.child.id, { type: "MEMBER", id: gone.memberId }, "EDITOR");
     await a.grant(a.folder.id, { type: "MEMBER", id: kept.memberId }, "VIEWER");
-    await dropMemberGrants(a.database, gone.memberId);
+    await dropMemberGrants(a.database, {
+      memberId: gone.memberId,
+      accountId: gone.user.principal.accountId,
+    });
     const left = [
       ...(await grantsOnNode(a.database, a.folder.id)),
       ...(await grantsOnNode(a.database, a.child.id)),
@@ -83,5 +87,41 @@ describe("the grants of a node", () => {
     expect(left.map((g) => g.principal.id.toHexString())).toEqual([
       kept.memberId,
     ]);
+  });
+
+  test("dropMemberGrants also ends the grants a leaver made", async () => {
+    const a = await roleArea();
+    const gone = await a.w.join(a.workspace, "MEMBER");
+    const kept = await a.w.join(a.workspace, "MEMBER");
+    const accountId = gone.user.principal.accountId;
+    const principal = { type: "MEMBER" as const, id: kept.memberId };
+    await grantNode(a.database, {
+      nodeId: a.folder.id,
+      principal,
+      role: "VIEWER",
+      accountId,
+    });
+    await grantNode(a.database, {
+      nodeId: a.child.id,
+      principal,
+      role: "VIEWER",
+      accountId: "someone-else",
+    });
+    await dropMemberGrants(a.database, { memberId: gone.memberId, accountId });
+    expect(await grantsOnNode(a.database, a.folder.id)).toHaveLength(0);
+    expect(await grantsOnNode(a.database, a.child.id)).toHaveLength(1);
+  });
+
+  test("allGrantedNodeIds lists each granted node once", async () => {
+    const a = await roleArea();
+    const one = await a.w.join(a.workspace, "MEMBER");
+    const two = await a.w.join(a.workspace, "MEMBER");
+    await a.grant(a.folder.id, { type: "MEMBER", id: one.memberId }, "VIEWER");
+    await a.grant(a.folder.id, { type: "MEMBER", id: two.memberId }, "VIEWER");
+    await a.grant(a.child.id, { type: "MEMBER", id: one.memberId }, "EDITOR");
+    const ids = (await allGrantedNodeIds(a.database)).map((id) =>
+      id.toHexString(),
+    );
+    expect(ids.toSorted()).toEqual([a.folder.id, a.child.id].toSorted());
   });
 });

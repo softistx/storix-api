@@ -20,6 +20,6 @@ export const sharesModule = defineModule({
 });
 
 // The app's wiring (src/config/wiring.ts) hands it to the members kernel: a
-// member who leaves loses the grants made to them.
+// member who leaves loses the grants made to them and the ones they made.
 export const sharesOnRemoved: RemovalListener = (scope, removal) =>
-  dropMemberGrants(scope.mongo, removal.memberId);
+  dropMemberGrants(scope.mongo, removal);

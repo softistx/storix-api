@@ -1406,6 +1406,22 @@ type Query {
   """
   sessions: [AccountSession!]!
   """
+  What the caller shares: their own live nodes that carry a grant to a member
+  or a team, one page, folders first then by name. Only the topmost node is
+  listed, not one under a folder that is shared too. Needs `nodes:read`. 400
+  `validation.errors.invalid-cursor` (field `after`).
+  """
+  sharedByMe(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): NodePage!
+  """
+  What is shared with the caller, by a grant to them or to one of their teams,
+  one page, folders first then by name. Only the topmost shared node is
+  listed: a node under a folder that is shared with the caller too is reached
+  through it. The caller's own nodes and trashed ones are left out. Needs
+  `nodes:read`. 400 `validation.errors.invalid-cursor` (field `after`) for a
+  cursor of another listing.
+  """
+  sharedWithMe(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): NodePage!
+  """
   The caller's favourites, the most recently starred first, one page: nodes of
   their tree that are still live (a trashed node leaves the list and returns
   with its restore). The read is capped (a bounded number of favourites

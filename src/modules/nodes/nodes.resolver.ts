@@ -5,6 +5,7 @@ import { callerSeat } from "@/modules/shares/public";
 import { ownerOf } from "./data-loaders";
 import { nodesMongo } from "./models";
 import { nodeRoleFields } from "./nodes.roles.resolver";
+import { sharedQueries } from "./nodes.shared.resolver";
 import {
   createFolder,
   foldersOf,
@@ -26,6 +27,7 @@ import {
 export const nodesResolvers: Resolvers = {
   Folder: { owner: (node, _, ctx) => ownerOf(node, ctx), ...nodeRoleFields },
   Query: {
+    ...sharedQueries,
     roots: async (_, __, ctx) => {
       const { principal, scope } = await requireWorkspacePermission(
         ctx,
