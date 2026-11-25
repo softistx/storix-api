@@ -32,22 +32,33 @@ export async function sharedWithMe(database: unknown, input: SharedInput) {
   });
 }
 
-// What the caller shares: the live nodes whose grants they made, the topmost
-// only (a node under another one they shared is left to it), and only those
-// they can still read: their own nodes, or nodes under a grant they hold. A
-// revoked editor, or a node moved out of their reach, drops out of the list.
+// What the caller shares: the live nodes whose grants they made and that they
+// can still read (their own, or under a grant they hold), the topmost only. A
+// node under another readable shared one is left to it; one under a shared
+// node the caller can no longer read is their topmost readable node. A revoked
+// editor, or a node moved out of their reach, drops out of the list.
 export async function sharedByMe(database: unknown, input: SharedInput) {
-  const ids = await grantedBy(database, accountOf(input.who));
+  const made = await grantedBy(database, accountOf(input.who));
   const held = await grantedNodeIds(database, input.who);
-  return pageNodes((q) => nodesMongo(database).db.nodes.findMany(q), {
-    base: [
-      { _id: { $in: ids }, trashedAt: null, ancestors: { $nin: ids } },
-      {
+  const mongo = nodesMongo(database);
+  const readable = (
+    await mongo.db.nodes.findMany({
+      filter: {
+        _id: { $in: made },
         $or: [
           { ownerId: accountOf(input.who) },
           { _id: { $in: held } },
           { ancestors: { $in: held } },
         ],
+      },
+    })
+  ).map((node) => node._id);
+  return pageNodes((q) => mongo.db.nodes.findMany(q), {
+    base: [
+      {
+        _id: { $in: readable },
+        trashedAt: null,
+        ancestors: { $nin: readable },
       },
     ],
     order: orderOf("NAME", 1),

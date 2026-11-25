@@ -95,6 +95,68 @@ describe("sharedWithMe and sharedByMe", () => {
     expect(page.items.map((n) => n._id.toHexString())).toEqual([a.folder.id]);
   });
 
+  test("a node under a shared folder the caller lost is their topmost", async () => {
+    const a = await roleArea();
+    const editor = await a.w.join(a.workspace, "MEMBER");
+    const principal = { type: "MEMBER" as const, id: editor.memberId };
+    const account = editor.user.principal.accountId;
+    const mine = await a.grant(a.folder.id, principal, "EDITOR");
+    await a.grant(a.child.id, principal, "EDITOR");
+    const reshare = (nodeId: string) =>
+      sharesMongo(a.database)
+        .db.grants.as(account)
+        .create({
+          nodeId: nodeId as never,
+          principal: { type: "MEMBER", id: a.workspace.id as never },
+          role: "VIEWER",
+          grantedBy: account,
+        });
+    await reshare(a.folder.id);
+    await reshare(a.child.id);
+    const who = seat(editor.user, editor.memberId);
+    const ids = async () =>
+      (await sharedByMe(a.database, { who, first: 10 })).items.map((n) =>
+        n._id.toHexString(),
+      );
+    expect(await ids()).toEqual([a.folder.id]);
+    await sharesMongo(a.database).db.grants.deleteMany({ _id: mine._id });
+    expect(await ids()).toEqual([a.child.id]);
+  });
+
+  test("a grant on an ancestor, held directly or by a team, keeps the node listed", async () => {
+    const a = await roleArea();
+    const editor = await a.w.join(a.workspace, "MEMBER");
+    const account = editor.user.principal.accountId;
+    const teamId = await a.team("Crew", [editor.memberId]);
+    const viaTeam = await a.grant(
+      a.folder.id,
+      { type: "TEAM", id: teamId },
+      "EDITOR",
+    );
+    await sharesMongo(a.database)
+      .db.grants.as(account)
+      .create({
+        nodeId: a.child.id as never,
+        principal: { type: "MEMBER", id: a.workspace.id as never },
+        role: "VIEWER",
+        grantedBy: account,
+      });
+    const who = seat(editor.user, editor.memberId);
+    const ids = async () =>
+      (await sharedByMe(a.database, { who, first: 10 })).items.map((n) =>
+        n._id.toHexString(),
+      );
+    expect(await ids()).toEqual([a.child.id]);
+    await sharesMongo(a.database).db.grants.deleteMany({ _id: viaTeam._id });
+    expect(await ids()).toEqual([]);
+    await a.grant(
+      a.folder.id,
+      { type: "MEMBER", id: editor.memberId },
+      "EDITOR",
+    );
+    expect(await ids()).toEqual([a.child.id]);
+  });
+
   test("an empty grant set still refuses a cursor of another listing", async () => {
     const a = await roleArea();
     const who = a.workspace.owner.principal.accountId;
