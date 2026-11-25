@@ -5,6 +5,7 @@ import {
   familiesOf,
   filterOf,
   orderOf,
+  pageNodes,
 } from "./list.utils";
 
 describe("escapeRegex", () => {
@@ -66,5 +67,35 @@ describe("after", () => {
   test("a null position has nothing beyond it", () => {
     const order = [{ key: "size", dir: 1 as const }];
     expect(after(order, [null])).toEqual([]);
+  });
+});
+
+describe("pageNodes", () => {
+  const rows = [{ name: "a" }, { name: "b" }, { name: "c" }];
+  const find = async (query: { limit: number }) => rows.slice(0, query.limit);
+  const page = (first: number, after?: string | null) => ({
+    base: [{}],
+    order: orderOf("NAME", 1).slice(0, 2),
+    scope: "s",
+    first,
+    after,
+  });
+
+  test("keeps `first` nodes and a cursor when more follow", async () => {
+    const out = await pageNodes(find as never, page(2));
+    expect(out.items).toEqual([{ name: "a" }, { name: "b" }]);
+    expect(out.endCursor).not.toBeNull();
+  });
+
+  test("has no cursor on the last page", async () => {
+    const out = await pageNodes(find as never, page(3));
+    expect(out.items).toHaveLength(3);
+    expect(out.endCursor).toBeNull();
+  });
+
+  test("refuses a cursor of another scope", async () => {
+    const out = await pageNodes(find as never, page(2));
+    const wrong = { ...page(2, out.endCursor), scope: "other" };
+    await expect(pageNodes(find as never, wrong)).rejects.toThrow();
   });
 });

@@ -5,6 +5,7 @@ import { callerSeat } from "@/modules/shares/public";
 import { ownerOf } from "./data-loaders";
 import { nodesMongo } from "./models";
 import { nodeRoleFields } from "./nodes.roles.resolver";
+import { sharedQueries } from "./nodes.shared.resolver";
 import {
   createFolder,
   foldersOf,
@@ -17,6 +18,7 @@ import {
 } from "./services";
 import {
   nameOf,
+  nodePage,
   nodeView,
   recordFolderCreate,
   recordMove,
@@ -26,6 +28,7 @@ import {
 export const nodesResolvers: Resolvers = {
   Folder: { owner: (node, _, ctx) => ownerOf(node, ctx), ...nodeRoleFields },
   Query: {
+    ...sharedQueries,
     roots: async (_, __, ctx) => {
       const { principal, scope } = await requireWorkspacePermission(
         ctx,
@@ -88,15 +91,7 @@ export const nodesResolvers: Resolvers = {
         first,
         after,
       });
-      return {
-        nodes: page.items.map(nodeView),
-        pageInfo: {
-          startCursor: null,
-          endCursor: page.endCursor,
-          hasNextPage: page.endCursor !== null,
-          hasPreviousPage: typeof after === "string",
-        },
-      };
+      return nodePage(page, after);
     },
   },
   Mutation: {

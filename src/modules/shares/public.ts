@@ -7,6 +7,7 @@ export { reaches, strongest } from "./rules";
 export {
   dropGrants,
   dropMemberGrants,
+  grantedBy,
   grantedNodeIds,
   grantsOnNode,
   type RoleNode,

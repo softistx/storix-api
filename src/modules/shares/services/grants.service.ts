@@ -114,14 +114,33 @@ export async function dropGrants(
   });
 }
 
-// Drops every grant a member holds: it is called when the member leaves, since
-// a rejoin reuses the member row and must not bring the old shares back.
+// Ends what a member who leaves held and gave: the grants made to them, and
+// the grants they made (a rejoin reuses the member row and must not bring the
+// old shares back, and a leaver's shares end with them). `accountId` is the
+// account that was the member.
 export async function dropMemberGrants(
   database: unknown,
-  memberId: string,
+  who: { memberId: string; accountId: string },
 ): Promise<void> {
   await sharesMongo(database).db.grants.deleteMany({
-    "principal.type": "MEMBER",
-    "principal.id": toObjectId(memberId),
+    $or: [
+      {
+        "principal.type": "MEMBER",
+        "principal.id": toObjectId(who.memberId),
+      },
+      { grantedBy: who.accountId },
+    ],
   });
+}
+
+// The ids of the nodes that carry a grant the account made, each once.
+export async function grantedBy(
+  database: unknown,
+  accountId: string,
+): Promise<ReturnType<typeof toObjectId>[]> {
+  const grants = await sharesMongo(database).db.grants.findMany({
+    filter: { grantedBy: accountId },
+  });
+  const seen = new Map(grants.map((g) => [g.nodeId.toHexString(), g.nodeId]));
+  return [...seen.values()];
 }

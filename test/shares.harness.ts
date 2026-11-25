@@ -80,6 +80,7 @@ export async function sharesArea(files: ReturnType<typeof filesWorld>) {
     grants,
     teamId,
     strangerId: stranger.memberId,
+    memberIds: { editor: editor.memberId, viewer: viewer.memberId },
     users,
     sendAs,
     share,

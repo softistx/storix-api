@@ -1,7 +1,7 @@
 import type { Filter } from "mongodb";
 import type { Who } from "@/core/members";
-import { fileFamilies } from "../models";
-import type { FileFamily } from "../rules";
+import { fileFamilies, NAME_COLLATION } from "../models";
+import { decodeCursor, encodeCursor, type FileFamily } from "../rules";
 
 export type SortBy = "NAME" | "DATE" | "SIZE" | "KIND";
 
@@ -103,3 +103,47 @@ export const orderOf = (by: SortBy, direction: 1 | -1): Order[] => [
   ...KEYS[by].map((key) => ({ key, dir: direction })),
   { key: "_id", dir: direction },
 ];
+
+// One page of nodes: `base` narrowed past the cursor `after` (bound to
+// `scope`), read through `find` with `first + 1` nodes to know whether more
+// follow, and the cursor of the last one kept when they do.
+export async function pageNodes<T extends object>(
+  find: (query: {
+    filter: never;
+    sort: never;
+    collation: typeof NAME_COLLATION;
+    limit: number;
+  }) => Promise<T[]>,
+  page: {
+    base: Record<string, unknown>[];
+    order: readonly Order[];
+    scope: string;
+    first: number;
+    after?: string | null | undefined;
+  },
+) {
+  const and = [...page.base];
+  if (page.after) {
+    const values = decodeCursor(page.scope, page.after, page.order.length);
+    and.push({ $or: after(page.order, values) });
+  }
+  const docs = await find({
+    filter: { $and: and } as never,
+    sort: Object.fromEntries(page.order.map((o) => [o.key, o.dir])) as never,
+    collation: NAME_COLLATION,
+    limit: page.first + 1,
+  });
+  const items = docs.slice(0, page.first);
+  const last = items.at(-1) as Record<string, unknown> | undefined;
+  const more = docs.length > page.first;
+  return {
+    items,
+    endCursor:
+      last && more
+        ? encodeCursor(
+            page.scope,
+            page.order.map((o) => last[o.key]),
+          )
+        : null,
+  };
+}
