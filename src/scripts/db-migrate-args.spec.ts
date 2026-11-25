@@ -32,4 +32,22 @@ describe("parseMode", () => {
       "needs an id",
     );
   });
+  test("--rollback-to=<id> is read too", () => {
+    expect(parseMode(["--rollback-to=x", "--dry-run"])).toEqual({
+      kind: "rollback",
+      to: "x",
+      dryRun: true,
+    });
+  });
+  test("--rollback-to= with an empty id is refused", () => {
+    expect(() => parseMode(["--rollback-to="])).toThrow("needs an id");
+  });
+  test("an unknown or mistyped argument is refused, never applied", () => {
+    for (const bad of ["--dryrun", "--rollback", "x"]) {
+      expect(() => parseMode([bad])).toThrow("unknown argument");
+    }
+    expect(() => parseMode(["--status", "--dryrun"])).toThrow(
+      "unknown argument",
+    );
+  });
 });
