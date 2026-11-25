@@ -1,20 +1,24 @@
 import { requireWorkspacePermission } from "@/core/access";
 import { memberActor } from "@/core/audit";
+import { callerSeat } from "@/core/members";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { ownerOf } from "./data-loaders";
 import { nodesMongo } from "./models";
+import { nodeRoleFields } from "./nodes.roles.resolver";
+import { sharedQueries } from "./nodes.shared.resolver";
 import {
   createFolder,
   foldersOf,
   listNodes,
   moveNodes,
-  ownedNode,
+  nodeFor,
   pathTo,
   renameNode,
   rootsOf,
 } from "./services";
 import {
   nameOf,
+  nodePage,
   nodeView,
   recordFolderCreate,
   recordMove,
@@ -22,14 +26,18 @@ import {
 } from "./utils";
 
 export const nodesResolvers: Resolvers = {
-  Folder: { owner: (node, _, ctx) => ownerOf(node, ctx) },
+  Folder: { owner: (node, _, ctx) => ownerOf(node, ctx), ...nodeRoleFields },
   Query: {
+    ...sharedQueries,
     roots: async (_, __, ctx) => {
       const { principal, scope } = await requireWorkspacePermission(
         ctx,
         "nodes:read",
       );
-      const roots = await rootsOf(nodesMongo(scope.mongo), principal.accountId);
+      const roots = await rootsOf(
+        nodesMongo(scope.mongo),
+        await callerSeat(scope, principal.accountId),
+      );
       return roots.map(nodeView);
     },
     folders: async (_, { parentId }, ctx) => {
@@ -40,7 +48,7 @@ export const nodesResolvers: Resolvers = {
       const folders = await foldersOf(
         nodesMongo(scope.mongo),
         parentId,
-        principal.accountId,
+        await callerSeat(scope, principal.accountId),
       );
       return folders.map(nodeView);
     },
@@ -52,7 +60,7 @@ export const nodesResolvers: Resolvers = {
       const path = await pathTo(
         nodesMongo(scope.mongo),
         id,
-        principal.accountId,
+        await callerSeat(scope, principal.accountId),
       );
       return path.map(nodeView);
     },
@@ -62,7 +70,12 @@ export const nodesResolvers: Resolvers = {
         "nodes:read",
       );
       return nodeView(
-        await ownedNode(nodesMongo(scope.mongo), id, principal.accountId),
+        await nodeFor(
+          nodesMongo(scope.mongo),
+          id,
+          await callerSeat(scope, principal.accountId),
+          "VIEWER",
+        ),
       );
     },
     nodes: async (_, { parentId, filter, sort, first, after }, ctx) => {
@@ -72,21 +85,13 @@ export const nodesResolvers: Resolvers = {
       );
       const page = await listNodes(nodesMongo(scope.mongo), {
         parentId,
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
         filter,
         sort,
         first,
         after,
       });
-      return {
-        nodes: page.items.map(nodeView),
-        pageInfo: {
-          startCursor: null,
-          endCursor: page.endCursor,
-          hasNextPage: page.endCursor !== null,
-          hasPreviousPage: typeof after === "string",
-        },
-      };
+      return nodePage(page, after);
     },
   },
   Mutation: {
@@ -98,7 +103,7 @@ export const nodesResolvers: Resolvers = {
       const node = await createFolder(nodesMongo(scope.mongo), {
         parentId,
         name: nameOf(name),
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
       });
       await recordFolderCreate(
         {
@@ -120,7 +125,7 @@ export const nodesResolvers: Resolvers = {
         id,
         name: nameOf(name),
         version,
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
       });
       await recordRename(
         {
@@ -142,7 +147,7 @@ export const nodesResolvers: Resolvers = {
       const moved = await moveNodes(nodesMongo(scope.mongo), {
         ids,
         parentId,
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
       });
       const done = {
         workspaceId: scope.tenant.id,

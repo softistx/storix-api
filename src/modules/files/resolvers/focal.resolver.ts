@@ -1,5 +1,6 @@
 import { requireWorkspacePermission } from "@/core/access";
 import { memberActor } from "@/core/audit";
+import { callerSeat } from "@/core/members";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { nodeView } from "@/modules/nodes/public";
 import { notAFile } from "../files.errors";
@@ -26,7 +27,7 @@ export const setFocalPoint: NonNullable<
   const mongo = filesMongo(scope.mongo);
   const { node } = await moveFocalPoint(mongo, ctx.renditions, {
     id,
-    accountId: principal.accountId,
+    accountId: await callerSeat(scope, principal.accountId),
     workspaceId: scope.tenant.id,
     focalPoint: focalPoint ?? null,
   });

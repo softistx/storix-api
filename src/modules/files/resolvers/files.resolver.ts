@@ -1,12 +1,19 @@
 import { requireWorkspacePermission } from "@/core/access";
 import { memberActor } from "@/core/audit";
+import { callerSeat } from "@/core/members";
 import { workspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { invalidInput } from "@/i18n/fail";
-import { checkName, fileView, nodeView, ownerOf } from "@/modules/nodes/public";
-import { notAFile } from "../files.errors";
+import {
+  checkName,
+  fileView,
+  nodeRoleFields,
+  nodeView,
+  ownerOf,
+} from "@/modules/nodes/public";
+import { metaTooLong, notAFile } from "../files.errors";
 import { filesMongo } from "../models";
-import { checkTags, MAX_META_BYTES, metaFits } from "../rules";
+import { checkTags, metaFits } from "../rules";
 import {
   addFile,
   copyNodes,
@@ -60,6 +67,7 @@ export const filesResolvers: Resolvers = {
     ...fileRenditionResolvers,
     ...fileVersionResolvers,
     owner: (node, _, ctx) => ownerOf(node, ctx),
+    ...nodeRoleFields,
   },
   Mutation: {
     ...versionMutations,
@@ -72,7 +80,7 @@ export const filesResolvers: Resolvers = {
       const node = await setStarred(filesMongo(scope.mongo), {
         id,
         starred,
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
       });
       return nodeView(node);
     },
@@ -83,7 +91,7 @@ export const filesResolvers: Resolvers = {
       );
       const node = await openFile(filesMongo(scope.mongo), {
         id,
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
       });
       const view = nodeView(node);
       if (view.__typename !== "File") throw notAFile();
@@ -121,7 +129,7 @@ export const filesResolvers: Resolvers = {
           ctx.renditions,
           {
             workspaceId: scope.tenant.id,
-            accountId: principal.accountId,
+            accountId: await callerSeat(scope, principal.accountId),
             key: input.key,
             name: checked.name,
             parentId: input.parentId,
@@ -138,6 +146,7 @@ export const filesResolvers: Resolvers = {
         await recordVersion(done, "file.version-add", node, {
           number: appended,
         });
+      await ctx.notify.usage({ scope });
       // An upload is a recent file; the upload stands if the note fails.
       await recordRecent(filesMongo(scope.mongo), {
         accountId: principal.accountId,
@@ -162,7 +171,7 @@ export const filesResolvers: Resolvers = {
         {
           ids,
           parentId,
-          accountId: principal.accountId,
+          accountId: await callerSeat(scope, principal.accountId),
           workspaceId: scope.tenant.id,
         },
       );
@@ -175,6 +184,7 @@ export const filesResolvers: Resolvers = {
       for (const { node, from } of copies) {
         await recordCopy(done, node, from);
       }
+      await ctx.notify.usage({ scope });
       return copies.map(({ node }) => nodeView(node));
     },
     updateFile: async (_, { id, input }, ctx) => {
@@ -198,16 +208,12 @@ export const filesResolvers: Resolvers = {
       }
       const meta = input.meta ?? undefined;
       if (meta !== undefined && !metaFits(meta)) {
-        issues.push({
-          path: "input.meta",
-          code: "validation.errors.too-long" as const,
-          params: { max: MAX_META_BYTES },
-        });
+        issues.push(metaTooLong());
       }
       if (issues.length > 0) throw invalidInput(issues);
       const { node } = await updateFile(filesMongo(scope.mongo), {
         id,
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
         ...(tags && { tags }),
         ...(meta !== undefined && { meta: meta as Record<string, unknown> }),
         ...(typeof input.version === "number" && { version: input.version }),

@@ -1,0 +1,60 @@
+"What a notification tells."
+enum NotificationKind {
+  "A node was shared with you, or with a team you belong to."
+  SHARED
+  "Your role on a shared node changed."
+  ROLE_CHANGED
+  "A workspace you administer crossed 80 % or 100 % of its storage quota."
+  QUOTA_THRESHOLD
+}
+
+"One line of your inbox. It spans every workspace you belong to."
+type Notification {
+  id: ID!
+  kind: NotificationKind!
+  workspaceId: ID!
+  "The account that caused it, or null (a quota threshold)."
+  actorId: ID
+  nodeId: ID
+  "The node's name when it happened."
+  nodeName: String
+  "The role granted (SHARED, ROLE_CHANGED)."
+  role: GrantRole
+  "The threshold crossed, 80 or 100 (QUOTA_THRESHOLD)."
+  percent: Int
+  "Null while unread."
+  readAt: DateTime
+  createdAt: DateTime!
+}
+
+type NotificationPage {
+  nodes: [Notification!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+"Whether you receive a mail for each notification. Notifications are always recorded."
+type MailPreferences {
+  mails: Boolean!
+}
+
+type Query {
+  "Your notifications, newest first. Needs a session, no workspace header."
+  notifications(
+    first: Int! = 50 @constraint(min: 1, max: 100)
+    after: String @constraint(maxLength: 500)
+    unreadOnly: Boolean! = false
+  ): NotificationPage!
+  "How many of your notifications are unread."
+  unreadNotificationCount: Int!
+  mailPreferences: MailPreferences!
+}
+
+type Mutation {
+  "Marks one notification read (idempotent). 404 `notifications.errors.not-found` when it is not yours."
+  markNotificationRead(id: ID!): Notification!
+  "Marks every unread notification read; answers how many it changed."
+  markAllNotificationsRead: Int!
+  "Turns the mail of your notifications on or off."
+  setMailPreferences(mails: Boolean!): MailPreferences!
+}

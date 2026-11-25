@@ -1,12 +1,14 @@
 import { tryObjectId } from "@softistx/mongo";
+import type { Who } from "@/core/members";
 import { nodeNotFound, nodesMongo } from "@/modules/nodes/public";
+import { rolesOn } from "@/modules/shares/public";
 import { notAFile } from "../files.errors";
 import type { FilesMongo } from "../models";
 import { listVersions, type VersionDoc } from "./versions.service";
 
 export type VersionsOfFile = { rows: VersionDoc[]; currentId: string | null };
 
-// `listVersions` for many files in one round: the caller's files in one read
+// `listVersions` for many files in one round: the files the caller reaches in one read
 // of the nodes and their versions in one read of the versions, newest first.
 // Answers, per id and in order, the versions or the error the single call would
 // have thrown (`nodes.errors.not-found`, `files.errors.not-a-file`). A file
@@ -14,16 +16,15 @@ export type VersionsOfFile = { rows: VersionDoc[]; currentId: string | null };
 // version 1.
 export async function listVersionsBatch(
   mongo: FilesMongo,
-  input: { ids: readonly string[]; accountId: string },
+  input: { ids: readonly string[]; accountId: Who },
 ): Promise<(VersionsOfFile | Error)[]> {
   const objectIds = input.ids.flatMap((id) => tryObjectId(id) ?? []);
-  const nodes = await nodesMongo(mongo).db.nodes.findMany({
-    filter: {
-      _id: { $in: objectIds },
-      ownerId: input.accountId,
-      trashedAt: null,
-    },
+  const found = await nodesMongo(mongo).db.nodes.findMany({
+    filter: { _id: { $in: objectIds }, trashedAt: null },
   });
+  // What the caller reaches: their own files and those shared with them.
+  const roles = await rolesOn(mongo, input.accountId, found);
+  const nodes = found.filter((_, i) => roles[i]);
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const current = nodes.filter((n) => n.type === "FILE" && n.currentVersionId);
   const rows = current.length

@@ -1,5 +1,5 @@
 import { toObjectId, tryObjectId } from "@softistx/mongo";
-import type { MembersMongo } from "./members.service";
+import type { MemberDoc, MembersMongo } from "./members.service";
 
 // A page of a workspace's current members, oldest first.
 export async function listMembers(
@@ -45,4 +45,21 @@ export async function activeMemberIds(
     },
   });
   return new Set(found.map((member) => member.id));
+}
+
+// The current member row `id` of the workspace, null for an unknown id, a
+// malformed one, another workspace's and a member who left.
+export async function activeMemberOf(
+  mongo: MembersMongo,
+  workspaceId: string,
+  id: string,
+): Promise<MemberDoc | null> {
+  const objectId = tryObjectId(id);
+  if (!objectId) return null;
+  const member = await mongo.db.members.findFirst({
+    workspaceId: toObjectId(workspaceId),
+    _id: objectId,
+    removedAt: null,
+  });
+  return member ?? null;
 }

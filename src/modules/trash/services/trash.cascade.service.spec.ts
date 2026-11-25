@@ -56,6 +56,8 @@ describe("trashNodes", () => {
         await fileReader(a.mongo, {
           key: file.key,
           accountId: a.owner.principal.accountId,
+          workspaceId: a.workspace.id,
+          core: a.core(),
         }),
       ).toBe(false);
     }

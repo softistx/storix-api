@@ -1,4 +1,5 @@
-import { type NodeDoc, named, ownedNode } from "@/modules/nodes/public";
+import { accountOf, type Who } from "@/core/members";
+import { type NodeDoc, named, nodeFor } from "@/modules/nodes/public";
 import { invalidFocal, notAFile, notRenderable } from "../files.errors";
 import type { FilesMongo } from "../models";
 import {
@@ -23,13 +24,13 @@ export async function setFocalPoint(
   renditions: RenditionsQueue | undefined,
   input: {
     id: string;
-    accountId: string;
+    accountId: Who;
     workspaceId: string;
     focalPoint: Focal | null;
   },
 ): Promise<{ node: NodeDoc; before: NodeDoc }> {
   if (input.focalPoint && !isFocal(input.focalPoint)) throw invalidFocal();
-  const before = await ownedNode(mongo, input.id, input.accountId);
+  const before = await nodeFor(mongo, input.id, input.accountId, "EDITOR");
   if (before.type !== "FILE" || !before.blobKey) throw notAFile();
   if (renditionKindOf(before.mimeType ?? "") !== "image") {
     throw notRenderable();
@@ -46,7 +47,7 @@ export async function setFocalPoint(
     }),
   };
   const node = await named(() =>
-    mongo.db.nodes.as(input.accountId).update(before._id, change),
+    mongo.db.nodes.as(accountOf(input.accountId)).update(before._id, change),
   );
   // The other nodes of the blob (copies): silent, as the worker's statuses.
   await mongo.db.nodes.updateMany(

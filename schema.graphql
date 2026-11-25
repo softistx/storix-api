@@ -333,6 +333,7 @@ type File implements Node {
   family: FileFamily!
   """Where the crops are centred; null is the centre of the picture."""
   focalPoint: FocalPoint
+  grants: [Grant!]!
   id: ID!
   """
   The media key of the object: `GET /media/files/<key>` reads it. Never a URL.
@@ -341,6 +342,7 @@ type File implements Node {
   meta: JSONObject!
   """The content type the storage reported when the file was uploaded."""
   mimeType: String!
+  myRole: Role!
   name: String!
   owner: NodeOwner
   ownerId: ID
@@ -436,7 +438,9 @@ type Folder implements Node {
   ancestors: [ID!]!
   createdAt: DateTime!
   depth: Int!
+  grants: [Grant!]!
   id: ID!
+  myRole: Role!
   name: String!
   owner: NodeOwner
   ownerId: ID
@@ -450,6 +454,45 @@ type Folder implements Node {
 
 """A GUID: 8-4-4-4-12 hexadecimal digits, with no version check."""
 scalar GUID
+
+"""
+One share of a node: a member or a team, and the role they hold on it and everything under it.
+"""
+type Grant {
+  createdAt: DateTime!
+  """The account id of whoever shared."""
+  grantedBy: String!
+  id: ID!
+  nodeId: ID!
+  principal: GrantPrincipal!
+  role: GrantRole!
+}
+
+"""Who a grant is for."""
+type GrantPrincipal {
+  id: ID!
+  type: GrantPrincipalType!
+}
+
+input GrantPrincipalInput {
+  id: ID!
+  type: GrantPrincipalType!
+}
+
+enum GrantPrincipalType {
+  """A member of the workspace: the id is a `Member.id`."""
+  MEMBER
+  """A team of the workspace: the id is a `Team.id`."""
+  TEAM
+}
+
+"""
+What a node is shared as: VIEWER lists, previews and downloads; EDITOR adds upload, rename, move inside, new versions, trash and sharing.
+"""
+enum GrantRole {
+  EDITOR
+  VIEWER
+}
 
 """A CSS hsl() color, such as hsl(120, 100%, 50%)."""
 scalar HSL @specifiedBy(url: "https://www.w3.org/TR/css-color-4/#the-hsl-notation")
@@ -710,6 +753,13 @@ A MAC address: six hex pairs separated by colons (not the IEEE hyphen form).
 """
 scalar MAC
 
+"""
+Whether you receive a mail for each notification. Notifications are always recorded.
+"""
+type MailPreferences {
+  mails: Boolean!
+}
+
 """A person in a workspace."""
 type Member {
   """The account's opaque id."""
@@ -774,6 +824,12 @@ type Mutation {
   `quotas.errors.exceeded`; 503 `storage.errors.unavailable`.
   """
   addFileVersion(fileId: ID!, key: String! @constraint(minLength: 1, maxLength: 100), note: String @constraint(maxLength: 500)): File!
+  """
+  Changes the role of a grant. Needs `nodes:manage` and the same standing as
+  `shareNode`. 404 `shares.errors.not-found` for a node the caller cannot read
+  and for a grant that is not on this node; 403 `shares.errors.owner-only`.
+  """
+  changeGrant(grantId: ID!, id: ID!, role: GrantRole!): Grant!
   """
   Changes a member's role. Needs `members:manage` (OWNER, ADMIN) AND a fresh
   session (403 `auth.errors.step-up-required`: `requestStepUp` then
@@ -885,6 +941,12 @@ type Mutation {
   owner first.
   """
   leaveWorkspace: Boolean!
+  """Marks every unread notification read; answers how many it changed."""
+  markAllNotificationsRead: Int!
+  """
+  Marks one notification read (idempotent). 404 `notifications.errors.not-found` when it is not yours.
+  """
+  markNotificationRead(id: ID!): Notification!
   """
   Moves nodes under a folder, all or nothing; answers the nodes moved (one
   that sits under another selected node moves with it and is not listed). A
@@ -1017,6 +1079,8 @@ type Mutation {
   a coordinate outside 0 to 1.
   """
   setFocalPoint(focalPoint: FocalPointInput, id: ID!): File!
+  """Turns the mail of your notifications on or off."""
+  setMailPreferences(mails: Boolean!): MailPreferences!
   """
   Stars (`starred: true`) or unstars a node of the caller's tree; repeating it
   changes nothing. Answers the node. Needs `nodes:read`: a favourite is the
@@ -1032,6 +1096,16 @@ type Mutation {
   the team is left as it was.
   """
   setTeamMembers(id: ID!, memberIds: [ID!]! @constraint(maxItems: 1000)): Team!
+  """
+  Shares a node (and, for a folder, everything under it) with a member or a
+  team. Needs `nodes:manage`, and the caller must own the node or edit it. 404
+  `shares.errors.not-found` for a node the caller cannot read; 403
+  `shares.errors.owner-only` for a viewer; 400 `shares.errors.principal-unknown`
+  (field `principal`) for a member who left, a team or member of another
+  workspace or a malformed id; 409 `shares.errors.already-shared` (field
+  `principal`) when the principal already has a grant on this node.
+  """
+  shareNode(id: ID!, principal: GrantPrincipalInput!, role: GrantRole!): Grant!
   """
   Signs in with a password. 401 `identity.errors.invalid-credentials` for a
   wrong password, an unknown address and a deactivated account alike; 429
@@ -1057,6 +1131,13 @@ type Mutation {
   `nodes.errors.move-too-large` (a folder with more than 5,000 nodes under it).
   """
   trashNodes(ids: [ID!]! @constraint(minItems: 1, maxItems: 100)): [Node!]!
+  """
+  Ends a grant: the principal's next read of the node is a 404. Needs
+  `nodes:manage` and the same standing as `shareNode`. 404
+  `shares.errors.not-found`; 403 `shares.errors.owner-only`. Answers the grant
+  that ended.
+  """
+  unshareNode(grantId: ID!, id: ID!): Grant!
   """
   Sets the tags and the metadata of a file; one left out stays as it is. Tags
   are trimmed and lower case, without repeats, at most 20 of at most 50
@@ -1095,9 +1176,9 @@ scalar NegativeFloat
 scalar NegativeInt
 
 """
-A folder or a file of the workspace's tree. Only the caller's own tree is
-readable until sharing lands: another member's node is a 404, like an unknown
-one.
+A folder or a file of the workspace's tree. The caller reads their own tree
+and what is shared with them (or one of their teams): any other node is a 404,
+like an unknown one.
 """
 interface Node {
   """The ids from the root down to the parent; empty for a root."""
@@ -1105,7 +1186,16 @@ interface Node {
   createdAt: DateTime!
   """1 for a root, at most 16."""
   depth: Int!
+  """
+  The shares on this node itself (not those inherited from a folder above).
+  Empty unless the caller owns the node or edits it.
+  """
+  grants: [Grant!]!
   id: ID!
+  """
+  The caller's effective role on this node: owner, or the highest grant on it or a folder above it.
+  """
+  myRole: Role!
   name: String!
   """
   Who owns it: the account's id and name. Null when no owner is recorded or
@@ -1188,6 +1278,41 @@ scalar NonPositiveFloat
 
 """An integer from -2147483648 to 0."""
 scalar NonPositiveInt
+
+"""One line of your inbox. It spans every workspace you belong to."""
+type Notification {
+  """The account that caused it, or null (a quota threshold)."""
+  actorId: ID
+  createdAt: DateTime!
+  id: ID!
+  kind: NotificationKind!
+  nodeId: ID
+  """The node's name when it happened."""
+  nodeName: String
+  """The threshold crossed, 80 or 100 (QUOTA_THRESHOLD)."""
+  percent: Int
+  """Null while unread."""
+  readAt: DateTime
+  """The role granted (SHARED, ROLE_CHANGED)."""
+  role: GrantRole
+  workspaceId: ID!
+}
+
+"""What a notification tells."""
+enum NotificationKind {
+  """A workspace you administer crossed 80 % or 100 % of its storage quota."""
+  QUOTA_THRESHOLD
+  """Your role on a shared node changed."""
+  ROLE_CHANGED
+  """A node was shared with you, or with a team you belong to."""
+  SHARED
+}
+
+type NotificationPage {
+  nodes: [Notification!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
 
 """A MongoDB ObjectId: 24 hexadecimal digits."""
 scalar ObjectID @specifiedBy(url: "https://www.mongodb.com/docs/manual/reference/method/ObjectId/")
@@ -1277,6 +1402,7 @@ type Query {
   NOT_FOUND when the application's `authorize` refuses the scope.
   """
   invitations(after: String, lapsed: JanusInvitationLapsed, limit: Int, order: JanusInvitationOrder, ref: String, role: WorkspaceRole, scope: String!, status: String): JanusInvitationPage! @authenticated
+  mailPreferences: MailPreferences!
   """
   The current members of the request's workspace (the `x-storix-workspace`
   header), oldest first. Needs `members:read`, which every role holds. 400
@@ -1289,7 +1415,7 @@ type Query {
   """
   myWorkspaces: [Workspace!]!
   """
-  One live node of the caller's tree (a trashed one is a 404). Needs
+  One live node the caller owns or can read through a share (a trashed one is a 404). Needs
   `nodes:read`. 404 `nodes.errors.not-found`.
   """
   node(id: ID!): Node!
@@ -1309,6 +1435,10 @@ type Query {
   another folder, filter or sort.
   """
   nodes(after: String @constraint(maxLength: 500), filter: NodeFilter, first: Int! = 50 @constraint(min: 1, max: 100), parentId: ID!, sort: NodeSort): NodePage!
+  """
+  Your notifications, newest first. Needs a session, no workspace header.
+  """
+  notifications(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100), unreadOnly: Boolean! = false): NotificationPage!
   """
   The files the caller opened or uploaded lately, the latest first, one page:
   at most 200 are kept per member, one entry per file, and a trashed file
@@ -1330,6 +1460,24 @@ type Query {
   The caller's standing sessions, newest first, the current one marked. 401 `auth.errors.unauthenticated`; 401 `auth.errors.api-key-not-accepted`.
   """
   sessions: [AccountSession!]!
+  """
+  What the caller shares: the live nodes that carry a grant the caller made
+  (to a member or a team), one page, folders first then by name. Only the
+  topmost node is listed, not one under a node that is listed too. A node an
+  owner shared and an editor shared again is the editor's here, not the
+  owner's. Needs `nodes:read`. 400 `validation.errors.invalid-cursor` (field
+  `after`).
+  """
+  sharedByMe(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): NodePage!
+  """
+  What is shared with the caller, by a grant to them or to one of their teams,
+  one page, folders first then by name. Only the topmost shared node is
+  listed: a node under a folder that is shared with the caller too is reached
+  through it. The caller's own nodes and trashed ones are left out. Needs
+  `nodes:read`. 400 `validation.errors.invalid-cursor` (field `after`) for a
+  cursor of another listing.
+  """
+  sharedWithMe(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): NodePage!
   """
   The caller's favourites, the most recently starred first, one page: nodes of
   their tree that are still live (a trashed node leaves the list and returns
@@ -1363,6 +1511,8 @@ type Query {
   `validation.errors.invalid-cursor`.
   """
   trash(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): NodePage!
+  """How many of your notifications are unread."""
+  unreadNotificationCount: Int!
   version: String!
   """The caller, or null when anonymous."""
   viewer: Viewer
@@ -1416,6 +1566,17 @@ enum RenditionPreset {
   STORY
   """320 px on the longest side, WebP; pictures and PDFs."""
   THUMB
+}
+
+"""
+The caller's effective role on a node. OWNER owns the tree the node sits in;
+EDITOR and VIEWER come from a grant on the node or a folder above it, to the
+caller or to one of their teams (the highest wins).
+"""
+enum Role {
+  EDITOR
+  OWNER
+  VIEWER
 }
 
 """A SHA-256 digest: 64 hexadecimal digits."""

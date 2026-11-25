@@ -1,4 +1,5 @@
 import { requireWorkspacePermission } from "@/core/access";
+import { callerSeat } from "@/core/members";
 import { workspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { versionsOf } from "../data-loaders";
@@ -50,7 +51,7 @@ export const versionMutations: Pick<
       ctx.renditions,
       {
         workspaceId: scope.tenant.id,
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
         id: fileId,
         key,
         note: note?.trim() || null,
@@ -62,6 +63,7 @@ export const versionMutations: Pick<
       node,
       { number },
     );
+    await ctx.notify.usage({ scope });
     await recordRecent(mongo, {
       accountId: principal.accountId,
       nodeId: node._id,
@@ -79,7 +81,7 @@ export const versionMutations: Pick<
       ctx.renditions,
       {
         workspaceId: scope.tenant.id,
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
         id: fileId,
         versionId,
         note: note?.trim() || null,
@@ -91,6 +93,7 @@ export const versionMutations: Pick<
       node,
       { number, from },
     );
+    await ctx.notify.usage({ scope });
     return fileOf(node);
   },
   deleteFileVersion: async (_, { fileId, versionId }, ctx) => {
@@ -103,7 +106,7 @@ export const versionMutations: Pick<
       workspacesMongo(ctx.tenancy.core),
       {
         workspaceId: scope.tenant.id,
-        accountId: principal.accountId,
+        accountId: await callerSeat(scope, principal.accountId),
         id: fileId,
         versionId,
       },
@@ -114,6 +117,7 @@ export const versionMutations: Pick<
       node,
       { number },
     );
+    await ctx.notify.usage({ scope });
     return fileOf(node);
   },
 };

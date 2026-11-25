@@ -1,11 +1,14 @@
 import { bucket } from "./config/bucket";
 import { closeDatabases } from "./config/db";
+import { env } from "./config/env";
+import { serverMailer } from "./config/mailer";
 import { appRedis, closeQueues } from "./config/redis";
+import { startMailsWorker } from "./workers/mails";
 import { startRenditionsWorker } from "./workers/renditions";
 
 // The background jobs as their own process (dist/worker.js): today the
-// renditions (`thumb` and `preview` of pictures and PDFs). It needs the same
-// MONGO_URI, REDIS_URL and S3_* as the server. Any number may run; each job
+// renditions (`thumb` and `preview` of pictures and PDFs) and the notification
+// mails. It needs the same MONGO_URI, REDIS_URL, S3_* and MAIL_* as the server. Any number may run; each job
 // goes to one of them. SIGTERM and SIGINT stop it gracefully: the running jobs
 // get 20 seconds to finish, then Redis and Mongo close.
 if (appRedis === undefined) {
@@ -18,6 +21,8 @@ if (bucket === undefined) {
 }
 startRenditionsWorker(appRedis, bucket);
 console.log("renditions worker started");
+startMailsWorker(appRedis, serverMailer(env.MAIL_URL), env.MAIL_FROM);
+console.log("mails worker started");
 
 let stopping = false;
 async function stop() {

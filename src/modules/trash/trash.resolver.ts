@@ -1,4 +1,5 @@
 import { requireWorkspacePermission } from "@/core/access";
+import { callerSeat } from "@/core/members";
 import { workspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { filesMongo } from "@/modules/files/public";
@@ -44,10 +45,15 @@ export const trashResolvers: Resolvers = {
       const trashed = await trashNodes(
         filesMongo(scope.mongo),
         workspacesMongo(ctx.tenancy.core),
-        { workspaceId: scope.tenant.id, accountId: principal.accountId, ids },
+        {
+          workspaceId: scope.tenant.id,
+          accountId: await callerSeat(scope, principal.accountId),
+          ids,
+        },
       );
       const done = doneBy(ctx, scope.tenant.id, principal);
       for (const node of trashed) await recordTrash(done, "node.trash", node);
+      await ctx.notify.usage({ scope });
       return trashed.map(nodeView);
     },
     restoreNodes: async (_, { ids }, ctx) => {
@@ -64,6 +70,7 @@ export const trashResolvers: Resolvers = {
       for (const node of restored) {
         await recordTrash(done, "node.restore", node);
       }
+      await ctx.notify.usage({ scope });
       return restored.map(nodeView);
     },
     purgeNodes: async (_, { ids }, ctx) => {
@@ -84,6 +91,7 @@ export const trashResolvers: Resolvers = {
           onPurged: (node) => recordTrash(done, "node.purge", node),
         },
       );
+      await ctx.notify.usage({ scope });
       return removed;
     },
     emptyTrash: async (_, __, ctx) => {
@@ -111,6 +119,7 @@ export const trashResolvers: Resolvers = {
         if (counts.entries > 0) {
           await recordEmpty(done, principal.accountId, counts);
         }
+        await ctx.notify.usage({ scope });
       }
       return counts.nodes;
     },

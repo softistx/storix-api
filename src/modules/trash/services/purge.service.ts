@@ -11,6 +11,7 @@ import {
   nodesMongo,
   sessionOf,
 } from "@/modules/nodes/public";
+import { dropGrants } from "@/modules/shares/public";
 import { topsOf } from "../utils";
 import { entryOf } from "./entries.service";
 
@@ -20,7 +21,7 @@ interface Done {
 }
 
 // Deletes a trash entry and everything under it, in the caller's transaction:
-// the nodes, their versions, stars and recents, and one hold on a blob per
+// the nodes, their versions, stars, recents and grants, and one hold on a blob per
 // node and per version row that named it (`releaseBlobs`: a blob nothing
 // holds is released for the sweep). The counters follow the blobs' states
 // (`accounted`): the bytes leave `trashBytes` and `bytes`, or become
@@ -64,6 +65,10 @@ export async function purgeTop(
     await tx.db.versions.raw.deleteMany({ fileId: { $in: ids } }, session);
     await tx.db.stars.raw.deleteMany({ nodeId: { $in: ids } }, session);
     await tx.db.recents.raw.deleteMany({ nodeId: { $in: ids } }, session);
+    await dropGrants(
+      tx,
+      ids.map((id) => id.toHexString()),
+    );
     const removed = await tx.db.nodes.raw.deleteMany(
       { _id: { $in: ids } },
       session,

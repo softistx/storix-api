@@ -9,6 +9,7 @@ import {
   setTeamMembers,
   updateTeam,
 } from "./services";
+import { teamDeleted } from "./teams.wiring";
 import {
   auditOf,
   knownMembers,
@@ -113,6 +114,7 @@ export const teamsResolvers: Resolvers = {
         id,
         principal.accountId,
       );
+      await teamDeleted(ctx.teams, scope.mongo, { id });
       await recordTeamDelete(auditOf(ctx, scope, principal), team);
       return true;
     },

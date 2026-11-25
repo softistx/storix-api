@@ -9,9 +9,11 @@ import { tenancy } from "../config/tenancy";
 import type { Auditor } from "../core/audit";
 import type { Identity, Principal } from "../core/identity";
 import type { MemberWiring } from "../core/members";
+import type { Notify } from "../core/notify";
 import type { Translations } from "../core/translations/translations.load";
 import { i18n } from "../i18n";
 import type { RenditionsQueue } from "../modules/files/public";
+import type { TeamsWiring } from "../modules/teams/public";
 import { clientIp } from "./client-ip";
 import type { Limits } from "./rate-limits";
 import { refusalError } from "./refusal";
@@ -94,7 +96,11 @@ export interface Extras {
   // of a member joining or leaving, the audit log's port, and the translations
   // `boot` loaded (`undefined` until then).
   members: MemberWiring;
+  teams: TeamsWiring;
   audit: Auditor;
+  // Who is told of a share, a role change or a storage threshold
+  // (src/core/notify): the notifier of src/modules/notifications.
+  notify: Notify;
   translations: Translations | undefined;
 }
 

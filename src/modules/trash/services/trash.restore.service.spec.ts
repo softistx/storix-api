@@ -23,7 +23,12 @@ describe("restoreNodes", () => {
     expect(await a.children(a.root.id)).toEqual(["docs"]);
     expect(await a.children(docs.id)).toEqual(["a.txt"]);
     expect(await a.trashed()).toEqual([]);
-    const reader = { key: file.key, accountId: a.owner.principal.accountId };
+    const reader = {
+      key: file.key,
+      accountId: a.owner.principal.accountId,
+      workspaceId: a.workspace.id,
+      core: a.core(),
+    };
     expect(await fileReader(a.mongo, reader)).toBe(true);
     expect(await a.usage()).toMatchObject({
       bytes: 5,

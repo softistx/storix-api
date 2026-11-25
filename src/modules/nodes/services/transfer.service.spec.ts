@@ -169,9 +169,9 @@ describe("removeMember with transferTo", () => {
     const listed = await t.asAdmin.send(
       "{ trash(first: 50) { nodes { id } } }",
     );
-    const ids = (
-      (listed.data ?? {})["trash"] as { nodes: { id: string }[] }
-    ).nodes.map((n) => n.id);
+    const ids: string[] = listed.data?.["trash"].nodes.map(
+      (n: { id: string }) => n.id,
+    );
     expect(ids).toContain(old.id);
   });
 });

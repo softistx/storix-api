@@ -9,7 +9,7 @@ import { trashResolvers } from "./trash.resolver";
 // collection: the flags live on the nodes and the blobs are the files module's.
 export const trashModule = defineModule({
   name: "trash",
-  dependsOn: ["nodes", "files", "members", "workspaces", "audit"],
+  dependsOn: ["nodes", "files", "members", "workspaces", "audit", "shares"],
   codes,
   typeDefs: [typeDefs],
   resolvers: trashResolvers,

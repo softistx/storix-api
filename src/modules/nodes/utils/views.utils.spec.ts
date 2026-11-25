@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { NodeDoc } from "../models";
-import { fileView, nodeView } from "./views.utils";
+import { fileView, nodePage, nodeView } from "./views.utils";
 
 const at = (hex: string) => ({ toHexString: () => hex });
 const base = {
@@ -38,5 +38,26 @@ describe("nodeView", () => {
   test("fileView answers a File whatever the type says", () => {
     const view = fileView({ ...base, type: "FOLDER" } as unknown as NodeDoc);
     expect(view.__typename).toBe("File");
+  });
+});
+
+describe("nodePage", () => {
+  const item = { ...base, type: "FOLDER" } as unknown as NodeDoc;
+
+  test("a page with more after it carries its end cursor", () => {
+    const out = nodePage({ items: [item], endCursor: "c" }, "prev");
+    expect(out.nodes).toHaveLength(1);
+    expect(out.pageInfo).toEqual({
+      startCursor: null,
+      endCursor: "c",
+      hasNextPage: true,
+      hasPreviousPage: true,
+    });
+  });
+
+  test("the last page of a first read has neither neighbour", () => {
+    const out = nodePage({ items: [], endCursor: null }, undefined);
+    expect(out.pageInfo.hasNextPage).toBe(false);
+    expect(out.pageInfo.hasPreviousPage).toBe(false);
   });
 });

@@ -1,0 +1,130 @@
+import { requireWorkspacePermission } from "@/core/access";
+import { memberActor } from "@/core/audit";
+import { callerSeat, membersMongo } from "@/core/members";
+import type { Resolvers } from "@/generated/graphql/resolvers";
+import {
+  assertPrincipal,
+  grantNode,
+  nodeToShare,
+  regrant,
+  revoke,
+} from "./services";
+import { grantView, recordRegrant, recordShare, recordUnshare } from "./utils";
+
+export const sharesResolvers: Resolvers = {
+  Mutation: {
+    shareNode: async (_, { id, principal, role }, ctx) => {
+      const { principal: who, scope } = await requireWorkspacePermission(
+        ctx,
+        "nodes:manage",
+      );
+      const seat = await callerSeat(scope, who.accountId);
+      const node = await nodeToShare(scope.mongo, seat, id);
+      await assertPrincipal(
+        {
+          database: scope.mongo,
+          core: membersMongo(scope.core),
+          workspaceId: scope.tenant.id,
+          ownerId: node.ownerId,
+        },
+        principal,
+      );
+      const grant = await grantNode(scope.mongo, {
+        nodeId: node._id.toHexString(),
+        principal,
+        role,
+        accountId: who.accountId,
+      });
+      await recordShare(
+        {
+          workspaceId: scope.tenant.id,
+          actor: memberActor(who),
+          ip: ctx.ip,
+          auditor: ctx.audit,
+        },
+        node,
+        grant,
+      );
+      await ctx.notify.shared({
+        scope,
+        actorId: who.accountId,
+        node: {
+          id: node._id.toHexString(),
+          name: node.name,
+          ownerId: node.ownerId,
+        },
+        principal: {
+          type: grant.principal.type,
+          id: grant.principal.id.toHexString(),
+        },
+        role: grant.role,
+      });
+      return grantView(grant);
+    },
+    changeGrant: async (_, { id, grantId, role }, ctx) => {
+      const { principal: who, scope } = await requireWorkspacePermission(
+        ctx,
+        "nodes:manage",
+      );
+      const seat = await callerSeat(scope, who.accountId);
+      const node = await nodeToShare(scope.mongo, seat, id);
+      const { grant, before } = await regrant(scope.mongo, {
+        nodeId: node._id.toHexString(),
+        id: grantId,
+        role,
+        accountId: who.accountId,
+      });
+      await recordRegrant(
+        {
+          workspaceId: scope.tenant.id,
+          actor: memberActor(who),
+          ip: ctx.ip,
+          auditor: ctx.audit,
+        },
+        node,
+        grant,
+        before,
+      );
+      if (before.role !== grant.role) {
+        await ctx.notify.roleChanged({
+          scope,
+          actorId: who.accountId,
+          node: {
+            id: node._id.toHexString(),
+            name: node.name,
+            ownerId: node.ownerId,
+          },
+          principal: {
+            type: grant.principal.type,
+            id: grant.principal.id.toHexString(),
+          },
+          role: grant.role,
+        });
+      }
+      return grantView(grant);
+    },
+    unshareNode: async (_, { id, grantId }, ctx) => {
+      const { principal: who, scope } = await requireWorkspacePermission(
+        ctx,
+        "nodes:manage",
+      );
+      const seat = await callerSeat(scope, who.accountId);
+      const node = await nodeToShare(scope.mongo, seat, id);
+      const before = await revoke(scope.mongo, {
+        nodeId: node._id.toHexString(),
+        id: grantId,
+      });
+      await recordUnshare(
+        {
+          workspaceId: scope.tenant.id,
+          actor: memberActor(who),
+          ip: ctx.ip,
+          auditor: ctx.audit,
+        },
+        node,
+        before,
+      );
+      return grantView(before);
+    },
+  },
+};
