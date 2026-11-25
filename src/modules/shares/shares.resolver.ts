@@ -1,6 +1,6 @@
 import { requireWorkspacePermission } from "@/core/access";
 import { memberActor } from "@/core/audit";
-import { membersMongo } from "@/core/members";
+import { callerSeat, membersMongo } from "@/core/members";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import {
   assertPrincipal,
@@ -9,13 +9,7 @@ import {
   regrant,
   revoke,
 } from "./services";
-import {
-  callerSeat,
-  grantView,
-  recordRegrant,
-  recordShare,
-  recordUnshare,
-} from "./utils";
+import { grantView, recordRegrant, recordShare, recordUnshare } from "./utils";
 
 export const sharesResolvers: Resolvers = {
   Mutation: {
@@ -31,6 +25,7 @@ export const sharesResolvers: Resolvers = {
           database: scope.mongo,
           core: membersMongo(scope.core),
           workspaceId: scope.tenant.id,
+          ownerId: node.ownerId,
         },
         principal,
       );
@@ -53,7 +48,11 @@ export const sharesResolvers: Resolvers = {
       await ctx.notify.shared({
         scope,
         actorId: who.accountId,
-        node: { id: node._id.toHexString(), name: node.name },
+        node: {
+          id: node._id.toHexString(),
+          name: node.name,
+          ownerId: node.ownerId,
+        },
         principal: {
           type: grant.principal.type,
           id: grant.principal.id.toHexString(),
@@ -90,7 +89,11 @@ export const sharesResolvers: Resolvers = {
         await ctx.notify.roleChanged({
           scope,
           actorId: who.accountId,
-          node: { id: node._id.toHexString(), name: node.name },
+          node: {
+            id: node._id.toHexString(),
+            name: node.name,
+            ownerId: node.ownerId,
+          },
           principal: {
             type: grant.principal.type,
             id: grant.principal.id.toHexString(),

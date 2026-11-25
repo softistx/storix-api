@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
+import { tenancy } from "@/config/tenancy";
 import { roleArea } from "../../../test/roles.harness";
 import { CHANGE, SHARE } from "../../../test/shares.harness";
+import { notificationsMongo } from "./models";
 
 const INBOX = `{ notifications(first: 50) { totalCount nodes { id kind nodeName role actorId readAt } } }`;
 const MAILS = `mutation($mails: Boolean!) { setMailPreferences(mails: $mails) { mails } }`;
@@ -35,6 +37,27 @@ const share = (
     workspace: a.workspace.id,
     variables: { id: a.folder.id, principal, role },
   });
+
+describe("an account that leaves a workspace", () => {
+  test("loses that workspace's lines of its inbox", async () => {
+    const a = await roleArea();
+    const guest = await a.w.join(a.workspace, "MEMBER");
+    await share(a, a.workspace.owner, { type: "MEMBER", id: guest.memberId });
+    expect((await seen(a, guest)).nodes).toHaveLength(1);
+
+    const removed = await a.owner.send(
+      `mutation($memberId: ID!) { removeMember(memberId: $memberId) }`,
+      { memberId: guest.memberId },
+    );
+    expect(removed.errors).toBeUndefined();
+    const left = await notificationsMongo(
+      tenancy.core,
+    ).db.notifications.findMany({
+      filter: { accountId: guest.user.principal.accountId },
+    });
+    expect(left).toEqual([]);
+  });
+});
 
 describe("sharing notifies the people it reaches", () => {
   test("a share to a member gives them one notification and one mail, and the owner none", async () => {

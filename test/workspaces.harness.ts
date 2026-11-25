@@ -32,6 +32,7 @@ export async function world(
     renditions?: HarnessOptions["renditions"];
     // A wiring other than the server's (specs: a listener that fails).
     members?: HarnessOptions["members"];
+    teams?: HarnessOptions["teams"];
     audit?: HarnessOptions["audit"];
     translations?: HarnessOptions["translations"];
   } = {},
@@ -41,6 +42,7 @@ export async function world(
     ...(options.media && { media: options.media }),
     ...(options.renditions && { renditions: options.renditions }),
     ...(options.members && { members: options.members }),
+    ...(options.teams && { teams: options.teams }),
     ...(options.audit && { audit: options.audit }),
     ...(options.translations && { translations: options.translations }),
     onAcceptedInvitation: (accepted) =>

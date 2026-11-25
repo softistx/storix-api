@@ -10,6 +10,7 @@ export async function recipientsOfGrant(
   input: {
     principal: { type: "MEMBER" | "TEAM"; id: string };
     actorId: string;
+    node?: { ownerId?: string | null };
   },
 ): Promise<string[]> {
   // The members of a team, or none for a team that no longer exists.
@@ -30,7 +31,12 @@ export async function recipientsOfGrant(
     },
   });
   const accounts = rows.map((row) => row.accountId);
-  return [...new Set(accounts)].filter((id) => id !== input.actorId);
+  // The actor, and the node's owner for a team grant (the owner sits in the
+  // team without being a grantee), are left out.
+  const owner = input.principal.type === "TEAM" ? input.node?.ownerId : null;
+  return [...new Set(accounts)].filter(
+    (id) => id !== input.actorId && id !== owner,
+  );
 }
 
 // The owners and admins of a workspace: who a storage alert is for.

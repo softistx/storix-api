@@ -41,6 +41,18 @@ export async function listNotifications(
   }
 }
 
+// The account left a workspace: its inbox no longer holds that workspace's
+// lines (the inbox spans the workspaces the account belongs to).
+export const dropWorkspaceNotifications = (
+  mongo: NotificationsMongo,
+  accountId: string,
+  workspaceId: string,
+) =>
+  mongo.db.notifications.deleteMany({
+    accountId,
+    workspaceId: toObjectId(workspaceId),
+  });
+
 export const unreadCount = (mongo: NotificationsMongo, accountId: string) =>
   mongo.db.notifications.count({ accountId, readAt: null });
 

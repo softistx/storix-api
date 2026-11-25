@@ -1,5 +1,5 @@
 import { toObjectId, tryObjectId } from "@softistx/mongo";
-import { activeMemberIds, type MembersMongo } from "@/core/members";
+import type { MembersMongo } from "@/core/members";
 import { getTeam, teamsMongo } from "@/modules/teams/public";
 import { type GrantDoc, sharesMongo } from "../models";
 import type { GrantRole } from "../rules";
@@ -14,15 +14,26 @@ export interface Principal {
 // the workspace or one of its teams: malformed, unknown, another workspace's
 // and a member who left are one answer.
 export async function assertPrincipal(
-  where: { database: unknown; core: MembersMongo; workspaceId: string },
+  where: {
+    database: unknown;
+    core: MembersMongo;
+    workspaceId: string;
+    // The account that owns the node: it holds the role OWNER already, so a
+    // grant to its own member row is refused like an unknown principal.
+    ownerId?: string | null;
+  },
   principal: Principal,
 ): Promise<void> {
   if (!tryObjectId(principal.id)) throw principalUnknown();
   if (principal.type === "MEMBER") {
-    const known = await activeMemberIds(where.core, where.workspaceId, [
-      principal.id,
-    ]);
-    if (!known.has(principal.id)) throw principalUnknown();
+    const [member] = await where.core.db.members.findMany({
+      filter: {
+        workspaceId: toObjectId(where.workspaceId),
+        _id: toObjectId(principal.id),
+        removedAt: null,
+      },
+    });
+    if (!member || member.accountId === where.ownerId) throw principalUnknown();
     return;
   }
   try {
@@ -103,15 +114,34 @@ export const grantsOnNode = (database: unknown, nodeId: string) =>
     sort: { _id: 1 },
   });
 
-// Drops every grant on these nodes (they were purged for good).
+// The grants of many nodes in ONE read, each node's oldest first, in the order
+// of `nodeIds` (a node with none answers an empty list).
+export async function grantsOnNodes(
+  database: unknown,
+  nodeIds: readonly string[],
+): Promise<GrantDoc[][]> {
+  if (nodeIds.length === 0) return [];
+  const grants = await sharesMongo(database).db.grants.findMany({
+    filter: { nodeId: { $in: nodeIds.map((id) => toObjectId(id)) } },
+    sort: { _id: 1 },
+  });
+  const byNode = Map.groupBy(grants, (grant) => grant.nodeId.toHexString());
+  return nodeIds.map((id) => byNode.get(id) ?? []);
+}
+
+// Drops every grant on these nodes (they were purged for good). Given a
+// transaction's handle, the delete carries its session explicitly, so it is
+// rolled back with the purge and never runs outside it.
 export async function dropGrants(
   database: unknown,
   nodeIds: readonly string[],
 ): Promise<void> {
   if (nodeIds.length === 0) return;
-  await sharesMongo(database).db.grants.deleteMany({
-    nodeId: { $in: nodeIds.map((id) => toObjectId(id)) },
-  });
+  const { raw, session } = sharesMongo(database).db.grants;
+  await raw.deleteMany(
+    { nodeId: { $in: nodeIds.map((id) => toObjectId(id)) } },
+    session ? { session } : {},
+  );
 }
 
 // Ends what a member who leaves held and gave: the grants made to them, and
@@ -130,6 +160,17 @@ export async function dropMemberGrants(
       },
       { grantedBy: who.accountId },
     ],
+  });
+}
+
+// Ends the grants made to a team that was deleted.
+export async function dropTeamGrants(
+  database: unknown,
+  teamId: string,
+): Promise<void> {
+  await sharesMongo(database).db.grants.deleteMany({
+    "principal.type": "TEAM",
+    "principal.id": toObjectId(teamId),
   });
 }
 

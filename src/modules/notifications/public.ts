@@ -1,6 +1,6 @@
 // The notifications surface: the module, the notifier the app builds and the
 // mail sending it needs. Everything else in this folder is private.
-export { notificationsModule } from "./module";
+export { notificationsModule, notificationsOnRemoved } from "./module";
 export {
   Notifier,
   type NotifierDeps,

@@ -1,7 +1,7 @@
 import { tryObjectId } from "@softistx/mongo";
 import type { Who } from "@/core/members";
 import { nodeNotFound, nodesMongo } from "@/modules/nodes/public";
-import { roleOn } from "@/modules/shares/public";
+import { rolesOn } from "@/modules/shares/public";
 import { notAFile } from "../files.errors";
 import type { FilesMongo } from "../models";
 import { listVersions, type VersionDoc } from "./versions.service";
@@ -23,10 +23,8 @@ export async function listVersionsBatch(
     filter: { _id: { $in: objectIds }, trashedAt: null },
   });
   // What the caller reaches: their own files and those shared with them.
-  const nodes: typeof found = [];
-  for (const node of found) {
-    if (await roleOn(mongo, input.accountId, node)) nodes.push(node);
-  }
+  const roles = await rolesOn(mongo, input.accountId, found);
+  const nodes = found.filter((_, i) => roles[i]);
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const current = nodes.filter((n) => n.type === "FILE" && n.currentVersionId);
   const rows = current.length

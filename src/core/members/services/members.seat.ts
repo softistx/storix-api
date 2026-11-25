@@ -1,4 +1,6 @@
 import { toObjectId } from "@softistx/mongo";
+import { workspacesNotFound } from "../members.errors";
+import { membersMongo } from "../models";
 import type { MembersMongo } from "./members.service";
 
 // Who is asking, for the reads that depend on more than the account: the
@@ -34,4 +36,21 @@ export async function seatOf(
     removedAt: null,
   });
   return member ? { accountId, memberId: member.id } : null;
+}
+
+// The caller's seat in the request's workspace: its account and its member
+// row. The guard has proved the membership, so a missing row is a member who
+// left between the guard and here: the workspace is then a 404, as for any
+// account that is not a member.
+export async function callerSeat(
+  scope: { readonly core: unknown; readonly tenant: { readonly id: string } },
+  accountId: string,
+): Promise<Seat> {
+  const seat = await seatOf(
+    membersMongo(scope.core),
+    scope.tenant.id,
+    accountId,
+  );
+  if (!seat) throw workspacesNotFound();
+  return seat;
 }

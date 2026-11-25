@@ -13,6 +13,7 @@ export {
   accountOf,
   activeMemberIds,
   addMember,
+  callerSeat,
   type HandoverListener,
   handOver,
   type JoinListener,

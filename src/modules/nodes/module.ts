@@ -6,6 +6,7 @@ import { nodes, nodesMongo } from "./models";
 import { nodes as codes } from "./nodes.errors";
 import typeDefs from "./nodes.graphqls" with { type: "text" };
 import { nodesResolvers } from "./nodes.resolver";
+import sharedTypeDefs from "./nodes.shared.graphqls" with { type: "text" };
 import { ensureRoot, transferTree } from "./services";
 
 // The tree of a workspace's folders, in its own database. Owns `nodes:read` and
@@ -23,7 +24,7 @@ export const nodesModule = defineModule({
     ADMIN: ["nodes:read", "nodes:manage"],
     MEMBER: ["nodes:read", "nodes:manage"],
   },
-  typeDefs: [typeDefs],
+  typeDefs: [typeDefs, sharedTypeDefs],
   resolvers: nodesResolvers,
 });
 

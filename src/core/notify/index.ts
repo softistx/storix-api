@@ -11,7 +11,9 @@ import type { WorkspaceScope } from "../access";
 export interface ShareEvent {
   scope: WorkspaceScope;
   actorId: string;
-  node: { id: string; name: string };
+  // `ownerId`: the account that owns the node, who is never told of a share of
+  // its own node through a team.
+  node: { id: string; name: string; ownerId?: string | null };
   principal: { type: "MEMBER" | "TEAM"; id: string };
   role: "VIEWER" | "EDITOR";
 }

@@ -1,16 +1,25 @@
 // The shares surface: the module, the effective role and what the guards of
 // the other modules ask of it. Everything else in this folder is private.
 export { sharesMongo } from "./models";
-export { sharesModule, sharesOnRemoved } from "./module";
+export {
+  sharesModule,
+  sharesOnJoined,
+  sharesOnRemoved,
+  sharesOnTeamDeleted,
+} from "./module";
 export type { GrantRole, Role } from "./rules";
 export { reaches, strongest } from "./rules";
 export {
   dropGrants,
   dropMemberGrants,
+  dropTeamGrants,
   grantedBy,
   grantedNodeIds,
   grantsOnNode,
+  grantsOnNodes,
   type RoleNode,
+  type RoleNodeInput,
   roleOn,
+  rolesOn,
 } from "./services";
-export { callerSeat, grantView } from "./utils";
+export { grantView } from "./utils";

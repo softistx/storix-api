@@ -13,6 +13,7 @@ import {
 import {
   auditor as serverAuditor,
   members as serverMembers,
+  teams as serverTeams,
 } from "./config/wiring";
 import type { Auditor } from "./core/audit";
 import type { Identity } from "./core/identity";
@@ -31,6 +32,7 @@ import { keyPathsOnly } from "./http/key-paths";
 import type { Limits } from "./http/rate-limits";
 import { schema } from "./http/schema";
 import { fileReader, type RenditionsQueue } from "./modules/files/public";
+import type { TeamsWiring } from "./modules/teams/public";
 
 // The largest body /graphql reads.
 export const BODY_LIMIT = 100 * 1024;
@@ -64,6 +66,7 @@ export function createApp(
     // listeners and the audit port, which specs may replace, and the
     // translations `boot` loaded (without them `errorCatalogue` fails).
     members?: MemberWiring;
+    teams?: TeamsWiring;
     audit?: Auditor;
     translations?: Translations;
     // The mailer the notification mails leave through (default: the
@@ -92,6 +95,7 @@ export function createApp(
             media: bucket,
             renditions,
             members: options.members ?? serverMembers,
+            teams: options.teams ?? serverTeams,
             audit: options.audit ?? serverAuditor,
             notify,
             translations: options.translations,

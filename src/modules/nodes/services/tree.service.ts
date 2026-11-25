@@ -1,5 +1,5 @@
 import { accountOf, type Who } from "@/core/members";
-import { roleOn } from "@/modules/shares/public";
+import { rolesOn } from "@/modules/shares/public";
 import type { NodeDoc, NodesMongo } from "../models";
 import { byName } from "../utils";
 import { ensureRoot, folderFor, nodeFor } from "./nodes.service";
@@ -49,9 +49,7 @@ async function fromShare(
   who: Who,
   path: NodeDoc[],
 ): Promise<NodeDoc[]> {
-  for (let i = 0; i < path.length; i++) {
-    const at = path[i];
-    if (at && (await roleOn(mongo, who, at))) return path.slice(i);
-  }
-  return path.slice(-1);
+  const roles = await rolesOn(mongo, who, path);
+  const first = roles.findIndex((role) => role);
+  return first < 0 ? path.slice(-1) : path.slice(first);
 }

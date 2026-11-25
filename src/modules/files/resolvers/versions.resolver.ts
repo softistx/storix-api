@@ -1,7 +1,7 @@
 import { requireWorkspacePermission } from "@/core/access";
+import { callerSeat } from "@/core/members";
 import { workspacesMongo } from "@/core/workspaces";
 import type { Resolvers } from "@/generated/graphql/resolvers";
-import { callerSeat } from "@/modules/shares/public";
 import { versionsOf } from "../data-loaders";
 import { filesMongo } from "../models";
 import {

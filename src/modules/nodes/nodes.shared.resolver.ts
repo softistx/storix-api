@@ -1,6 +1,6 @@
 import { requireWorkspacePermission } from "@/core/access";
+import { callerSeat } from "@/core/members";
 import type { Resolvers } from "@/generated/graphql/resolvers";
-import { callerSeat } from "@/modules/shares/public";
 import { sharedByMe, sharedWithMe } from "./services";
 import { nodePage } from "./utils";
 
