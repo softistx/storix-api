@@ -51,7 +51,7 @@
     "@softistx/alxia-media": "^0.12.0",
     "@softistx/alxia-modules": "^0.6.0",
     "@softistx/alxia-tenancy": "^0.8.0",
-    "@softistx/graxia": "^0.17.0",
+    "@softistx/graxia": "^0.17.1",
     "@softistx/graxia-graphiql": "^0.4.1",
     "@softistx/image": "^0.6.1",
     "@softistx/janus": "^0.81.0",

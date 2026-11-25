@@ -23,7 +23,7 @@
         "@softistx/graphql-client": "^0.10.0",
         "@softistx/graphql-scalars": "^0.8.0",
         "@softistx/graphql-validation": "^0.10.0",
-        "@softistx/graxia": "^0.17.0",
+        "@softistx/graxia": "^0.17.1",
         "@softistx/graxia-graphiql": "^0.4.1",
         "@softistx/image": "^0.6.1",
         "@softistx/janus": "^0.81.0",
@@ -328,7 +328,7 @@
 
     "@softistx/graphql-validation": ["@softistx/graphql-validation@0.10.0", "", { "peerDependencies": { "graphql": "^16.11.0 || ^17.0.0", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "bin": { "nxgt-graphql-validation": "dist/cli.js" } }, "sha512-LulbRXKRAK/fBPG+Kjcz2WYsQohfD56OADZr4e5D/dpQu6GwYY4mOhzdy+kjJGHrYhbjKE9orE6JMrBWRIlJ7g=="],
 
-    "@softistx/graxia": ["@softistx/graxia@0.17.0", "", { "peerDependencies": { "@softistx/telemetry": "^0.5.0", "graphql": "^17.1.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/telemetry", "typescript"] }, "sha512-QwS0rU6MNnlHYlUS9y3jDN4tmYBAej4v95XhScy3Ec6LCP8U3HFZPhdefd2aVcBogOYzrXQau/IBZD6zoBbOGQ=="],
+    "@softistx/graxia": ["@softistx/graxia@0.17.1", "", { "peerDependencies": { "@softistx/telemetry": "^0.5.0", "graphql": "^17.1.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/telemetry", "typescript"] }, "sha512-JaaBSJ8WKEEId4woOQVHo1r6PB70Yn5VtqtEHFjEskYuoxASuIzmSQjqwjafYKPnmRAvK9mDYEBxJeqwk77GZw=="],
 
     "@softistx/graxia-graphiql": ["@softistx/graxia-graphiql@0.4.1", "", { "peerDependencies": { "@softistx/graxia": "^0.17.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["typescript"] }, "sha512-SdO+Ee5XPElg4njwPfbX7A2H+BF6/tiYxYTK3yFKZrChc2YwF67d6SkB7djtPhnifU9AWiIIdUhxZDJu6vv+Bg=="],
 
