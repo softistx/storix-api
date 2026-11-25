@@ -15,9 +15,9 @@ concurrency:
 
 jobs:
   verify:
-    # The organisation's self-hosted runners. The job needs nothing from the runner's
-    # environment: Node (graphql-codegen runs on it) and Bun are set up here.
-    runs-on: [self-hosted, linux, x64]
+    # GitHub-hosted runners while the repository is public (self-hosted again once private).
+    # The job needs nothing from the runner's environment: Node (graphql-codegen runs on it) and Bun are set up here.
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
