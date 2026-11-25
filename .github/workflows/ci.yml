@@ -29,7 +29,7 @@ jobs:
           node-version: 22
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: 1.4.4
+          bun-version: 1.4.5
       # Restored here, saved by an explicit step with its own timeout (actions/cache's post
       # step has no timeout and can hang the job).
       - uses: actions/cache/restore@v4
