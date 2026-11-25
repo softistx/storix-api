@@ -24,7 +24,7 @@ describe("the grants of a node", () => {
     expect(made.role).toBe("VIEWER");
     expect(made.grantedBy).toBe("owner");
     await expect(grantNode(a.database, input)).rejects.toMatchObject({
-      message: expect.stringContaining("already-shared"),
+      extensions: { code: "shares.errors.already-shared" },
     });
   });
 

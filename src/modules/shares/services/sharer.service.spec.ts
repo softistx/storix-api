@@ -23,10 +23,10 @@ describe("nodeToShare and nodeToRead", () => {
       nodeToShare(a.database, seat(memberId), a.child.id);
     expect((await share(editor.memberId)).name).toBe("Child");
     await expect(share(viewer.memberId)).rejects.toMatchObject({
-      message: expect.stringContaining("owner-only"),
+      extensions: { code: "shares.errors.owner-only" },
     });
     await expect(share(stranger.memberId)).rejects.toMatchObject({
-      message: expect.stringContaining("not-found"),
+      extensions: { code: "shares.errors.not-found" },
     });
     expect(
       (await nodeToRead(a.database, seat(viewer.memberId), a.child.id)).name,
