@@ -2,37 +2,33 @@ import { requireWorkspacePermission } from "@/core/access";
 import type { Resolvers } from "@/generated/graphql/resolvers";
 import { callerSeat } from "@/modules/shares/public";
 import { sharedByMe, sharedWithMe } from "./services";
-import { nodeView } from "./utils";
+import { nodePage } from "./utils";
 
-type Listing = typeof sharedWithMe;
-
-const listing =
-  (
-    read: Listing,
-  ): NonNullable<NonNullable<Resolvers["Query"]>["sharedWithMe"]> =>
-  async (_, { first, after }, ctx) => {
+// `sharedWithMe` and `sharedByMe`: the topmost shared nodes, one page.
+export const sharedQueries: Pick<
+  NonNullable<Resolvers["Query"]>,
+  "sharedWithMe" | "sharedByMe"
+> = {
+  sharedWithMe: async (_, { first, after }, ctx) => {
     const { principal, scope } = await requireWorkspacePermission(
       ctx,
       "nodes:read",
     );
-    const page = await read(scope.mongo, {
-      who: await callerSeat(scope, principal.accountId),
-      first,
+    const who = await callerSeat(scope, principal.accountId);
+    return nodePage(
+      await sharedWithMe(scope.mongo, { who, first, after }),
       after,
-    });
-    return {
-      nodes: page.items.map(nodeView),
-      pageInfo: {
-        startCursor: null,
-        endCursor: page.endCursor,
-        hasNextPage: page.endCursor !== null,
-        hasPreviousPage: typeof after === "string",
-      },
-    };
-  };
-
-// `sharedWithMe` and `sharedByMe`: the topmost shared nodes, one page.
-export const sharedQueries = {
-  sharedWithMe: listing(sharedWithMe),
-  sharedByMe: listing(sharedByMe),
+    );
+  },
+  sharedByMe: async (_, { first, after }, ctx) => {
+    const { principal, scope } = await requireWorkspacePermission(
+      ctx,
+      "nodes:read",
+    );
+    const who = await callerSeat(scope, principal.accountId);
+    return nodePage(
+      await sharedByMe(scope.mongo, { who, first, after }),
+      after,
+    );
+  },
 };

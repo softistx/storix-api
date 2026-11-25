@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { roleArea } from "../../../../test/roles.harness";
 import {
-  allGrantedNodeIds,
   dropGrants,
   dropMemberGrants,
+  grantedBy,
   grantNode,
   grantOf,
   grantsOnNode,
@@ -112,14 +112,14 @@ describe("the grants of a node", () => {
     expect(await grantsOnNode(a.database, a.child.id)).toHaveLength(1);
   });
 
-  test("allGrantedNodeIds lists each granted node once", async () => {
+  test("grantedBy lists each node the account granted once", async () => {
     const a = await roleArea();
     const one = await a.w.join(a.workspace, "MEMBER");
     const two = await a.w.join(a.workspace, "MEMBER");
     await a.grant(a.folder.id, { type: "MEMBER", id: one.memberId }, "VIEWER");
     await a.grant(a.folder.id, { type: "MEMBER", id: two.memberId }, "VIEWER");
     await a.grant(a.child.id, { type: "MEMBER", id: one.memberId }, "EDITOR");
-    const ids = (await allGrantedNodeIds(a.database)).map((id) =>
+    const ids = (await grantedBy(a.database, "seed")).map((id) =>
       id.toHexString(),
     );
     expect(ids.toSorted()).toEqual([a.folder.id, a.child.id].toSorted());

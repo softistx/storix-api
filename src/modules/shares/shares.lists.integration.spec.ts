@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { filesWorld } from "../../../test/files.harness";
 import {
+  NODE_ROLE,
   SHARE,
   sharesArea,
   UNSHARE,
@@ -110,6 +111,21 @@ describe("sharedWithMe and sharedByMe", () => {
   });
 });
 
+describe("sharedByMe, for a grant made by an editor", () => {
+  test("is the editor's own list, and not the owner's", async () => {
+    const a = await area();
+    const again = await a.sendAs(a.users.editor, SHARE, {
+      id: a.file.id,
+      principal: { type: "MEMBER", id: a.strangerId },
+      role: "VIEWER",
+    });
+    expect(again.errors).toBeUndefined();
+    expect(await a.byMe(a.users.editor)).toEqual(["doc.txt"]);
+    expect(await a.byMe(a.workspace.owner)).toEqual(["Shared"]);
+    expect(await a.withMe(a.users.stranger)).toEqual(["doc.txt"]);
+  });
+});
+
 describe("removing a member", () => {
   test("transfers their tree with every blob and ends the grants they hold and gave", async () => {
     const a = await area();
@@ -147,5 +163,27 @@ describe("removing a member", () => {
     );
     expect(await a.withMe(a.users.viewer)).not.toContain("Mine");
     expect(await a.byMe(receiver.user)).not.toContain("Mine");
+    const mineAfter = await a.sendAs(receiver.user, NODE_ROLE, { id: mine.id });
+    expect(mineAfter.data?.["node"].grants).toEqual([]);
+    const folder = await a.sendAs(a.workspace.owner, NODE_ROLE, {
+      id: a.folder.id,
+    });
+    expect(folder.data?.["node"].grants).toHaveLength(3);
+  });
+
+  test("a grant someone else made on another account's node survives", async () => {
+    const a = await area();
+    const leaver = await a.w.join(a.workspace, "MEMBER");
+    const receiver = await a.w.join(a.workspace, "ADMIN");
+    const removed = await a.sendAs(a.workspace.owner, REMOVE, {
+      memberId: leaver.memberId,
+      transferTo: receiver.memberId,
+    });
+    expect(removed.errors).toBeUndefined();
+    const kept = await a.sendAs(a.workspace.owner, NODE_ROLE, {
+      id: a.folder.id,
+    });
+    expect(kept.data?.["node"].grants).toHaveLength(3);
+    expect(await a.byMe(a.workspace.owner)).toEqual(["Shared"]);
   });
 });

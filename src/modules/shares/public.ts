@@ -5,9 +5,9 @@ export { sharesModule, sharesOnRemoved } from "./module";
 export type { GrantRole, Role } from "./rules";
 export { reaches, strongest } from "./rules";
 export {
-  allGrantedNodeIds,
   dropGrants,
   dropMemberGrants,
+  grantedBy,
   grantedNodeIds,
   grantsOnNode,
   type RoleNode,

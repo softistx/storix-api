@@ -18,6 +18,7 @@ import {
 } from "./services";
 import {
   nameOf,
+  nodePage,
   nodeView,
   recordFolderCreate,
   recordMove,
@@ -90,15 +91,7 @@ export const nodesResolvers: Resolvers = {
         first,
         after,
       });
-      return {
-        nodes: page.items.map(nodeView),
-        pageInfo: {
-          startCursor: null,
-          endCursor: page.endCursor,
-          hasNextPage: page.endCursor !== null,
-          hasPreviousPage: typeof after === "string",
-        },
-      };
+      return nodePage(page, after);
     },
   },
   Mutation: {

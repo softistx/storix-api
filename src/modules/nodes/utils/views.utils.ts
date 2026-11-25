@@ -50,3 +50,20 @@ export const nodeView = (node: NodeDoc) =>
   node.type === "FOLDER"
     ? { __typename: "Folder" as const, ...commonOf(node) }
     : fileView(node);
+
+// A listing's answer: the nodes as views and the page info a cursor page
+// carries (the end cursor is null on the last page).
+export function nodePage(
+  page: { items: Parameters<typeof nodeView>[0][]; endCursor: string | null },
+  after: string | null | undefined,
+) {
+  return {
+    nodes: page.items.map(nodeView),
+    pageInfo: {
+      startCursor: null,
+      endCursor: page.endCursor,
+      hasNextPage: page.endCursor !== null,
+      hasPreviousPage: typeof after === "string",
+    },
+  };
+}

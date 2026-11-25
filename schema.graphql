@@ -1406,10 +1406,12 @@ type Query {
   """
   sessions: [AccountSession!]!
   """
-  What the caller shares: their own live nodes that carry a grant to a member
-  or a team, one page, folders first then by name. Only the topmost node is
-  listed, not one under a folder that is shared too. Needs `nodes:read`. 400
-  `validation.errors.invalid-cursor` (field `after`).
+  What the caller shares: the live nodes that carry a grant the caller made
+  (to a member or a team), one page, folders first then by name. Only the
+  topmost node is listed, not one under a node that is listed too. A node an
+  owner shared and an editor shared again is the editor's here, not the
+  owner's. Needs `nodes:read`. 400 `validation.errors.invalid-cursor` (field
+  `after`).
   """
   sharedByMe(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): NodePage!
   """

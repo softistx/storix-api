@@ -133,12 +133,13 @@ export async function dropMemberGrants(
   });
 }
 
-// The ids of every node of the workspace that carries a grant, each once.
-export async function allGrantedNodeIds(
+// The ids of the nodes that carry a grant the account made, each once.
+export async function grantedBy(
   database: unknown,
+  accountId: string,
 ): Promise<ReturnType<typeof toObjectId>[]> {
   const grants = await sharesMongo(database).db.grants.findMany({
-    filter: {},
+    filter: { grantedBy: accountId },
   });
   const seen = new Map(grants.map((g) => [g.nodeId.toHexString(), g.nodeId]));
   return [...seen.values()];
