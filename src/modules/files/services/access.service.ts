@@ -1,10 +1,6 @@
 import { membersMongo, type Seat, seatOf } from "@/core/members";
-import { roleOn } from "@/modules/shares/public";
+import { grantedNodeIds } from "@/modules/shares/public";
 import type { FilesMongo } from "../models";
-
-// The most nodes whose role is asked for one key: a blob a copy shares is held
-// by a handful of nodes.
-const HOLDERS = 50;
 
 // Whether the account may read a `files` object: a live node holds the key, as
 // its blob or as one of its versions', and the caller reaches it as a viewer at
@@ -30,12 +26,13 @@ export async function mayRead(
   if (await mongo.db.nodes.findFirst({ ...held, ownerId: read.accountId })) {
     return true;
   }
-  const holders = await mongo.db.nodes.findMany({
-    filter: held,
-    limit: HOLDERS,
+  const granted = await grantedNodeIds(mongo, who);
+  if (granted.length === 0) return false;
+  const reached = await mongo.db.nodes.findFirst({
+    $and: [
+      held,
+      { $or: [{ _id: { $in: granted } }, { ancestors: { $in: granted } }] },
+    ],
   });
-  for (const node of holders) {
-    if (await roleOn(mongo, who, node)) return true;
-  }
-  return false;
+  return reached !== null;
 }

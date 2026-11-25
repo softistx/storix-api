@@ -42,3 +42,23 @@ export async function roleOn(
   });
   return strongest(grants.map((grant) => grant.role));
 }
+
+// The ids of the nodes the caller holds a grant on, by member or by team: the
+// roots of everything a share lets them reach. Empty for a bare account id.
+export async function grantedNodeIds(
+  database: unknown,
+  who: Who,
+): Promise<ReturnType<typeof toObjectId>[]> {
+  const memberId = memberOf(who);
+  if (memberId === null) return [];
+  const teamIds = await teamIdsOfMember(teamsMongo(database), memberId);
+  const grants = await sharesMongo(database).db.grants.findMany({
+    filter: {
+      $or: [
+        { "principal.type": "MEMBER", "principal.id": toObjectId(memberId) },
+        { "principal.type": "TEAM", "principal.id": { $in: teamIds } },
+      ],
+    },
+  });
+  return grants.map((grant) => grant.nodeId);
+}
