@@ -184,6 +184,7 @@ export const filesResolvers: Resolvers = {
       for (const { node, from } of copies) {
         await recordCopy(done, node, from);
       }
+      await ctx.notify.usage({ scope });
       return copies.map(({ node }) => nodeView(node));
     },
     updateFile: async (_, { id, input }, ctx) => {

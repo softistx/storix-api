@@ -120,4 +120,16 @@ describe("the inbox over GraphQL", () => {
     expect(result.errors).toBeDefined();
     expect(a.w.codeOf(result)).toBeDefined();
   });
+
+  test("a garbage cursor is a 400 validation.errors.invalid-cursor", async () => {
+    const { guest, ask } = await inbox();
+    const result = await ask(guest, LIST, {
+      first: 5,
+      after: "not-a-cursor",
+      unreadOnly: false,
+    });
+    expect(result.errors?.[0]?.extensions?.["code"]).toBe(
+      "validation.errors.invalid-cursor",
+    );
+  });
 });

@@ -180,7 +180,7 @@ async function setUsage(area: Area, bytes: number, quota: number) {
 }
 
 describe("the quota alerts", () => {
-  test("80 % tells the owner and the admins once, 100 % tells again", async () => {
+  test("80 % tells the owners and the admins once, the uploading one included, and 100 % tells again", async () => {
     const a = await roleArea();
     const admin = await a.w.join(a.workspace, "ADMIN");
     const member = await a.w.join(a.workspace, "MEMBER");

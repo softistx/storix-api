@@ -29,10 +29,3 @@ export interface Notify {
   roleChanged(event: ShareEvent): Promise<void>;
   usage(event: UsageEvent): Promise<void>;
 }
-
-// The notifier of an app that notifies nobody (specs that do not care).
-export const noNotify: Notify = {
-  shared: async () => undefined,
-  roleChanged: async () => undefined,
-  usage: async () => undefined,
-};

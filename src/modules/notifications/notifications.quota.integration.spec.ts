@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { tenancy } from "@/config/tenancy";
 import { setQuota, workspacesMongo } from "@/core/workspaces";
-import { filesWorld } from "../../../test/files.harness";
+import { COPY, filesWorld } from "../../../test/files.harness";
 import { ADD_VERSION } from "../../../test/shares.harness";
+import { PURGE, TRASH } from "../../../test/trash.harness";
 import { setup } from "../nodes/nodes.harness";
 
 const files = filesWorld();
@@ -89,6 +90,56 @@ describe("the quota alerts on upload", () => {
       variables: { fileId: file.id, key: up.key },
     });
     expect(added.errors).toBeUndefined();
+    expect(await percents(a, a.workspace.owner)).toEqual([80]);
+  });
+
+  test("usage that falls under the threshold and rises again tells again", async () => {
+    const a = await area();
+    await setQuota(workspacesMongo(tenancy.core), a.workspace.slug, 100);
+    const up = (name: string, size: number) =>
+      files.addFile(
+        a.workspace.owner,
+        a.workspace.id,
+        a.root.id,
+        name,
+        "x".repeat(size),
+      );
+    await up("base.txt", 70);
+    const lift = await up("lift.txt", 15);
+    expect(await percents(a, a.workspace.owner)).toEqual([80]);
+
+    const trashed = await a.w.send(a.workspace.owner, TRASH, {
+      workspace: a.workspace.id,
+      variables: { ids: [lift.id] },
+    });
+    expect(trashed.errors).toBeUndefined();
+    // The trash still holds the bytes: only a purge frees them.
+    const purged = await a.w.send(a.workspace.owner, PURGE, {
+      workspace: a.workspace.id,
+      variables: { ids: [lift.id] },
+    });
+    expect(purged.errors).toBeUndefined();
+    await up("again.txt", 15);
+    expect(await percents(a, a.workspace.owner)).toEqual([80, 80]);
+  });
+
+  test("a copy shares the blobs, moves no bytes and so tells nothing new", async () => {
+    const a = await area();
+    await setQuota(workspacesMongo(tenancy.core), a.workspace.slug, 100);
+    const file = await files.addFile(
+      a.workspace.owner,
+      a.workspace.id,
+      a.root.id,
+      "doc.txt",
+      "x".repeat(85),
+    );
+    expect(await percents(a, a.workspace.owner)).toEqual([80]);
+    const target = await a.owner.folder(a.root.id, "Copies");
+    const copied = await a.w.send(a.workspace.owner, COPY, {
+      workspace: a.workspace.id,
+      variables: { ids: [file.id], parentId: target.id },
+    });
+    expect(copied.errors).toBeUndefined();
     expect(await percents(a, a.workspace.owner)).toEqual([80]);
   });
 });

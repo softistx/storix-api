@@ -1,4 +1,5 @@
-import { toObjectId, tryObjectId } from "@softistx/mongo";
+import { InvalidCursorError, toObjectId, tryObjectId } from "@softistx/mongo";
+import { fail } from "@/i18n/fail";
 import type { NotificationDoc, NotificationsMongo } from "../models";
 import { notificationNotFound } from "../notifications.errors";
 
@@ -16,18 +17,28 @@ export async function listNotifications(
     accountId: input.accountId,
     ...(input.unreadOnly && { readAt: null }),
   };
-  const [page, totalCount] = await Promise.all([
-    mongo.db.notifications.paginateByCursor({
-      filter,
-      limit: input.first,
-      after: input.after,
-      orderBy: "createdAt",
-      direction: "desc",
-      scope: `notifications:${input.accountId}:${input.unreadOnly}`,
-    }),
-    mongo.db.notifications.count(filter),
-  ]);
-  return { items: page.items, endCursor: page.nextCursor, totalCount };
+  try {
+    const [page, totalCount] = await Promise.all([
+      mongo.db.notifications.paginateByCursor({
+        filter,
+        limit: input.first,
+        after: input.after,
+        orderBy: "createdAt",
+        direction: "desc",
+        scope: `notifications:${input.accountId}:${input.unreadOnly}`,
+      }),
+      mongo.db.notifications.count(filter),
+    ]);
+    return { items: page.items, endCursor: page.nextCursor, totalCount };
+  } catch (error) {
+    if (error instanceof InvalidCursorError) {
+      throw fail("validation.errors.invalid-cursor", {
+        status: 400,
+        field: "after",
+      });
+    }
+    throw error;
+  }
 }
 
 export const unreadCount = (mongo: NotificationsMongo, accountId: string) =>
