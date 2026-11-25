@@ -43,6 +43,7 @@ describe("roles data-loader", () => {
     reads.mockRestore();
     // One for the listing itself, one batched `$in` for the roles of the page:
     // never one per node (the page holds five or more).
+    expect(grantReads.length).toBeGreaterThanOrEqual(1);
     expect(grantReads.length).toBeLessThanOrEqual(2);
   });
 
