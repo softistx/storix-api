@@ -34,12 +34,16 @@ describe("roles data-loader", () => {
       expect(node.myRole).toBe("VIEWER");
       expect(node.grants).toEqual([]);
     }
+    // Only this workspace's database: the spy sees the whole process.
     const grantReads = reads.mock.contexts.filter(
-      (c) => (c as Collection).collectionName === "grants",
+      (c) =>
+        (c as Collection).collectionName === "grants" &&
+        (c as Collection).dbName.endsWith(a.workspace.id),
     );
     reads.mockRestore();
     // One for the listing itself, one batched `$in` for the roles of the page:
     // never one per node (the page holds five or more).
+    expect(grantReads.length).toBeGreaterThanOrEqual(1);
     expect(grantReads.length).toBeLessThanOrEqual(2);
   });
 

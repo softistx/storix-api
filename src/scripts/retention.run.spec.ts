@@ -59,7 +59,7 @@ describe("the retention script", () => {
       { $set: { trashedAt: new Date(Date.now() - 40 * DAY) } },
     );
     quiet();
-    spies.push(failDeleteOn("nodes", 1));
+    spies.push(failDeleteOn("nodes", 1, a.id));
     const { exitCode, summary } = await runRetention(a.core(), (id) =>
       store.databaseOf(id),
     );
