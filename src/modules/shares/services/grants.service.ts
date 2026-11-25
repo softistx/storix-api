@@ -113,3 +113,15 @@ export async function dropGrants(
     nodeId: { $in: nodeIds.map((id) => toObjectId(id)) },
   });
 }
+
+// Drops every grant a member holds: it is called when the member leaves, since
+// a rejoin reuses the member row and must not bring the old shares back.
+export async function dropMemberGrants(
+  database: unknown,
+  memberId: string,
+): Promise<void> {
+  await sharesMongo(database).db.grants.deleteMany({
+    "principal.type": "MEMBER",
+    "principal.id": toObjectId(memberId),
+  });
+}

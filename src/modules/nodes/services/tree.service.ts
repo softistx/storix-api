@@ -1,4 +1,5 @@
 import { accountOf, type Who } from "@/core/members";
+import { roleOn } from "@/modules/shares/public";
 import type { NodeDoc, NodesMongo } from "../models";
 import { byName } from "../utils";
 import { ensureRoot, folderFor, nodeFor } from "./nodes.service";
@@ -38,5 +39,19 @@ export async function pathTo(
   });
   const byId = new Map(above.map((doc) => [doc.id, doc]));
   const path = node.ancestors.flatMap((a) => byId.get(a.toHexString()) ?? []);
-  return [...path, node];
+  return fromShare(mongo, accountId, [...path, node]);
+}
+
+// A grantee sees the path from the highest node they reach: roles come down
+// the tree, so the names above the share point stay hidden.
+async function fromShare(
+  mongo: NodesMongo,
+  who: Who,
+  path: NodeDoc[],
+): Promise<NodeDoc[]> {
+  for (let i = 0; i < path.length; i++) {
+    const at = path[i];
+    if (at && (await roleOn(mongo, who, at))) return path.slice(i);
+  }
+  return path.slice(-1);
 }

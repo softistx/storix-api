@@ -1,6 +1,7 @@
 import { createAuditor } from "../core/audit";
 import type { MemberWiring } from "../core/members";
 import { nodesOnHandover, nodesOnJoin } from "../modules/nodes/public";
+import { sharesOnRemoved } from "../modules/shares/public";
 import { teamsOnRemoved } from "../modules/teams/public";
 import { env } from "./env";
 import { store } from "./tenancy";
@@ -17,7 +18,7 @@ import { store } from "./tenancy";
 export const members: MemberWiring = {
   databaseOf: (workspaceId) => store.databaseOf(workspaceId),
   onJoined: [nodesOnJoin],
-  onRemoved: [teamsOnRemoved],
+  onRemoved: [teamsOnRemoved, sharesOnRemoved],
   onHandover: [nodesOnHandover],
 };
 

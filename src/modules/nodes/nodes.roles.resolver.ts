@@ -5,6 +5,7 @@ import {
   grantView,
   roleOn,
 } from "@/modules/shares/public";
+import { nodeNotFound } from "./nodes.errors";
 import { roleNodeOf } from "./utils";
 
 // `Node.myRole` and `Node.grants`, shared by `Folder` and `File`: the caller's
@@ -21,7 +22,9 @@ export const nodeRoleFields = {
       "nodes:read",
     );
     const seat = await callerSeat(scope, principal.accountId);
-    return (await roleOn(scope.mongo, seat, roleNodeOf(node))) ?? "VIEWER";
+    const role = await roleOn(scope.mongo, seat, roleNodeOf(node));
+    if (!role) throw nodeNotFound();
+    return role;
   },
   grants: async (
     node: { id: string; ancestors: readonly string[]; ownerId: string | null },

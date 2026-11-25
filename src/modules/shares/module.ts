@@ -1,5 +1,7 @@
 import { defineModule } from "@softistx/alxia-modules";
+import type { RemovalListener } from "@/core/members";
 import { grants } from "./models";
+import { dropMemberGrants } from "./services";
 import { shares as codes } from "./shares.errors";
 import typeDefs from "./shares.graphqls" with { type: "text" };
 import { sharesResolvers } from "./shares.resolver";
@@ -16,3 +18,8 @@ export const sharesModule = defineModule({
   typeDefs: [typeDefs],
   resolvers: sharesResolvers,
 });
+
+// The app's wiring (src/config/wiring.ts) hands it to the members kernel: a
+// member who leaves loses the grants made to them.
+export const sharesOnRemoved: RemovalListener = (scope, removal) =>
+  dropMemberGrants(scope.mongo, removal.memberId);

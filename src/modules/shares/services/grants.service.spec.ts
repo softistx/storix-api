@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { roleArea } from "../../../../test/roles.harness";
 import {
   dropGrants,
+  dropMemberGrants,
   grantNode,
   grantOf,
   grantsOnNode,
@@ -65,5 +66,22 @@ describe("the grants of a node", () => {
     await dropGrants(a.database, [a.folder.id]);
     expect(await grantsOnNode(a.database, a.folder.id)).toEqual([]);
     expect(await grantsOnNode(a.database, a.sibling.id)).toHaveLength(1);
+  });
+
+  test("dropMemberGrants ends the grants a member holds and keeps the others", async () => {
+    const a = await roleArea();
+    const gone = await a.w.join(a.workspace, "MEMBER");
+    const kept = await a.w.join(a.workspace, "MEMBER");
+    await a.grant(a.folder.id, { type: "MEMBER", id: gone.memberId }, "VIEWER");
+    await a.grant(a.child.id, { type: "MEMBER", id: gone.memberId }, "EDITOR");
+    await a.grant(a.folder.id, { type: "MEMBER", id: kept.memberId }, "VIEWER");
+    await dropMemberGrants(a.database, gone.memberId);
+    const left = [
+      ...(await grantsOnNode(a.database, a.folder.id)),
+      ...(await grantsOnNode(a.database, a.child.id)),
+    ];
+    expect(left.map((g) => g.principal.id.toHexString())).toEqual([
+      kept.memberId,
+    ]);
   });
 });

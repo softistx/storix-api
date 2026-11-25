@@ -54,14 +54,7 @@ export async function copyNodes(
         input.accountId,
         "EDITOR",
       );
-      const selected: NodeDoc[] = [];
-      for (const id of new Set(input.ids)) {
-        selected.push(await nodeFor(tx, id, input.accountId, "VIEWER"));
-      }
-      const chosen = new Set(selected.map((node) => node.id));
-      const tops = selected.filter(
-        (node) => !node.ancestors.some((a) => chosen.has(a.toHexString())),
-      );
+      const tops = await selectTops(tx, input.ids, input.accountId);
       const refs = new Map<string, number>();
       const copies: { node: NodeDoc; from: string }[] = [];
       let made = 0;
@@ -116,6 +109,23 @@ export async function copyNodes(
       }
       return copies;
     }),
+  );
+}
+
+// The nodes a copy starts from: each selected node the caller may read, but
+// not one under another selected one (it is copied with it).
+async function selectTops(
+  tx: FilesMongo,
+  ids: readonly string[],
+  accountId: Who,
+): Promise<NodeDoc[]> {
+  const selected: NodeDoc[] = [];
+  for (const id of new Set(ids)) {
+    selected.push(await nodeFor(tx, id, accountId, "VIEWER"));
+  }
+  const chosen = new Set(selected.map((node) => node.id));
+  return selected.filter(
+    (node) => !node.ancestors.some((a) => chosen.has(a.toHexString())),
   );
 }
 
