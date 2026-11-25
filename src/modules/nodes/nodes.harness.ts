@@ -31,6 +31,7 @@ export async function setup(existing?: World) {
       w.send(user, query, { ...at, ...(variables && { variables }) }),
     root: async () => {
       const result = await w.send(user, ROOTS, at);
+      if (result.errors) throw new Error(JSON.stringify(result.errors));
       return ((result.data?.["roots"] ?? []) as NodeView[])[0] as NodeView;
     },
     // Creates a folder and answers it; throws on a refusal.

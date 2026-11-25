@@ -61,7 +61,7 @@ describe("a purge that fails partway", () => {
     const two = await files.addFile(a.owner, a.id, a.root.id, "b.txt", "bravo");
     await a.trash([one]);
     await a.trash([two]);
-    spy = failDeleteOn("nodes", 2);
+    spy = failDeleteOn("nodes", 2, a.id);
     const result = await a.purge([one, two]);
     spy.mockRestore();
     expect(result.errors).toBeDefined();
@@ -85,7 +85,7 @@ describe("a purge that fails partway", () => {
     const two = await files.addFile(a.owner, a.id, a.root.id, "b.txt", "bravo");
     await a.trash([one]);
     await a.trash([two]);
-    spy = failDeleteOn("nodes", 2);
+    spy = failDeleteOn("nodes", 2, a.id);
     const result = await a.empty();
     spy.mockRestore();
     expect(result.errors).toBeDefined();

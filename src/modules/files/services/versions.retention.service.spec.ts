@@ -59,7 +59,7 @@ describe("version retention", () => {
     const second = await a.add("b.txt", "w1");
     for (const file of [first, second]) await a.push(file.id, `${file.name}2`);
     const logged = spyOn(console, "error").mockImplementation(() => {});
-    spies.push(logged, failDeleteOn("versions", 1));
+    spies.push(logged, failDeleteOn("versions", 1, a.id));
     const report = await retainVersions(a.mongo, core(), a.id, { max: 1 });
     expect(report).toEqual({ files: 1, removed: 1, failed: 1 });
     const counts = [

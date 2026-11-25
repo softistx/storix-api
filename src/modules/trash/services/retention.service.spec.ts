@@ -92,7 +92,7 @@ describe("trash retention", () => {
     await a.trash([one]);
     await a.trash([two]);
     const logged = spyOn(console, "error").mockImplementation(() => {});
-    spies.push(logged, failDeleteOn("nodes", 1));
+    spies.push(logged, failDeleteOn("nodes", 1, a.id));
     const report = await retainTrash(a.mongo, a.core(), a.id, {
       days: 0,
       now: () => new Date(Date.now() + DAY),
