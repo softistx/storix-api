@@ -1,6 +1,7 @@
 import type { MigrateMode, TenantMigration } from "@softistx/alxia-tenancy";
 import {
   type Migration,
+  type MigrationStatus,
   migrate,
   migrationStatus,
   rollback,
@@ -11,7 +12,9 @@ import type { Db } from "mongodb";
 // the core database with its list, then every workspace database with
 // `store.migrateTenants` (which syncs the indexes first on an apply, visits
 // every workspace and reports a failing one without stopping the others).
-// Answers what to print and the exit code: 1 when a workspace failed.
+// Answers what to print (lines, then the core states as a table) and the
+// exit code: 1 when a workspace failed. A rollback to a core id leaves the
+// workspace migrations untouched, and the reverse.
 export interface MigrateRun {
   core: Db;
   coreList: readonly Migration[];
@@ -21,12 +24,15 @@ export interface MigrateRun {
   mode: MigrateMode;
 }
 
-export async function runMigrate(
-  run: MigrateRun,
-): Promise<{ lines: string[]; exitCode: 0 | 1 }> {
+export async function runMigrate(run: MigrateRun): Promise<{
+  lines: string[];
+  coreStatus?: MigrationStatus[] | undefined;
+  exitCode: 0 | 1;
+}> {
   const { core, mode } = run;
   const list = [...run.coreList];
   const lines: string[] = [];
+  let coreStatus: MigrationStatus[] | undefined;
   let toCore = true;
   let toTenants = true;
   if (mode.kind === "rollback") {
@@ -48,7 +54,7 @@ export async function runMigrate(
         ),
       );
     }
-    lines.push(`core: ${JSON.stringify(await migrationStatus(core, list))}`);
+    coreStatus = await migrationStatus(core, list);
   }
   let exitCode: 0 | 1 = 0;
   if (toTenants) {
@@ -69,5 +75,5 @@ export async function runMigrate(
       }
     }
   }
-  return { lines, exitCode };
+  return { lines, coreStatus, exitCode };
 }
