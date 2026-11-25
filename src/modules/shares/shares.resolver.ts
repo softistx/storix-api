@@ -50,6 +50,16 @@ export const sharesResolvers: Resolvers = {
         node,
         grant,
       );
+      await ctx.notify.shared({
+        scope,
+        actorId: who.accountId,
+        node: { id: node._id.toHexString(), name: node.name },
+        principal: {
+          type: grant.principal.type,
+          id: grant.principal.id.toHexString(),
+        },
+        role: grant.role,
+      });
       return grantView(grant);
     },
     changeGrant: async (_, { id, grantId, role }, ctx) => {
@@ -76,6 +86,18 @@ export const sharesResolvers: Resolvers = {
         grant,
         before,
       );
+      if (before.role !== grant.role) {
+        await ctx.notify.roleChanged({
+          scope,
+          actorId: who.accountId,
+          node: { id: node._id.toHexString(), name: node.name },
+          principal: {
+            type: grant.principal.type,
+            id: grant.principal.id.toHexString(),
+          },
+          role: grant.role,
+        });
+      }
       return grantView(grant);
     },
     unshareNode: async (_, { id, grantId }, ctx) => {

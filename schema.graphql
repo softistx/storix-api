@@ -753,6 +753,13 @@ A MAC address: six hex pairs separated by colons (not the IEEE hyphen form).
 """
 scalar MAC
 
+"""
+Whether you receive a mail for each notification. Notifications are always recorded.
+"""
+type MailPreferences {
+  mails: Boolean!
+}
+
 """A person in a workspace."""
 type Member {
   """The account's opaque id."""
@@ -934,6 +941,12 @@ type Mutation {
   owner first.
   """
   leaveWorkspace: Boolean!
+  """Marks every unread notification read; answers how many it changed."""
+  markAllNotificationsRead: Int!
+  """
+  Marks one notification read (idempotent). 404 `notifications.errors.not-found` when it is not yours.
+  """
+  markNotificationRead(id: ID!): Notification!
   """
   Moves nodes under a folder, all or nothing; answers the nodes moved (one
   that sits under another selected node moves with it and is not listed). A
@@ -1066,6 +1079,8 @@ type Mutation {
   a coordinate outside 0 to 1.
   """
   setFocalPoint(focalPoint: FocalPointInput, id: ID!): File!
+  """Turns the mail of your notifications on or off."""
+  setMailPreferences(mails: Boolean!): MailPreferences!
   """
   Stars (`starred: true`) or unstars a node of the caller's tree; repeating it
   changes nothing. Answers the node. Needs `nodes:read`: a favourite is the
@@ -1264,6 +1279,41 @@ scalar NonPositiveFloat
 """An integer from -2147483648 to 0."""
 scalar NonPositiveInt
 
+"""One line of your inbox. It spans every workspace you belong to."""
+type Notification {
+  """The account that caused it, or null (a quota threshold)."""
+  actorId: ID
+  createdAt: DateTime!
+  id: ID!
+  kind: NotificationKind!
+  nodeId: ID
+  """The node's name when it happened."""
+  nodeName: String
+  """The threshold crossed, 80 or 100 (QUOTA_THRESHOLD)."""
+  percent: Int
+  """Null while unread."""
+  readAt: DateTime
+  """The role granted (SHARED, ROLE_CHANGED)."""
+  role: GrantRole
+  workspaceId: ID!
+}
+
+"""What a notification tells."""
+enum NotificationKind {
+  """A workspace you administer crossed 80 % or 100 % of its storage quota."""
+  QUOTA_THRESHOLD
+  """Your role on a shared node changed."""
+  ROLE_CHANGED
+  """A node was shared with you, or with a team you belong to."""
+  SHARED
+}
+
+type NotificationPage {
+  nodes: [Notification!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
 """A MongoDB ObjectId: 24 hexadecimal digits."""
 scalar ObjectID @specifiedBy(url: "https://www.mongodb.com/docs/manual/reference/method/ObjectId/")
 
@@ -1352,6 +1402,7 @@ type Query {
   NOT_FOUND when the application's `authorize` refuses the scope.
   """
   invitations(after: String, lapsed: JanusInvitationLapsed, limit: Int, order: JanusInvitationOrder, ref: String, role: WorkspaceRole, scope: String!, status: String): JanusInvitationPage! @authenticated
+  mailPreferences: MailPreferences!
   """
   The current members of the request's workspace (the `x-storix-workspace`
   header), oldest first. Needs `members:read`, which every role holds. 400
@@ -1384,6 +1435,10 @@ type Query {
   another folder, filter or sort.
   """
   nodes(after: String @constraint(maxLength: 500), filter: NodeFilter, first: Int! = 50 @constraint(min: 1, max: 100), parentId: ID!, sort: NodeSort): NodePage!
+  """
+  Your notifications, newest first. Needs a session, no workspace header.
+  """
+  notifications(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100), unreadOnly: Boolean! = false): NotificationPage!
   """
   The files the caller opened or uploaded lately, the latest first, one page:
   at most 200 are kept per member, one entry per file, and a trashed file
@@ -1456,6 +1511,8 @@ type Query {
   `validation.errors.invalid-cursor`.
   """
   trash(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): NodePage!
+  """How many of your notifications are unread."""
+  unreadNotificationCount: Int!
   version: String!
   """The caller, or null when anonymous."""
   viewer: Viewer

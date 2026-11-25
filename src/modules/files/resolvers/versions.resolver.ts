@@ -63,6 +63,7 @@ export const versionMutations: Pick<
       node,
       { number },
     );
+    await ctx.notify.usage({ scope });
     await recordRecent(mongo, {
       accountId: principal.accountId,
       nodeId: node._id,

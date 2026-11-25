@@ -146,6 +146,7 @@ export const filesResolvers: Resolvers = {
         await recordVersion(done, "file.version-add", node, {
           number: appended,
         });
+      await ctx.notify.usage({ scope });
       // An upload is a recent file; the upload stands if the note fails.
       await recordRecent(filesMongo(scope.mongo), {
         accountId: principal.accountId,
