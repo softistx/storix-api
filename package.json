@@ -53,6 +53,7 @@
     "@softistx/alxia-tenancy": "^0.8.0",
     "@softistx/graxia": "^0.17.0",
     "@softistx/graxia-graphiql": "^0.4.1",
+    "@softistx/i18n": "^3.2.1",
     "@softistx/image": "^0.6.1",
     "@softistx/janus": "^0.81.0",
     "@softistx/janus-graphql": "^0.38.2",

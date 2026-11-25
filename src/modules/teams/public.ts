@@ -2,4 +2,4 @@
 
 export { teamsMongo } from "./models";
 export { teamsModule, teamsOnRemoved } from "./module";
-export { createTeam, getTeam, teamIdsOfMember } from "./services";
+export { createTeam, findTeam, getTeam, teamIdsOfMember } from "./services";

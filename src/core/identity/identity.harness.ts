@@ -30,10 +30,18 @@ export async function harness(
     renditions?: NonNullable<Parameters<typeof createApp>[0]>["renditions"];
     members?: NonNullable<Parameters<typeof createApp>[0]>["members"];
     audit?: NonNullable<Parameters<typeof createApp>[0]>["audit"];
+    translations?: NonNullable<Parameters<typeof createApp>[0]>["translations"];
   } = {},
 ) {
-  const { limits, media, renditions, members, audit, ...identityOptions } =
-    options;
+  const {
+    limits,
+    media,
+    renditions,
+    members,
+    audit,
+    translations,
+    ...identityOptions
+  } = options;
   const mailer = createMemoryMailer();
   // Fixed, but at the real time the harness starts: janus-mongo's sessions and
   // tokens carry a TTL index on `expiresAt`, which MongoDB's monitor sweeps by
@@ -58,6 +66,9 @@ export async function harness(
   if (!options.db) await identity.syncStores();
   const app = createApp({
     identity,
+    // The notification mails leave through the same memory mailer.
+    mailer,
+    ...(translations && { translations }),
     ...(limits && { limits }),
     ...(media && { media }),
     ...(renditions && { renditions }),

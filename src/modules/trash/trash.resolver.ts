@@ -53,6 +53,7 @@ export const trashResolvers: Resolvers = {
       );
       const done = doneBy(ctx, scope.tenant.id, principal);
       for (const node of trashed) await recordTrash(done, "node.trash", node);
+      await ctx.notify.usage({ scope });
       return trashed.map(nodeView);
     },
     restoreNodes: async (_, { ids }, ctx) => {
@@ -69,6 +70,7 @@ export const trashResolvers: Resolvers = {
       for (const node of restored) {
         await recordTrash(done, "node.restore", node);
       }
+      await ctx.notify.usage({ scope });
       return restored.map(nodeView);
     },
     purgeNodes: async (_, { ids }, ctx) => {
@@ -89,6 +91,7 @@ export const trashResolvers: Resolvers = {
           onPurged: (node) => recordTrash(done, "node.purge", node),
         },
       );
+      await ctx.notify.usage({ scope });
       return removed;
     },
     emptyTrash: async (_, __, ctx) => {
@@ -116,6 +119,7 @@ export const trashResolvers: Resolvers = {
         if (counts.entries > 0) {
           await recordEmpty(done, principal.accountId, counts);
         }
+        await ctx.notify.usage({ scope });
       }
       return counts.nodes;
     },

@@ -48,6 +48,8 @@ describe("the core migrations", () => {
     "2026-11-22-invitations-states-errors",
     "2026-11-23-account-security-errors",
     "2026-11-24-shares-errors",
+    "2026-11-25-notifications-errors",
+    "2026-11-25-notifications-mail",
   ];
   const SHIPPED_WORKSPACE = [
     "2026-11-15-nodes-listing-collation",

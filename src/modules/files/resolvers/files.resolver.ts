@@ -146,6 +146,7 @@ export const filesResolvers: Resolvers = {
         await recordVersion(done, "file.version-add", node, {
           number: appended,
         });
+      await ctx.notify.usage({ scope });
       // An upload is a recent file; the upload stands if the note fails.
       await recordRecent(filesMongo(scope.mongo), {
         accountId: principal.accountId,
@@ -183,6 +184,7 @@ export const filesResolvers: Resolvers = {
       for (const { node, from } of copies) {
         await recordCopy(done, node, from);
       }
+      await ctx.notify.usage({ scope });
       return copies.map(({ node }) => nodeView(node));
     },
     updateFile: async (_, { id, input }, ctx) => {

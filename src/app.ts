@@ -1,8 +1,10 @@
 import { health } from "@softistx/alxia";
 import { graphql, type ServerContext } from "@softistx/alxia-graphql";
 import type { MediaBucket } from "@softistx/alxia-media";
+import type { Mailer } from "@softistx/mail";
 import { identity as serverIdentity } from "./config/auth";
 import { closeDatabases, mongoAnswers } from "./config/db";
+import { notifierOf } from "./config/notifier";
 import { appRedis, closeQueues, limits as serverLimits } from "./config/redis";
 import {
   bucket as serverBucket,
@@ -15,6 +17,7 @@ import {
 import type { Auditor } from "./core/audit";
 import type { Identity } from "./core/identity";
 import type { MemberWiring } from "./core/members";
+import type { Notify } from "./core/notify";
 import {
   type FileReader,
   storageRoutes,
@@ -63,16 +66,20 @@ export function createApp(
     members?: MemberWiring;
     audit?: Auditor;
     translations?: Translations;
+    // The mailer the notification mails leave through (default: the
+    // server's, over the mails queue) and the notifier itself, which specs
+    // may replace.
+    mailer?: Mailer;
+    notify?: Notify;
   } = {},
 ) {
   const bucket = options.media ? options.media.bucket : serverBucket;
   const renditions =
     "renditions" in options ? options.renditions : appRedis?.queues.renditions;
+  const identity = options.identity ?? serverIdentity;
+  const notify = options.notify ?? notifierOf(identity, options);
   return (
-    createBase(
-      options.identity ?? serverIdentity,
-      options.limits ?? serverLimits,
-    )
+    createBase(identity, options.limits ?? serverLimits)
       .use(keyPathsOnly)
       .plugin(probes(options.mongo ?? mongoAnswers))
       // A body past 100 KiB is refused (413) before it is read: a query is a few
@@ -86,6 +93,7 @@ export function createApp(
             renditions,
             members: options.members ?? serverMembers,
             audit: options.audit ?? serverAuditor,
+            notify,
             translations: options.translations,
           }),
           plugins: graphqlPlugins,

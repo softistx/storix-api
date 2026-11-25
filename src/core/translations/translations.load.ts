@@ -7,6 +7,7 @@ import {
   type Tree,
 } from "@softistx/alxia-i18n";
 import type { ModuleCoreHandle } from "@softistx/alxia-modules";
+import { createTranslator } from "@softistx/i18n";
 import type { core } from "@/config/db";
 import { FALLBACK_LANGUAGE, i18n, type Language } from "@/i18n";
 import { errorCodes } from "@/i18n/codes";
@@ -33,10 +34,19 @@ export interface CatalogueView {
 export interface Translations {
   catalogueOfLanguage(language: string): CatalogueView;
   errorMessages(language: string): MessageView[];
+  // One message in a given language (ICU, its params filled), the key itself
+  // when the language or the key is unknown: for what is written outside a
+  // request, such as a mail to another account.
+  text(
+    language: string,
+    key: string,
+    params?: Record<string, string | number>,
+  ): string;
 }
 
 export function translationsOf(
   served: ReadonlyMap<string, Served>,
+  trees: Readonly<Record<string, Tree>> = {},
 ): Translations {
   const servedOf = (language: string): Served => {
     const entry = served.get(language);
@@ -49,6 +59,14 @@ export function translationsOf(
       version: servedOf(language).version,
     }),
     errorMessages: (language) => servedOf(language).messages,
+    text: (language, key, params) => {
+      const tree = trees[language] ?? trees[FALLBACK_LANGUAGE];
+      if (tree === undefined) return key;
+      return createTranslator<string>({ [language]: tree }, () => language)(
+        key,
+        params,
+      );
+    },
   };
 }
 
@@ -99,5 +117,5 @@ export async function loadTranslations(
     language: FALLBACK_LANGUAGE,
   });
   i18n.setResources(built.trees as Record<Language, never>);
-  return translationsOf(built.served);
+  return translationsOf(built.served, built.trees);
 }

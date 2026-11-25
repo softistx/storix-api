@@ -63,6 +63,7 @@ export const versionMutations: Pick<
       node,
       { number },
     );
+    await ctx.notify.usage({ scope });
     await recordRecent(mongo, {
       accountId: principal.accountId,
       nodeId: node._id,
@@ -92,6 +93,7 @@ export const versionMutations: Pick<
       node,
       { number, from },
     );
+    await ctx.notify.usage({ scope });
     return fileOf(node);
   },
   deleteFileVersion: async (_, { fileId, versionId }, ctx) => {
@@ -115,6 +117,7 @@ export const versionMutations: Pick<
       node,
       { number },
     );
+    await ctx.notify.usage({ scope });
     return fileOf(node);
   },
 };

@@ -12,6 +12,7 @@ import { workspacesModule } from "../core/workspaces";
 import type { Context } from "../http/context";
 import { filesModule } from "./files/public";
 import { nodesModule } from "./nodes/public";
+import { notificationsModule } from "./notifications/public";
 import { quotasModule } from "./quotas/public";
 import { sharesModule } from "./shares/public";
 import { teamsModule } from "./teams/public";
@@ -30,6 +31,7 @@ const registered = [
   invitationsModule,
   teamsModule,
   sharesModule,
+  notificationsModule,
   nodesModule,
   filesModule,
   trashModule,

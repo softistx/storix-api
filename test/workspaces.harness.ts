@@ -33,6 +33,7 @@ export async function world(
     // A wiring other than the server's (specs: a listener that fails).
     members?: HarnessOptions["members"];
     audit?: HarnessOptions["audit"];
+    translations?: HarnessOptions["translations"];
   } = {},
 ) {
   const h = await harness({
@@ -41,6 +42,7 @@ export async function world(
     ...(options.renditions && { renditions: options.renditions }),
     ...(options.members && { members: options.members }),
     ...(options.audit && { audit: options.audit }),
+    ...(options.translations && { translations: options.translations }),
     onAcceptedInvitation: (accepted) =>
       joinWorkspace(
         membersMongo(tenancy.core),
