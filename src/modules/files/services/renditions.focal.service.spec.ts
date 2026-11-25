@@ -44,7 +44,7 @@ function held() {
 }
 
 describe("a renditions job settles only the focal point it rendered", () => {
-  test("a move during the first job leaves PROCESSING until the redo settles it", async () => {
+  test("a move during the first job is rendered again by that job before it settles", async () => {
     const a = await area();
     const file = await a.record("stale.png");
     const mongo = await databaseOf(a.workspace.id);
@@ -65,15 +65,10 @@ describe("a renditions job settles only the focal point it rendered", () => {
     });
     expect(moved.errors).toBeUndefined();
 
-    // The stale job ends: its sizes are stored, the node is not settled.
+    // The stale job ends: it sees the move after storing, redoes the crops
+    // with the moved point and settles it.
     gate.release();
     await first;
-    expect(await status()).toBe("PROCESSING");
-
-    // The redo job reads the moved point and settles it with the moved crop.
-    await renditionsHandler({ bucket: files.ctx.bucket, mongoOf: databaseOf })(
-      job(a.workspace.id, file.key, true),
-    );
     expect(await status()).toBe("READY");
     expect(await crop(a, file.key, "square")).toMatchObject({
       left: "red",
@@ -94,6 +89,37 @@ describe("a renditions job settles only the focal point it rendered", () => {
     expect(await crop(a, file.key, "square")).toMatchObject({
       left: "blue",
       right: "blue",
+    });
+  });
+
+  test("a stale job that stores after the redo settled READY stores the moved crops again", async () => {
+    const a = await area();
+    const file = await a.record("late.png");
+    const mongo = await databaseOf(a.workspace.id);
+    const read = () => mongo.db.nodes.findFirst({ blobKey: file.key });
+
+    // The stale full job read the centre and waits at its first store.
+    const gate = held();
+    const stale = renditionsHandler({
+      bucket: gate.bucket,
+      mongoOf: databaseOf,
+    })(job(a.workspace.id, file.key, false));
+    await gate.arrived;
+    await a.send(FOCAL, { id: file.id, focalPoint: { x: 0.05, y: 0.5 } });
+
+    // The redo stores the moved crops and settles READY first.
+    await renditionsHandler({ bucket: files.ctx.bucket, mongoOf: databaseOf })(
+      job(a.workspace.id, file.key, true),
+    );
+    expect((await read())?.status).toBe("READY");
+
+    // The stale job now overwrites them, then notices the move and redoes.
+    gate.release();
+    await stale;
+    expect((await read())?.status).toBe("READY");
+    expect(await crop(a, file.key, "square")).toMatchObject({
+      left: "red",
+      right: "red",
     });
   });
 });

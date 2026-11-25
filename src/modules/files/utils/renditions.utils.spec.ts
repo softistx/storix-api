@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { FILES_MAX_BYTES } from "@/core/storage";
 import { RENDITION_MAX_PIXELS } from "../rules";
-import { fitSide, limits, makeFromPdf } from "./renditions.utils";
+import {
+  FocalMoved,
+  fitSide,
+  limits,
+  makeFromPdf,
+  storeUntilStable,
+} from "./renditions.utils";
 
 // A one-page PDF with no text: pdf.js draws it as a blank page.
 const PDF = new TextEncoder().encode(
@@ -44,5 +50,61 @@ describe("makeFromPdf", () => {
     expect(made.map((one) => one.size)).toEqual(["thumb", "preview"]);
     expect(made.every((one) => one.contentType === "image/webp")).toBe(true);
     expect(made.every((one) => one.bytes.length > 0)).toBe(true);
+  });
+});
+
+describe("storeUntilStable", () => {
+  const stored = (log: string[]) => async (focal: { x: number } | null) => {
+    log.push(focal ? String(focal.x) : "centre");
+  };
+
+  test("stores once when the point did not move", async () => {
+    const log: string[] = [];
+    const focal = await storeUntilStable({
+      focal: null,
+      store: stored(log),
+      current: async () => null,
+    });
+    expect(focal).toBeNull();
+    expect(log).toEqual(["centre"]);
+  });
+
+  test("stores again for a point that moved, until it holds", async () => {
+    const log: string[] = [];
+    const reads = [
+      { x: 0.1, y: 0.5 },
+      { x: 0.2, y: 0.5 },
+    ];
+    const focal = await storeUntilStable({
+      focal: null,
+      store: stored(log),
+      current: async () => reads.shift() ?? { x: 0.2, y: 0.5 },
+    });
+    expect(focal).toEqual({ x: 0.2, y: 0.5 });
+    expect(log).toEqual(["centre", "0.1", "0.2"]);
+  });
+
+  test("stops when the node is gone", async () => {
+    const log: string[] = [];
+    await storeUntilStable({
+      focal: null,
+      store: stored(log),
+      current: async () => undefined,
+    });
+    expect(log).toEqual(["centre"]);
+  });
+
+  test("throws a retryable error when the point never settles", async () => {
+    let x = 0;
+    const result = storeUntilStable({
+      focal: null,
+      store: async () => {},
+      current: async () => {
+        x += 0.1;
+        return { x, y: 0.5 };
+      },
+      turns: 2,
+    });
+    await expect(result).rejects.toBeInstanceOf(FocalMoved);
   });
 });

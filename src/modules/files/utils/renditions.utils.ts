@@ -1,6 +1,8 @@
 import { renderPdfFirstPage } from "@softistx/image/pdf";
 import { FILES_MAX_BYTES } from "@/core/storage";
 import {
+  type Focal,
+  focalEquals,
   PREVIEW_SIZES,
   RENDITION_MAX_PIXELS,
   RENDITION_SIDES,
@@ -49,4 +51,34 @@ export async function makeFromPdf(
     made.push({ size, bytes: image.bytes, contentType: "image/webp" });
   }
   return made;
+}
+
+// How many times a store re-renders the crops after the focal point moved
+// under it, before the job gives up and is retried.
+export const FOCAL_TURNS = 3;
+
+// The focal point moved while the job stored (a stale job can end after the
+// redo settled the node, and its crops then overwrite the moved ones).
+export class FocalMoved extends Error {}
+
+// Stores the renditions made for `focal`, then re-reads the node's focal
+// point: whoever writes last looks again after writing, so the stored crops
+// converge on the current point. Returns the point the stored crops match.
+export async function storeUntilStable(options: {
+  focal: Focal | null;
+  store: (focal: Focal | null, again: boolean) => Promise<void>;
+  current: () => Promise<Focal | null | undefined>;
+  turns?: number;
+}): Promise<Focal | null> {
+  let focal = options.focal;
+  await options.store(focal, false);
+  for (let turn = 0; turn < (options.turns ?? FOCAL_TURNS); turn++) {
+    const now = await options.current();
+    if (now === undefined || focalEquals(now, focal)) return focal;
+    focal = now;
+    await options.store(focal, true);
+  }
+  const last = await options.current();
+  if (last === undefined || focalEquals(last, focal)) return focal;
+  throw new FocalMoved("the focal point kept moving while the crops stored");
 }
