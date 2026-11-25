@@ -33,11 +33,23 @@ export async function sharedWithMe(database: unknown, input: SharedInput) {
 }
 
 // What the caller shares: the live nodes whose grants they made, the topmost
-// only (a node under another one they shared is left to it).
+// only (a node under another one they shared is left to it), and only those
+// they can still read: their own nodes, or nodes under a grant they hold. A
+// revoked editor, or a node moved out of their reach, drops out of the list.
 export async function sharedByMe(database: unknown, input: SharedInput) {
   const ids = await grantedBy(database, accountOf(input.who));
+  const held = await grantedNodeIds(database, input.who);
   return pageNodes((q) => nodesMongo(database).db.nodes.findMany(q), {
-    base: [{ _id: { $in: ids }, trashedAt: null, ancestors: { $nin: ids } }],
+    base: [
+      { _id: { $in: ids }, trashedAt: null, ancestors: { $nin: ids } },
+      {
+        $or: [
+          { ownerId: accountOf(input.who) },
+          { _id: { $in: held } },
+          { ancestors: { $in: held } },
+        ],
+      },
+    ],
     order: orderOf("NAME", 1),
     scope: JSON.stringify(["shared", "by-me"]),
     first: input.first,
