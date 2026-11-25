@@ -35,7 +35,11 @@ export async function harness(
   const { limits, media, renditions, members, audit, ...identityOptions } =
     options;
   const mailer = createMemoryMailer();
-  const clock = fixedClock(new Date("2026-11-14T12:00:00Z"));
+  // Fixed, but at the real time the harness starts: janus-mongo's sessions and
+  // tokens carry a TTL index on `expiresAt`, which MongoDB's monitor sweeps by
+  // the server's own clock every 60 s. A date in the past (2026-11-14, plus a
+  // 7-day session) made that sweep delete live sessions in the middle of a run.
+  const clock = fixedClock(new Date());
   const db = connection.client.db(`identity_spec_${crypto.randomUUID()}`);
   const identity = createJanusIdentity({
     db,
