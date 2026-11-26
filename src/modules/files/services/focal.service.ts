@@ -14,7 +14,8 @@ import { enqueue } from "./enqueue.service";
 // centre) and has the worker redo its four crops from the stored original.
 // `invalid-focal` for a coordinate outside 0 to 1, `not-a-file` for a folder,
 // `not-renderable` for a file that is not a JPEG, PNG or WebP picture. The
-// point is the blob's: every node that shares it (a copy) takes it. With a
+// point is the tree's: every copy of the same owner and space takes it, a copy
+// another member holds does not. With a
 // queue the file is `PROCESSING` until the crops are stored (`READY`, or
 // `FAILED` when only they failed); without one the point is recorded and the
 // crops stay as they were. A file that is not `READY` (still `PROCESSING`,
@@ -49,9 +50,16 @@ export async function setFocalPoint(
   const node = await named(() =>
     mongo.db.nodes.as(accountOf(input.accountId)).update(before._id, change),
   );
-  // The other nodes of the blob (copies): silent, as the worker's statuses.
+  // The other nodes of the blob that sit in the same tree (copies the caller's
+  // role reaches): silent, as the worker's statuses. A copy another member
+  // holds is theirs: the caller has no role on it, so it keeps its point.
   await mongo.db.nodes.updateMany(
-    { blobKey: before.blobKey, _id: { $ne: before._id } },
+    {
+      blobKey: before.blobKey,
+      _id: { $ne: before._id },
+      ownerId: before.ownerId,
+      spaceId: before.spaceId,
+    },
     change,
     { audit: false },
   );
