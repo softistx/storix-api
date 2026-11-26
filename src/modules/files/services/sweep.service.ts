@@ -3,12 +3,14 @@ import type { WorkspacesMongo } from "@/core/workspaces";
 import { renditionJobId } from "@/queues/renditions";
 import type { FilesMongo } from "../models";
 import { filesMongo } from "../models";
-import type { RenditionsQueue } from "../rules";
+import {
+  RELEASE_GRACE_MS,
+  RELEASED_BRAKE,
+  type RenditionsQueue,
+} from "../rules";
 import {
   cannotAfford,
   oldKeysOf,
-  RELEASE_GRACE_MS,
-  RELEASED_BRAKE,
   removeObjects,
   type StuckReport,
   type Sweep,
@@ -20,7 +22,7 @@ import {
   renewSweepLock,
   takeSweepLock,
 } from "./sweep.lock.service";
-import { dryPass, releaseOne, unrecordedOf } from "./sweep.release.service";
+import { dryPass, releaseOne, unrecordedOf } from "./sweep.steps.service";
 
 export {
   CLOCK_SKEW_MS,
@@ -28,7 +30,7 @@ export {
   ORPHAN_BRAKE_RATIO,
   RELEASE_GRACE_MS,
   RELEASED_BRAKE,
-} from "../utils";
+} from "../rules";
 export type { StuckReport, SweepBucket, SweepReport };
 
 /** An object nobody recorded is an orphan this long after its last write. */

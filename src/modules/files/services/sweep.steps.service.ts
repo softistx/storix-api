@@ -1,10 +1,9 @@
 import { mediaPlace } from "@softistx/alxia-media";
 import type { FilesMongo } from "../models";
+import { ORPHAN_BRAKE, orphanBrake } from "../rules";
 import {
   cannotAfford,
-  ORPHAN_BRAKE,
   oldKeysOf,
-  orphanBrake,
   removeObjects,
   type Sweep,
   type SweepBucket,

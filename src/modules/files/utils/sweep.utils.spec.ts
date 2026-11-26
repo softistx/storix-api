@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import { newMediaKey } from "@softistx/alxia-media";
 import type { FilesMongo } from "../models";
 import {
   cannotAfford,
-  orphanBrake,
+  oldKeysOf,
   removeObjects,
   type Sweep,
   type SweepBucket,
@@ -111,11 +112,55 @@ describe("cannotAfford", () => {
   });
 });
 
-describe("orphanBrake", () => {
-  test("needs ten unrecorded keys, then no recorded blob or over half of them", () => {
-    expect(orphanBrake(9, 0)).toBe(false);
-    expect(orphanBrake(10, 0)).toBe(true);
-    expect(orphanBrake(10, 20)).toBe(false);
-    expect(orphanBrake(11, 20)).toBe(true);
+describe("oldKeysOf", () => {
+  const prefix = "workspaces/w1/files/";
+  const at = (ms: number) => new Date(Date.now() + ms);
+  const item = (key: string, lastModified: Date) => ({
+    key: prefix + key,
+    lastModified,
+  });
+  // The margin is 0 here: "old" is anything before now.
+  const keyA = newMediaKey();
+  const keyB = newMediaKey();
+
+  test("keeps the objects last written before the margin, grouped by key", () => {
+    const { sweep } = run({});
+    const { old, future } = oldKeysOf(
+      sweep,
+      [
+        item(`${keyA}`, at(-60_000)),
+        item(`${keyA}/thumb`, at(-60_000)),
+        item(`${keyB}`, at(60_000)),
+      ] as never,
+      prefix,
+    );
+    expect([...old.keys()]).toEqual([keyA]);
+    expect(old.get(keyA)).toEqual([
+      `${prefix}${keyA}`,
+      `${prefix}${keyA}/thumb`,
+    ]);
+    expect(future).toBe(false);
+  });
+
+  test("ignores a name that is not a media key", () => {
+    const { sweep } = run({});
+    const { old } = oldKeysOf(
+      sweep,
+      [item("notes.txt", at(-60_000))] as never,
+      prefix,
+    );
+    expect(old.size).toBe(0);
+  });
+
+  test("flags an object dated beyond the clock skew tolerance", () => {
+    const { sweep } = run({});
+    const inside = oldKeysOf(sweep, [item(keyA, at(60_000))] as never, prefix);
+    expect(inside.future).toBe(false);
+    const beyond = oldKeysOf(
+      sweep,
+      [item(keyA, at(10 * 60_000))] as never,
+      prefix,
+    );
+    expect(beyond.future).toBe(true);
   });
 });
