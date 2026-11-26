@@ -167,8 +167,8 @@ async function claim(run: Sweep, key: string): Promise<boolean> {
 // The objects under the workspace's `files` prefix that no blob records and
 // that were last written before the margin: a `/media` PUT that `addFile`
 // never recorded, and its sizes. Each key is claimed, its objects removed,
-// then the claim lifted (a claim a crash left is a released blob the next run
-// removes).
+// the claim is kept (a released blob the next run removes), so a recorder that
+// opened the object before its removal is still refused after it.
 export async function sweepOrphans(run: Sweep) {
   const blobs = run.mongo.db.blobs;
   const prefix = `workspaces/${run.workspaceId}/files/`;
@@ -205,7 +205,9 @@ export async function sweepOrphans(run: Sweep) {
         if (!(await claim(run, key))) continue;
         const objects = old.get(key) ?? [];
         const failed = await removeObjects(run, objects);
-        await blobs.raw.deleteOne({ key, refs: 0 });
+        // The claim stays: an `addFile` that opened the object before this
+        // removal and records after it still finds the blob and is refused.
+        // The next run's released step removes it (and retries a failed delete).
         run.report.failed += failed;
         run.report.orphans += objects.length - failed;
       }

@@ -98,7 +98,11 @@ describe("the orphan sweep", () => {
     const report = await a.sweep({ now: later });
     expect(report).toMatchObject({ orphans: 2, failed: 0 });
     expect(await a.keys()).toEqual([a.place(kept.key)]);
-    // The claim is lifted: the key is not recorded and not held.
+    // The claim stays, released, for the next run: the key cannot be recorded.
+    expect(await a.mongo.db.blobs.findFirst({ key: orphan })).toMatchObject({
+      refs: 0,
+    });
+    expect(await a.sweep({ now: later })).toMatchObject({ released: 1 });
     expect(await a.mongo.db.blobs.findFirst({ key: orphan })).toBeUndefined();
   });
 
@@ -139,8 +143,9 @@ describe("the orphan sweep", () => {
     expect(first).toMatchObject({ orphans: 0, failed: 1 });
     expect(logs.some((m) => m.includes(orphan))).toBe(true);
     broken = false;
+    // The kept claim is a released blob: the next run retries its delete.
     expect(await a.sweep({ now: later }, flaky)).toMatchObject({
-      orphans: 1,
+      released: 1,
       failed: 0,
     });
     expect(await a.keys()).toEqual([]);
@@ -206,7 +211,43 @@ describe("the sweep against addFile", () => {
     )?.code;
     expect(code).toBe("files.errors.key-unknown");
     expect(await a.keys()).toEqual([]);
-    expect(await a.mongo.db.blobs.findFirst({ key: up.key })).toBeUndefined();
+    // Only the sweep's own claim remains, never a held blob.
+    expect(await a.mongo.db.blobs.findFirst({ key: up.key })).toMatchObject({
+      refs: 0,
+    });
+    expect(
+      await a.mongo.db.nodes.findFirst({ blobKey: up.key }),
+    ).toBeUndefined();
+  });
+
+  test("an addFile that opened the object before the sweep removed it is refused after the sweep", async () => {
+    const a = await area();
+    const up = await a.upload("gap");
+    const original = files.ctx.bucket.open.bind(files.ctx.bucket);
+    let swept = false;
+    // The gap: addFile has opened the object (it exists), then a whole sweep
+    // claims it, removes it and finishes, before addFile's transaction.
+    const spy = spyOn(files.ctx.bucket, "open").mockImplementation((async (
+      ...args: Parameters<typeof original>
+    ) => {
+      const opened = await original(...args);
+      if (!swept) {
+        swept = true;
+        await a.sweep({ now: later });
+      }
+      return opened;
+    }) as never);
+    let recorded: Awaited<ReturnType<typeof a.record>>;
+    try {
+      recorded = await a.record(up.key, "gap.txt");
+    } finally {
+      spy.mockRestore();
+    }
+    const code = (
+      recorded.errors?.[0]?.extensions as { code?: string } | undefined
+    )?.code;
+    expect(code).toBe("files.errors.key-unknown");
+    expect(await a.keys()).toEqual([]);
     expect(
       await a.mongo.db.nodes.findFirst({ blobKey: up.key }),
     ).toBeUndefined();
