@@ -11,6 +11,7 @@ export * from "./reader.service";
 export * from "./recents.service";
 export * from "./recount.service";
 export * from "./renditions.service";
+export * from "./sweep.lock.service";
 export * from "./sweep.service";
 export * from "./update.service";
 export * from "./versions.batch.service";

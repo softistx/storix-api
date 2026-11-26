@@ -80,4 +80,25 @@ describe("the storage sweep script", () => {
       warn.mockRestore();
     }
   });
+
+  test("a workspace another sweep holds is skipped, and that is not a failure", async () => {
+    await stuckKey();
+    const skippedOf = (summary: string) =>
+      Number(/(\d+) workspaces skipped/.exec(summary)?.[1]);
+    const before = skippedOf((await run(queue)).summary);
+    const { workspace } = await setup(files.ctx.w);
+    const mongo = filesMongo(await store.databaseOf(workspace.id));
+    await mongo.db.sweepLocks.raw.insertOne({
+      _id: "sweep",
+      heldBy: "another run",
+      until: new Date(Date.now() + 60_000),
+    });
+    try {
+      const out = await run(queue);
+      expect(skippedOf(out.summary)).toBe(before + 1);
+      expect(out.exitCode).toBe(0);
+    } finally {
+      await mongo.db.sweepLocks.raw.deleteMany({});
+    }
+  });
 });
