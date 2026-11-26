@@ -372,9 +372,9 @@ query { node(id: "<file id>") { ... on File { renditions { preset size mimeType 
 `setFocalPoint(id, focalPoint)` (needs `nodes:manage`) takes `x` and `y` as fractions of the picture from its top left corner, 0
 to 1 (`focalPoint: null` puts it back at the centre). A coordinate outside 0 to 1 is `files.errors.invalid-focal` (400, field
 `focalPoint`), a folder `files.errors.not-a-file`, any file that is not a JPEG, PNG or WebP picture
-`files.errors.not-renderable` (400, field `id`). The file goes `PROCESSING` and a `renditions` job (`crops: true`) redoes the
+`files.errors.not-renderable` (400, field `id`). The point is written to the file and to its copies in the same tree (same owner); a copy another member holds keeps its own point. The file goes `PROCESSING` and a `renditions` job (`crops: true`) redoes the
 four crops from the stored original, then `READY` (or `FAILED` when only they failed, the original stays readable); without
-`REDIS_URL` the point is recorded and the crops stay as they were. A copy shares the blob, so it takes the point too. The
+`REDIS_URL` the point is recorded and the crops stay as they were. The
 move is audited as `file.focal` (the target only, never the coordinates).
 
 `File.focalPoint` is the point (null for the centre). `File.renditions` lists what is stored and served now: all six sizes of
