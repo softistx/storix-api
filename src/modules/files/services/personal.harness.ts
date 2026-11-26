@@ -6,11 +6,16 @@ import { filesMongo } from "../models";
 export const STAR = `mutation($id: ID!, $starred: Boolean!) { setStarred(id: $id, starred: $starred) { ${NODE} } }`;
 export const OPEN = `mutation($id: ID!) { openFile(id: $id) { ${NODE} } }`;
 export const STARRED = `query($first: Int, $after: String) { starred(first: $first, after: $after) { nodes { ${NODE} } pageInfo { endCursor hasNextPage } } }`;
-export const RECENT = `query($first: Int, $after: String) { recentFiles(first: $first, after: $after) { nodes { ${NODE} } pageInfo { endCursor hasNextPage } } }`;
+export const RECENT = `query($first: Int, $after: String) { recentFiles(first: $first, after: $after) { entries { openedAt node { ${NODE} } } pageInfo { endCursor hasNextPage } } }`;
 
 export interface Page {
   nodes: { id: string; name: string }[];
   pageInfo: { endCursor: string | null; hasNextPage: boolean };
+}
+
+export interface RecentPage {
+  entries: { openedAt: string; node: { id: string; name: string } }[];
+  pageInfo: Page["pageInfo"];
 }
 
 export async function area(files: ReturnType<typeof filesWorld>) {
@@ -32,6 +37,10 @@ export async function area(files: ReturnType<typeof filesWorld>) {
     vars: Record<string, unknown> = {},
   ) => {
     const r = await send(user, query, vars);
+    if (key === "recentFiles") {
+      const page = r.data?.[key] as RecentPage | undefined;
+      return (page?.entries ?? []).map((e) => e.node.name);
+    }
     return ((r.data?.[key] as Page | undefined)?.nodes ?? []).map(
       (n) => n.name,
     );

@@ -161,6 +161,13 @@ export const nodes = defineCollection({
       name: "nodes_listing_kind_desc",
       collation: NAME_COLLATION,
     },
+    // The largest files of the workspace (`files/services/largest.service.ts`):
+    // the live files, biggest first (2026-11-26-nodes-largest-index).
+    {
+      key: { size: -1, _id: -1 },
+      name: "nodes_largest",
+      partialFilterExpression: { type: "FILE", trashedAt: { $type: "null" } },
+    },
     // The sweep's scan for files stuck `PROCESSING`: few, and the oldest first.
     {
       key: { renditionsAt: 1 },

@@ -357,6 +357,8 @@ type File implements Node {
   renditions: [Rendition!]!
   """The size in bytes, as the storage reported it."""
   size: Float!
+  """Whether the caller has starred it (`setStarred`), batched per request."""
+  starred: Boolean!
   status: FileStatus!
   tags: [String!]!
   trashedAt: DateTime
@@ -445,6 +447,8 @@ type Folder implements Node {
   owner: NodeOwner
   ownerId: ID
   parentId: ID
+  """Whether the caller has starred it (`setStarred`), batched per request."""
+  starred: Boolean!
   trashedAt: DateTime
   trashedBy: String
   type: NodeType!
@@ -1207,6 +1211,8 @@ interface Node {
   ownerId: ID
   """Null for a root (a member's "My files")."""
   parentId: ID
+  """Whether the caller has starred it (`setStarred`), batched per request."""
+  starred: Boolean!
   """
   When it went to the trash; null for a live node. Only the trash shows such nodes.
   """
@@ -1289,7 +1295,7 @@ type Notification {
   nodeId: ID
   """The node's name when it happened."""
   nodeName: String
-  """The threshold crossed, 80 or 100 (QUOTA_THRESHOLD)."""
+  """The threshold crossed, 85 or 95 (QUOTA_THRESHOLD)."""
   percent: Int
   """Null while unread."""
   readAt: DateTime
@@ -1300,7 +1306,7 @@ type Notification {
 
 """What a notification tells."""
 enum NotificationKind {
-  """A workspace you administer crossed 80 % or 100 % of its storage quota."""
+  """A workspace you administer crossed 85 % or 95 % of its storage quota."""
   QUOTA_THRESHOLD
   """Your role on a shared node changed."""
   ROLE_CHANGED
@@ -1440,13 +1446,14 @@ type Query {
   """
   notifications(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100), unreadOnly: Boolean! = false): NotificationPage!
   """
-  The files the caller opened or uploaded lately, the latest first, one page:
+  The files the caller opened or uploaded lately, the latest first, each with
+  when (`openedAt`), one page:
   at most 200 are kept per member, one entry per file, and a trashed file
   leaves the list. As for `starred`, a page may be short or empty with
   `hasNextPage` `true`. Needs `nodes:read`. 400 `validation.errors.invalid-cursor`
   (field `after`) for a cursor of another list.
   """
-  recentFiles(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): NodePage!
+  recentFiles(after: String @constraint(maxLength: 500), first: Int! = 50 @constraint(min: 1, max: 100)): RecentPage!
   """
   The caller's roots: their private "My files", made when they joined (or here,
   for a member who joined before). Needs `nodes:read`.
@@ -1531,6 +1538,19 @@ scalar RGB @specifiedBy(url: "https://www.w3.org/TR/css-color-4/#rgb-functions")
 
 """A CSS rgba() color, such as rgba(255, 0, 0, 0.5)."""
 scalar RGBA @specifiedBy(url: "https://www.w3.org/TR/css-color-4/#rgb-functions")
+
+"""A file the caller opened or uploaded, and when."""
+type RecentEntry {
+  node: File!
+  """When the caller last opened or uploaded it."""
+  openedAt: DateTime!
+}
+
+"""A page of the caller's recent files."""
+type RecentPage {
+  entries: [RecentEntry!]!
+  pageInfo: PageInfo!
+}
 
 """
 The recovery codes of a second factor: ten single-use codes, shown once.
@@ -1696,6 +1716,11 @@ type Storage {
   The live files of the workspace, copies included; trashed ones are not counted.
   """
   files: Int!
+  """
+  The largest live files, biggest first: trashed files and folders are left out,
+  and so is a file the caller cannot read. `first` is 1 to 50.
+  """
+  largestFiles(first: Int! = 10 @constraint(min: 1, max: 50)): [File!]!
   """
   The bytes the workspace may store; 10 GiB unless a platform administrator changed it.
   """

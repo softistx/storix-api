@@ -180,7 +180,7 @@ async function setUsage(area: Area, bytes: number, quota: number) {
 }
 
 describe("the quota alerts", () => {
-  test("80 % tells the owners and the admins once, the uploading one included, and 100 % tells again", async () => {
+  test("85 % tells the owners and the admins once, the uploading one included, and 95 % tells again", async () => {
     const a = await roleArea();
     const admin = await a.w.join(a.workspace, "ADMIN");
     const member = await a.w.join(a.workspace, "MEMBER");
@@ -189,30 +189,30 @@ describe("the quota alerts", () => {
     await n.notifier.usage({ scope: n.scope });
     expect(n.sent).toEqual([]);
 
-    await setUsage(a, 80, 100);
+    await setUsage(a, 85, 100);
     await n.notifier.usage({ scope: n.scope });
     await n.notifier.usage({ scope: n.scope });
     expect(n.sent).toHaveLength(2);
     expect(await inboxOf(member.user.principal.accountId)).toEqual([]);
     const adminInbox = await inboxOf(admin.user.principal.accountId);
     expect(adminInbox.map((x) => [x.kind, x.percent])).toEqual([
-      ["QUOTA_THRESHOLD", 80],
+      ["QUOTA_THRESHOLD", 85],
     ]);
 
-    await setUsage(a, 100, 100);
+    await setUsage(a, 95, 100);
     await n.notifier.usage({ scope: n.scope });
     expect(n.sent).toHaveLength(4);
     expect(
       (await inboxOf(admin.user.principal.accountId))
         .map((x) => x.percent)
         .sort((x, y) => (x ?? 0) - (y ?? 0)),
-    ).toEqual([80, 100]);
+    ).toEqual([85, 95]);
   });
 
   test("usage that fell and rose again is a new crossing", async () => {
     const a = await roleArea();
     const n = notifierOf(a);
-    await setUsage(a, 85, 100);
+    await setUsage(a, 87, 100);
     await n.notifier.usage({ scope: n.scope });
     await setUsage(a, 10, 100);
     await n.notifier.usage({ scope: n.scope });

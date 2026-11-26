@@ -34,7 +34,7 @@ const percents = async (
 };
 
 describe("the quota alerts on upload", () => {
-  test("80 % and 100 % each tell the owner and the admins once, and a member never", async () => {
+  test("85 % and 95 % each tell the owner and the admins once, and a member never", async () => {
     const a = await area();
     const quota = 100;
     expect(
@@ -53,14 +53,14 @@ describe("the quota alerts on upload", () => {
     expect(await percents(a, a.workspace.owner)).toEqual([]);
 
     await up("big.txt", 35);
-    expect(await percents(a, a.workspace.owner)).toEqual([80]);
-    expect(await percents(a, a.admin.user)).toEqual([80]);
+    expect(await percents(a, a.workspace.owner)).toEqual([85]);
+    expect(await percents(a, a.admin.user)).toEqual([85]);
     await up("same.txt", 1);
-    expect(await percents(a, a.workspace.owner)).toEqual([80]);
+    expect(await percents(a, a.workspace.owner)).toEqual([85]);
 
-    await up("full.txt", 14);
-    expect(await percents(a, a.workspace.owner)).toEqual([80, 100]);
-    expect(await percents(a, a.admin.user)).toEqual([80, 100]);
+    await up("full.txt", 9);
+    expect(await percents(a, a.workspace.owner)).toEqual([85, 95]);
+    expect(await percents(a, a.admin.user)).toEqual([85, 95]);
     expect(await percents(a, a.member.user)).toEqual([]);
 
     const mails = a.w.h
@@ -90,7 +90,7 @@ describe("the quota alerts on upload", () => {
       variables: { fileId: file.id, key: up.key },
     });
     expect(added.errors).toBeUndefined();
-    expect(await percents(a, a.workspace.owner)).toEqual([80]);
+    expect(await percents(a, a.workspace.owner)).toEqual([85]);
   });
 
   test("usage that falls under the threshold and rises again tells again", async () => {
@@ -106,7 +106,7 @@ describe("the quota alerts on upload", () => {
       );
     await up("base.txt", 70);
     const lift = await up("lift.txt", 15);
-    expect(await percents(a, a.workspace.owner)).toEqual([80]);
+    expect(await percents(a, a.workspace.owner)).toEqual([85]);
 
     const trashed = await a.w.send(a.workspace.owner, TRASH, {
       workspace: a.workspace.id,
@@ -120,7 +120,7 @@ describe("the quota alerts on upload", () => {
     });
     expect(purged.errors).toBeUndefined();
     await up("again.txt", 15);
-    expect(await percents(a, a.workspace.owner)).toEqual([80, 80]);
+    expect(await percents(a, a.workspace.owner)).toEqual([85, 85]);
   });
 
   test("a copy shares the blobs, moves no bytes and so tells nothing new", async () => {
@@ -133,13 +133,13 @@ describe("the quota alerts on upload", () => {
       "doc.txt",
       "x".repeat(85),
     );
-    expect(await percents(a, a.workspace.owner)).toEqual([80]);
+    expect(await percents(a, a.workspace.owner)).toEqual([85]);
     const target = await a.owner.folder(a.root.id, "Copies");
     const copied = await a.w.send(a.workspace.owner, COPY, {
       workspace: a.workspace.id,
       variables: { ids: [file.id], parentId: target.id },
     });
     expect(copied.errors).toBeUndefined();
-    expect(await percents(a, a.workspace.owner)).toEqual([80]);
+    expect(await percents(a, a.workspace.owner)).toEqual([85]);
   });
 });

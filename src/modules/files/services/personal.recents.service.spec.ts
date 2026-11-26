@@ -6,8 +6,8 @@ import {
   area as areaOf,
   code,
   OPEN,
-  type Page,
   RECENT,
+  type RecentPage,
 } from "./personal.harness";
 
 const files = filesWorld();
@@ -46,15 +46,21 @@ describe("recent files", () => {
     expect(await a.names(member.user, RECENT, "recentFiles")).toEqual([]);
     const first = (await a.send(a.owner, RECENT, { first: 2 })).data?.[
       "recentFiles"
-    ] as Page;
-    expect(first.nodes.map((n) => n.name)).toEqual(["three.txt", "two.txt"]);
+    ] as RecentPage;
+    expect(first.entries.map((e) => e.node.name)).toEqual([
+      "three.txt",
+      "two.txt",
+    ]);
+    // Each entry says when the file was opened, latest first.
+    const [latest, earlier] = first.entries.map((e) => Date.parse(e.openedAt));
+    expect(latest).toBeGreaterThanOrEqual(earlier as number);
     const next = (
       await a.send(a.owner, RECENT, {
         first: 2,
         after: first.pageInfo.endCursor,
       })
-    ).data?.["recentFiles"] as Page;
-    expect(next.nodes.map((n) => n.name)).toEqual(["one.txt"]);
+    ).data?.["recentFiles"] as RecentPage;
+    expect(next.entries.map((e) => e.node.name)).toEqual(["one.txt"]);
     expect(next.pageInfo.hasNextPage).toBe(false);
   });
 

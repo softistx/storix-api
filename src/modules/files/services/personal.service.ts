@@ -19,6 +19,9 @@ export interface Row {
 
 export interface PersonalPage {
   items: NodeDoc[];
+  // The sort date of each item, in step with `items`: when it was starred, or
+  // last opened.
+  dates: Date[];
   endCursor: string | null;
 }
 
@@ -95,6 +98,7 @@ export async function personalPage(
   const tail = page.at(-1);
   return {
     items: page.map(({ node }) => node),
+    dates: page.map(({ row }) => row.date),
     endCursor:
       items.length > input.first && tail
         ? encodeCursor(input.scope, [tail.row.date, tail.row._id])

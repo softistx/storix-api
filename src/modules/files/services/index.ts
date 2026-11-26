@@ -6,6 +6,7 @@ export * from "./enqueue.service";
 export * from "./favourites.service";
 export * from "./files.service";
 export * from "./focal.service";
+export * from "./largest.service";
 export * from "./personal.service";
 export * from "./reader.service";
 export * from "./recents.service";

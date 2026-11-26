@@ -10,7 +10,7 @@ export const notificationKinds = [
 // One line of an account's inbox, in the core database (an inbox is the
 // account's, across its workspaces). `actorId` is the account that caused it
 // (null for a quota threshold); `nodeId`, `nodeName` and `role` describe a
-// share, `percent` a quota threshold (80 or 100). The node's name is kept as it
+// share, `percent` a quota threshold (85 or 95). The node's name is kept as it
 // was when the notification was made. `readAt` is null while unread.
 export const notifications = defineCollection({
   name: "notifications",
@@ -51,7 +51,7 @@ export const mailPreferences = defineCollection({
   ],
 });
 
-// The highest quota threshold a workspace has been told about (0, 80 or 100):
+// The highest quota threshold a workspace has been told about (0, 85 or 95):
 // a notification is made once per crossing, and the mark is lowered when the
 // usage falls back under the threshold, so a later crossing tells again.
 export const quotaMarks = defineCollection({
