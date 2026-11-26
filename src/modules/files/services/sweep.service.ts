@@ -13,7 +13,11 @@ import {
   type SweepReport,
   sizesOf,
 } from "../utils";
-import { giveSweepLockBack, takeSweepLock } from "./sweep.lock.service";
+import {
+  giveSweepLockBack,
+  renewSweepLock,
+  takeSweepLock,
+} from "./sweep.lock.service";
 
 export type { StuckReport, SweepBucket, SweepReport };
 
@@ -256,7 +260,7 @@ export async function sweepWorkspace(
     return { released: 0, orphans: 0, failed: 0, skipped: true };
   }
   try {
-    return await sweepLocked(mongo, bucket, workspaceId, options);
+    return await sweepLocked(mongo, bucket, workspaceId, options, held);
   } finally {
     await giveSweepLockBack(mongo, held);
   }
@@ -272,6 +276,7 @@ async function sweepLocked(
   bucket: SweepBucket,
   workspaceId: string,
   options: SweepOptions,
+  held: string,
 ): Promise<SweepReport> {
   const report: SweepReport = { released: 0, orphans: 0, failed: 0 };
   const run: Sweep = {
@@ -285,36 +290,49 @@ async function sweepLocked(
     left: options.maxDeletes ?? SWEEP_MAX_DELETES,
     report,
   };
+  // The lease is renewed between the steps; a run that lost it stops there and
+  // reports the workspace skipped (what it did stays counted), never failed.
+  const stillHeld = () => renewSweepLock(mongo, held, run.now());
   await sweepReleased(run);
+  if (!(await stillHeld())) return { ...report, skipped: true };
   if (run.left > 0) await sweepOrphans(run);
-  if (options.renditions) {
-    try {
-      report.stuck = await requeueStuck(
-        mongo,
-        options.renditions,
-        workspaceId,
-        {
-          now: run.now,
-          log: run.log,
-          ...(options.stuckAfterMs !== undefined && {
-            stuckAfterMs: options.stuckAfterMs,
-          }),
-          ...(options.maxRequeues !== undefined && {
-            maxRequeues: options.maxRequeues,
-          }),
-          ...(options.stuckBatch !== undefined && {
-            batch: options.stuckBatch,
-          }),
-        },
-      );
-    } catch (error) {
-      run.log(
-        `stuck renditions ${workspaceId}: scan failed: ${error instanceof Error ? error.message : error}`,
-      );
-      report.failed += 1;
-    }
-  }
+  if (!(await stillHeld())) return { ...report, skipped: true };
+  if (options.renditions) await requeueStep(run, options.renditions, options);
   return report;
+}
+
+// The third step: the files stuck `PROCESSING` are queued again. A failing
+// scan is logged and counted in `failed`; it never throws.
+async function requeueStep(
+  run: Sweep,
+  renditions: RenditionsQueue,
+  options: SweepOptions,
+): Promise<void> {
+  try {
+    run.report.stuck = await requeueStuck(
+      run.mongo,
+      renditions,
+      run.workspaceId,
+      {
+        now: run.now,
+        log: run.log,
+        ...(options.stuckAfterMs !== undefined && {
+          stuckAfterMs: options.stuckAfterMs,
+        }),
+        ...(options.maxRequeues !== undefined && {
+          maxRequeues: options.maxRequeues,
+        }),
+        ...(options.stuckBatch !== undefined && {
+          batch: options.stuckBatch,
+        }),
+      },
+    );
+  } catch (error) {
+    run.log(
+      `stuck renditions ${run.workspaceId}: scan failed: ${error instanceof Error ? error.message : error}`,
+    );
+    run.report.failed += 1;
+  }
 }
 
 // Sweeps every active workspace, one after the other; a workspace that fails

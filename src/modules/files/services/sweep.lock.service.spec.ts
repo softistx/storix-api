@@ -106,6 +106,56 @@ describe("the sweep lock", () => {
     });
     expect(added).toEqual([]);
     expect(await a.requeues()).toBe(0);
+    await a.mongo.db.sweepLocks.raw.deleteMany({});
+  });
+
+  test("a run whose lease another run took over stops, skipped, and leaves that lock", async () => {
+    const a = await stuck();
+    const real = files.ctx.bucket as SweepBucket;
+    const takenOver: SweepBucket = {
+      ...real,
+      list: async (...args) => {
+        await a.mongo.db.sweepLocks.raw.updateOne(
+          { _id: "sweep" },
+          {
+            $set: {
+              heldBy: "a later run",
+              until: new Date(Date.now() + SWEEP_LOCK_MS),
+            },
+          },
+        );
+        return real.list(...args);
+      },
+    };
+    added.length = 0;
+    const report = await a.sweep({}, takenOver);
+    expect(report.skipped).toBe(true);
+    expect(report.stuck).toBeUndefined();
+    expect(added).toEqual([]);
+    expect(await a.requeues()).toBe(0);
+    const left = await a.mongo.db.sweepLocks.raw.findOne({ _id: "sweep" });
+    expect(left?.heldBy).toBe("a later run");
+    await a.mongo.db.sweepLocks.raw.deleteMany({});
+  });
+
+  test("the lease is renewed between the steps", async () => {
+    const a = await stuck();
+    const real = files.ctx.bucket as SweepBucket;
+    let seen: Date | undefined;
+    const spying: SweepBucket = {
+      ...real,
+      list: async (...args) => {
+        seen = (await a.mongo.db.sweepLocks.raw.findOne({ _id: "sweep" }))
+          ?.until;
+        return real.list(...args);
+      },
+    };
+    // A clock that moves a minute per read: the lease taken at `base` runs
+    // to `base` + ttl, so a later `until` can only come from a renewal.
+    const base = Date.now();
+    let ticks = 0;
+    await a.sweep({ now: () => new Date(base + 60_000 * ticks++) }, spying);
+    expect(seen?.getTime()).toBeGreaterThan(base + SWEEP_LOCK_MS);
   });
 
   test("an expired lock is taken over", async () => {

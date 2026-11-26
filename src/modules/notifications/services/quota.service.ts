@@ -1,4 +1,5 @@
 import { toObjectId } from "@softistx/mongo";
+import { isDuplicateKey } from "@/core/shared/mongo-errors.utils";
 import type { NotificationsMongo } from "../models";
 import type { QuotaLevel } from "../utils";
 
@@ -35,7 +36,7 @@ export async function claimLevel(
   } catch (error) {
     // The mark already holds this level or a higher one: the unique index
     // refused the insert the filter could not match.
-    if ((error as { code?: number }).code === 11000) return false;
+    if (isDuplicateKey(error)) return false;
     throw error;
   }
 }

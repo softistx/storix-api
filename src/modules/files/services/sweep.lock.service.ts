@@ -1,3 +1,4 @@
+import { isDuplicateKey } from "@/core/shared/mongo-errors.utils";
 import type { FilesMongo } from "../models";
 
 /** A sweep's lock expires this long after it was taken (a crashed run). */
@@ -27,9 +28,25 @@ export async function takeSweepLock(
     await locks.insertOne({ _id: LOCK_ID, heldBy, until });
     return heldBy;
   } catch (error) {
-    if ((error as { code?: number }).code === 11000) return null;
+    if (isDuplicateKey(error)) return null;
     throw error;
   }
+}
+
+// Pushes the lease out by `ttlMs` between a sweep's steps, only while it is
+// still this holder's. False means the run lost it (it overran its ttl and
+// another run took over): it must stop acting.
+export async function renewSweepLock(
+  mongo: FilesMongo,
+  heldBy: string,
+  now: Date,
+  ttlMs: number = SWEEP_LOCK_MS,
+): Promise<boolean> {
+  const renewed = await mongo.db.sweepLocks.raw.updateOne(
+    { _id: LOCK_ID, heldBy },
+    { $set: { until: new Date(now.getTime() + ttlMs) } },
+  );
+  return renewed.matchedCount === 1;
 }
 
 // Gives the lock back, only while it is still this holder's: a run that
