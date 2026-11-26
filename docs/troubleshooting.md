@@ -317,7 +317,9 @@ Any operation can answer 403 with this code.
 
 **When:** the script printed `no bucket`, `workspace <id>: not swept` or a count of objects `not removed`.
 
-**Why:** without `S3_BUCKET`, `S3_ACCESS_KEY` and `S3_SECRET_KEY` there is nothing to sweep. A workspace whose database could not be opened or listed fails alone, the others are swept. An object the storage refused to delete (`storage sweep <id>: <key> not removed` on stderr) stays and is retried by the next run; a run also stops at 1,000 deletes per workspace. A page of 10 or more old unrecorded keys in a workspace with no blob is skipped on purpose (`storage sweep <id> stopped`): check that `MONGO_URI` and `S3_BUCKET` belong together.
+**Why:** without `S3_BUCKET`, `S3_ACCESS_KEY` and `S3_SECRET_KEY` there is nothing to sweep. A workspace whose database could not be opened or listed fails alone, the others are swept. An object the storage refused to delete (`storage sweep <id>: <key> not removed` on stderr) stays and is retried by the next run; a run also stops at 1,000 deletes per workspace (printed as `capped`, exit 0: the next run goes on). Blobs with `refs` 0 are removed only 24 h after their release, and never while a node or version holds the key.
+
+**Exit 2, `N workspaces braked`:** a safety brake stopped a workspace on purpose (`storage sweep <id> stopped: …` on stderr): 10 or more old unrecorded keys with no recorded blob or over half of them (a wrong or stale `MONGO_URI` against the real `S3_BUCKET`), an object dated more than 5 minutes in the future (fix the host clock), or a mass of released blobs. A brake in the dry pass or the released step leaves the workspace untouched, but the future-date check can also fire during the orphan step, after the released blobs of that run were already removed. There is no override: check that the database and the bucket belong together, then run again.
 
 **Fix:** set the bucket variables, or run the script again once the storage answers. Usage never needs the sweep: `bun run quota:reconcile` recounts it.
 

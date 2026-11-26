@@ -3,7 +3,7 @@ import { store } from "@/config/tenancy";
 import { filesWorld } from "../../../../test/files.harness";
 import type { SweepBucket } from "./index";
 import { recountStorage } from "./index";
-import { area as areaOf, later } from "./sweep.harness";
+import { afterGrace, area as areaOf, later } from "./sweep.harness";
 
 // The orphan sweep against a real S3 API and the real Mongo: released blobs
 // with their sizes, and objects nobody recorded once they are old enough.
@@ -19,6 +19,7 @@ describe("the orphan sweep", () => {
       size: 1,
       mimeType: "text/plain",
       refs: 0,
+      releasedAt: new Date(0),
     });
     const report = await a.sweep();
     expect(report).toMatchObject({ released: 1, failed: 0 });
@@ -31,7 +32,13 @@ describe("the orphan sweep", () => {
     const up = await a.upload("kept");
     expect((await a.record(up.key, "kept.txt")).errors).toBeUndefined();
     const report = await a.sweep({ now: later });
-    expect(report).toEqual({ released: 0, orphans: 0, failed: 0 });
+    expect(report).toEqual({
+      released: 0,
+      orphans: 0,
+      failed: 0,
+      braked: false,
+      capped: false,
+    });
     expect(await a.keys()).toEqual([a.place(up.key)]);
   });
 
@@ -45,11 +52,13 @@ describe("the orphan sweep", () => {
     const report = await a.sweep({ now: later });
     expect(report).toMatchObject({ orphans: 2, failed: 0 });
     expect(await a.keys()).toEqual([a.place(kept.key)]);
-    // The claim stays, released, for the next run: the key cannot be recorded.
+    // The claim stays, released, for the run after the grace window: the key
+    // cannot be recorded meanwhile.
     expect(await a.mongo.db.blobs.findFirst({ key: orphan })).toMatchObject({
       refs: 0,
     });
-    expect(await a.sweep({ now: later })).toMatchObject({ released: 1 });
+    expect(await a.sweep({ now: later })).toMatchObject({ released: 0 });
+    expect(await a.sweep({ now: afterGrace })).toMatchObject({ released: 1 });
     expect(await a.mongo.db.blobs.findFirst({ key: orphan })).toBeUndefined();
   });
 
@@ -90,8 +99,9 @@ describe("the orphan sweep", () => {
     expect(first).toMatchObject({ orphans: 0, failed: 1 });
     expect(logs.some((m) => m.includes(orphan))).toBe(true);
     broken = false;
-    // The kept claim is a released blob: the next run retries its delete.
-    expect(await a.sweep({ now: later }, flaky)).toMatchObject({
+    // The kept claim is a released blob: the run after the grace window
+    // retries its delete.
+    expect(await a.sweep({ now: afterGrace }, flaky)).toMatchObject({
       released: 1,
       failed: 0,
     });
@@ -106,7 +116,7 @@ describe("the orphan sweep", () => {
       now: later,
       log: (m: string) => logs.push(m),
     });
-    expect(report.orphans).toBe(0);
+    expect(report).toMatchObject({ orphans: 0, braked: true });
     expect(await a.keys()).toHaveLength(10);
     expect(logs.some((m) => m.includes("stopped"))).toBe(true);
   });

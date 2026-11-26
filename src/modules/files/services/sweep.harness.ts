@@ -9,6 +9,8 @@ type FilesWorld = ReturnType<typeof filesWorld>;
 
 export const HOUR = 60 * 60_000;
 export const later = () => new Date(Date.now() + 2 * HOUR);
+// Past the grace window of a blob released or claimed at `later()`.
+export const afterGrace = () => new Date(Date.now() + 27 * HOUR);
 
 const databaseOf = async (id: string) => filesMongo(await store.databaseOf(id));
 

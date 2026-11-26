@@ -1,5 +1,7 @@
+import { isMediaKey } from "@softistx/alxia-media";
 import type { BoundBucket } from "@softistx/s3";
 import type { FilesMongo } from "../models";
+import { CLOCK_SKEW_MS } from "../rules";
 
 // What the sweep needs of the bucket: the listing, and the delete that
 // `@softistx/alxia-media`'s routes use.
@@ -29,6 +31,10 @@ export interface SweepReport {
   stuck?: StuckReport;
   // True when another sweep of the workspace held the lock: nothing was done.
   skipped?: boolean;
+  // True when a brake stopped the workspace (nothing, or only part, was swept).
+  braked: boolean;
+  // True when the per-run delete cap left work for the next run.
+  capped: boolean;
 }
 
 export interface Sweep {
@@ -39,7 +45,15 @@ export interface Sweep {
   now: () => Date;
   margin: number;
   batch: number;
+  // Objects the run may still remove, out of `max`.
   left: number;
+  max: number;
+  // A `refs` 0 blob younger than this is kept.
+  graceMs: number;
+  // Renews the workspace's lease: false when another run took it over.
+  renew: () => Promise<boolean>;
+  // Set once the lease was lost: the steps stop.
+  lost: boolean;
   report: SweepReport;
 }
 
@@ -60,7 +74,8 @@ export async function removeObjects(
       );
     }
   }
-  run.left -= keys.length;
+  // The cap counts what was removed, not what was attempted.
+  run.left -= keys.length - failed;
   return failed;
 }
 
@@ -78,4 +93,32 @@ export async function sizesOf(run: Sweep, objectKey: string) {
     if (page.nextCursor === null) return keys;
     cursor = page.nextCursor;
   }
+}
+
+type Listed = Awaited<ReturnType<SweepBucket["list"]>>["items"];
+
+// The distinct media keys on a page of listed objects that were last written
+// before the margin, each with its objects, and whether any object is dated
+// in the future (the host clock and the storage's disagree).
+export function oldKeysOf(run: Sweep, items: Listed, prefix: string) {
+  const now = run.now().getTime();
+  const cutoff = now - run.margin;
+  const old = new Map<string, string[]>();
+  let future = false;
+  for (const item of items) {
+    const at = item.lastModified?.getTime();
+    if (at !== undefined && at > now + CLOCK_SKEW_MS) future = true;
+    const key = item.key.slice(prefix.length).split("/")[0] ?? "";
+    if (!isMediaKey(key) || at === undefined || at >= cutoff) continue;
+    old.set(key, [...(old.get(key) ?? []), item.key]);
+  }
+  return { old, future };
+}
+
+// Whether `n` more objects fit in the run's cap. A key that alone exceeds the
+// whole cap still goes first, so the sweep always advances. Marks `capped`.
+export function cannotAfford(run: Sweep, n: number): boolean {
+  if (run.left > 0 && (n <= run.left || run.left === run.max)) return false;
+  run.report.capped = true;
+  return true;
 }

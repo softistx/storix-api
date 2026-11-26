@@ -103,6 +103,8 @@ describe("the sweep lock", () => {
       orphans: 0,
       failed: 0,
       skipped: true,
+      braked: false,
+      capped: false,
     });
     expect(added).toEqual([]);
     expect(await a.requeues()).toBe(0);
