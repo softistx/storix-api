@@ -23,8 +23,8 @@
         "@softistx/graphql-client": "^0.11.0",
         "@softistx/graphql-scalars": "^0.8.0",
         "@softistx/graphql-validation": "^0.10.0",
-        "@softistx/graxia": "^0.17.2",
-        "@softistx/graxia-graphiql": "^0.4.1",
+        "@softistx/graxia": "^0.18.0",
+        "@softistx/graxia-graphiql": "^0.4.2",
         "@softistx/i18n": "^3.2.1",
         "@softistx/image": "^0.6.1",
         "@softistx/janus": "^0.81.0",
@@ -329,9 +329,9 @@
 
     "@softistx/graphql-validation": ["@softistx/graphql-validation@0.10.0", "", { "peerDependencies": { "graphql": "^16.11.0 || ^17.0.0", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "bin": { "nxgt-graphql-validation": "dist/cli.js" } }, "sha512-LulbRXKRAK/fBPG+Kjcz2WYsQohfD56OADZr4e5D/dpQu6GwYY4mOhzdy+kjJGHrYhbjKE9orE6JMrBWRIlJ7g=="],
 
-    "@softistx/graxia": ["@softistx/graxia@0.17.2", "", { "peerDependencies": { "@softistx/telemetry": "^0.5.0", "graphql": "^17.1.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/telemetry", "typescript"] }, "sha512-XYB3s9sRAPSjHlng1l22Kdq9v7HN5UWKP6YlL8k2NxEHbyoq0lUHNDwoNy6n0Ccjlkh2IuQRj9ZJKwEiL4uVMQ=="],
+    "@softistx/graxia": ["@softistx/graxia@0.18.0", "", { "peerDependencies": { "@softistx/telemetry": "^0.5.0", "graphql": "^17.1.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/telemetry", "typescript"] }, "sha512-VZdpmrGWFj4DXvpAXj5JUZidBrlQQNcKLC+6JZmqDjhvmSx+OlVxQchM3o7YwwfaiCel8Pjnu5RKmTU504ZLlw=="],
 
-    "@softistx/graxia-graphiql": ["@softistx/graxia-graphiql@0.4.1", "", { "peerDependencies": { "@softistx/graxia": "^0.17.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["typescript"] }, "sha512-SdO+Ee5XPElg4njwPfbX7A2H+BF6/tiYxYTK3yFKZrChc2YwF67d6SkB7djtPhnifU9AWiIIdUhxZDJu6vv+Bg=="],
+    "@softistx/graxia-graphiql": ["@softistx/graxia-graphiql@0.4.2", "", { "peerDependencies": { "@softistx/graxia": "^0.18.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["typescript"] }, "sha512-rmoQVkb7J6q+miIseX7/8lKYqPHHqqeLo9zxM8y/310mIjn8jXt6GI2Iz9JWylRwJV8GA5o9apU2jGnS5LbzvQ=="],
 
     "@softistx/i18n": ["@softistx/i18n@3.2.1", "", { "dependencies": { "@formatjs/icu-messageformat-parser": "^3.5.20", "intl-messageformat": "^12.1.2", "lodash": "^4.18.1" }, "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-J953DgsHW/yRPAMB4YnwU4HIVAejdrKnAPwC7BHLHWUAF2b+OARXycSAzfpGVm1ycV00qYxq6O8FFqkNcMbkxg=="],
 
