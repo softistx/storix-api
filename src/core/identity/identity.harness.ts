@@ -19,71 +19,18 @@ import { createAccounts } from "./services/janus/janus.accounts";
 
 export const PASSWORD = "correct horse battery staple";
 
-// An identity over its own database on the spec server, an in-memory mailer, a
-// fixed clock and a cheap hasher, and the app that serves it: what the specs
-// of the identity flows share. Every call gets a database of its own, so specs
-// never see each other's accounts.
-export async function harness(
-  options: Partial<IdentityOptions> & {
-    limits?: Limits;
-    media?: NonNullable<Parameters<typeof createApp>[0]>["media"];
-    renditions?: NonNullable<Parameters<typeof createApp>[0]>["renditions"];
-    members?: NonNullable<Parameters<typeof createApp>[0]>["members"];
-    teams?: NonNullable<Parameters<typeof createApp>[0]>["teams"];
-    audit?: NonNullable<Parameters<typeof createApp>[0]>["audit"];
-    translations?: NonNullable<Parameters<typeof createApp>[0]>["translations"];
-  } = {},
-) {
-  const {
-    limits,
-    media,
-    renditions,
-    members,
-    teams,
-    audit,
-    translations,
-    ...identityOptions
-  } = options;
-  const mailer = createMemoryMailer();
-  // Fixed, but at the real time the harness starts: janus-mongo's sessions and
-  // tokens carry a TTL index on `expiresAt`, which MongoDB's monitor sweeps by
-  // the server's own clock every 60 s. A date in the past (2026-11-14, plus a
-  // 7-day session) made that sweep delete live sessions in the middle of a run.
-  const clock = fixedClock(new Date());
-  const db = connection.client.db(`identity_spec_${crypto.randomUUID()}`);
-  const identity = createJanusIdentity({
-    db,
-    mailer,
-    uiOrigin: "https://storix.test",
-    mailFrom: "noreply@storix.test",
-    clock,
-    hasher: scryptHasher({ cost: 10 }),
-    totpKeys: [
-      { id: "spec", key: "c3RvcmF4LXNwZWMtdG90cC1rZXktMzItYnl0ZXMhISE" },
-    ],
-    mail: { throttle: false },
-    onAcceptedInvitation: async () => undefined,
-    ...identityOptions,
-  });
-  if (!options.db) await identity.syncStores();
-  const app = createApp({
-    identity,
-    // The notification mails leave through the same memory mailer.
-    mailer,
-    ...(translations && { translations }),
-    ...(limits && { limits }),
-    ...(media && { media }),
-    ...(renditions && { renditions }),
-    ...(members && { members }),
-    ...(teams && { teams }),
-    ...(audit && { audit }),
-  });
-  const client = graphqlClient(app, { headers: { [clientHeader]: "spec" } });
+type AppOptions = NonNullable<Parameters<typeof createApp>[0]>;
+type Identity = ReturnType<typeof createJanusIdentity>;
+type Mailer = ReturnType<typeof createMemoryMailer>;
+type Clock = ReturnType<typeof fixedClock>;
+type Db = ReturnType<typeof connection.client.db>;
 
-  let sequence = 0;
-  const email = () =>
-    `person-${++sequence}-${crypto.randomUUID().slice(0, 8)}@storix.test`;
+const TOTP_KEYS = [
+  { id: "spec", key: "c3RvcmF4LXNwZWMtdG90cC1rZXktMzItYnl0ZXMhISE" },
+] as const;
 
+// The mails of an in-memory mailer, and the links and codes read out of them.
+function mailReaders(mailer: Mailer) {
   // The mails sent so far to an address, newest last.
   const mailsTo = (address: string) =>
     mailer.sent.filter((mail) =>
@@ -112,6 +59,18 @@ export async function harness(
     if (!code) throw new Error(`no code in a mail to ${address}`);
     return code;
   };
+  return { mailsTo, tokenFor, invitationCodeFor, codeFor };
+}
+
+// Accounts of the specs: a fresh address, a signed-up account, a second factor.
+function accountHelpers(
+  identity: Identity,
+  clock: Clock,
+  tokenFor: (address: string) => string,
+) {
+  let sequence = 0;
+  const email = () =>
+    `person-${++sequence}-${crypto.randomUUID().slice(0, 8)}@storix.test`;
 
   // Signs up, follows the link and chooses the password: a verified account
   // with a session.
@@ -142,17 +101,19 @@ export async function harness(
     return recoveryCodes;
   }
 
-  // A personal API key of an account, made through a second janus over the same
-  // stores (the port has no key operation yet): its token, shown once.
+  return { email, account, enableSecondFactor };
+}
+
+// A personal API key of an account, made through a second janus over the same
+// stores (the port has no key operation yet): its token, shown once.
+function keyHelpers(db: Db, clock: Clock) {
   function keysOf() {
     return createAccounts({
       store: createMongoAdapter(db),
       apiKeys: createMongoApiKeys(db),
       clock,
       hasher: scryptHasher({ cost: 10 }),
-      totpKeys: [
-        { id: "spec", key: "c3RvcmF4LXNwZWMtdG90cC1rZXktMzItYnl0ZXMhISE" },
-      ],
+      totpKeys: TOTP_KEYS,
       events: async () => undefined,
       invitations: {
         store: createMongoInvitations(db),
@@ -186,6 +147,69 @@ export async function harness(
     await keysOf().apiKeys.revokeAll({ id: user.principal.accountId });
   }
 
+  return { apiKey, deactivate, revokeKeys };
+}
+
+// An identity over its own database on the spec server, an in-memory mailer, a
+// fixed clock and a cheap hasher, and the app that serves it: what the specs
+// of the identity flows share. Every call gets a database of its own, so specs
+// never see each other's accounts.
+export async function harness(
+  options: Partial<IdentityOptions> & {
+    limits?: Limits;
+    media?: AppOptions["media"];
+    renditions?: AppOptions["renditions"];
+    members?: AppOptions["members"];
+    teams?: AppOptions["teams"];
+    audit?: AppOptions["audit"];
+    translations?: AppOptions["translations"];
+  } = {},
+) {
+  const {
+    limits,
+    media,
+    renditions,
+    members,
+    teams,
+    audit,
+    translations,
+    ...identityOptions
+  } = options;
+  const mailer = createMemoryMailer();
+  // Fixed, but at the real time the harness starts: janus-mongo's sessions and
+  // tokens carry a TTL index on `expiresAt`, which MongoDB's monitor sweeps by
+  // the server's own clock every 60 s. A date in the past (2026-11-14, plus a
+  // 7-day session) made that sweep delete live sessions in the middle of a run.
+  const clock = fixedClock(new Date());
+  const db = connection.client.db(`identity_spec_${crypto.randomUUID()}`);
+  const identity = createJanusIdentity({
+    db,
+    mailer,
+    uiOrigin: "https://storix.test",
+    mailFrom: "noreply@storix.test",
+    clock,
+    hasher: scryptHasher({ cost: 10 }),
+    totpKeys: TOTP_KEYS,
+    mail: { throttle: false },
+    onAcceptedInvitation: async () => undefined,
+    ...identityOptions,
+  });
+  if (!options.db) await identity.syncStores();
+  const app = createApp({
+    identity,
+    // The notification mails leave through the same memory mailer.
+    mailer,
+    ...(translations && { translations }),
+    ...(limits && { limits }),
+    ...(media && { media }),
+    ...(renditions && { renditions }),
+    ...(members && { members }),
+    ...(teams && { teams }),
+    ...(audit && { audit }),
+  });
+  const client = graphqlClient(app, { headers: { [clientHeader]: "spec" } });
+  const mails = mailReaders(mailer);
+  const accounts = accountHelpers(identity, clock, mails.tokenFor);
   const request = (headers: Record<string, string> = {}) =>
     new Request("http://localhost/graphql", { method: "POST", headers });
 
@@ -195,16 +219,9 @@ export async function harness(
     clock,
     app,
     client,
-    email,
-    mailsTo,
-    tokenFor,
-    codeFor,
-    invitationCodeFor,
-    account,
-    enableSecondFactor,
-    apiKey,
-    deactivate,
-    revokeKeys,
+    ...mails,
+    ...accounts,
+    ...keyHelpers(db, clock),
     request,
   };
 }
