@@ -23,21 +23,23 @@ export interface Gql {
   response: { status: number };
 }
 
-// The identity harness plus workspaces: accounts that own or join workspaces,
-// and a `send` that speaks as one of them to one workspace (or none).
-export async function world(
-  options: {
-    limits?: Limits;
-    media?: HarnessOptions["media"];
-    renditions?: HarnessOptions["renditions"];
-    // A wiring other than the server's (specs: a listener that fails).
-    members?: HarnessOptions["members"];
-    teams?: HarnessOptions["teams"];
-    audit?: HarnessOptions["audit"];
-    translations?: HarnessOptions["translations"];
-  } = {},
-) {
-  const h = await harness({
+type WorldOptions = {
+  limits?: Limits;
+  media?: HarnessOptions["media"];
+  renditions?: HarnessOptions["renditions"];
+  // A wiring other than the server's (specs: a listener that fails).
+  members?: HarnessOptions["members"];
+  teams?: HarnessOptions["teams"];
+  audit?: HarnessOptions["audit"];
+  translations?: HarnessOptions["translations"];
+};
+
+type Harness = Awaited<ReturnType<typeof harness>>;
+type Workspace = { id: string; owner: User };
+
+// The identity harness, wired so that an accepted invitation joins its workspace.
+function identityHarness(options: WorldOptions) {
+  return harness({
     ...(options.limits && { limits: options.limits }),
     ...(options.media && { media: options.media }),
     ...(options.renditions && { renditions: options.renditions }),
@@ -52,9 +54,10 @@ export async function world(
         options.members ?? members,
       ),
   });
-  let sequence = 0;
-  const slug = () => `ws-${++sequence}-${crypto.randomUUID().slice(0, 6)}`;
+}
 
+// `send` speaks as a user to one workspace (or none); `codeOf` reads a refusal.
+function senders(h: Harness) {
   // `workspace` is the header's value (an id or a slug); undefined sends none.
   async function send(
     user: User | null,
@@ -72,6 +75,15 @@ export async function world(
   }
 
   const codeOf = (result: Gql) => result.errors?.[0]?.extensions?.code;
+  return { send, codeOf };
+}
+
+type Send = ReturnType<typeof senders>["send"];
+
+// Workspaces created by an account, and members added to them.
+function workspaceMakers(h: Harness, send: Send, options: WorldOptions) {
+  let sequence = 0;
+  const slug = () => `ws-${++sequence}-${crypto.randomUUID().slice(0, 6)}`;
 
   // A new account creates a workspace and owns it.
   async function workspaceOf(owner?: User) {
@@ -91,10 +103,7 @@ export async function world(
   }
 
   // A new account that belongs to a workspace with a role; its member id too.
-  async function join(
-    workspace: { id: string; owner: User },
-    role: WorkspaceRole,
-  ) {
+  async function join(workspace: Workspace, role: WorkspaceRole) {
     const user = await h.account();
     const row = await addMember(membersMongo(tenancy.core), {
       workspaceId: workspace.id,
@@ -106,11 +115,13 @@ export async function world(
     return { user, memberId: row.id };
   }
 
+  return { slug, workspaceOf, join };
+}
+
+// What a workspace's owner reads or does to it.
+function workspaceReaders(send: Send) {
   // The member id of an account in a workspace, read as its owner does.
-  async function memberIdOf(
-    workspace: { id: string; owner: User },
-    account: User,
-  ) {
+  async function memberIdOf(workspace: Workspace, account: User) {
     const page = await send(
       workspace.owner,
       "{ members(first: 100) { nodes { id accountId } } }",
@@ -128,7 +139,7 @@ export async function world(
   }
 
   // Closes a workspace as the tenancy lifecycle does: it is no longer active.
-  async function archive(workspace: { id: string; owner: User }) {
+  async function archive(workspace: Workspace) {
     const mongo = workspacesMongo(tenancy.core);
     const doc = await mongo.db.workspaces.findById(workspace.id);
     if (!doc) throw new Error("no such workspace");
@@ -137,5 +148,19 @@ export async function world(
       .update(workspace.id, { status: "archived", version: doc.version });
   }
 
-  return { h, send, codeOf, workspaceOf, join, memberIdOf, slug, archive };
+  return { memberIdOf, archive };
+}
+
+// The identity harness plus workspaces: accounts that own or join workspaces,
+// and a `send` that speaks as one of them to one workspace (or none).
+export async function world(options: WorldOptions = {}) {
+  const h = await identityHarness(options);
+  const { send, codeOf } = senders(h);
+  return {
+    h,
+    send,
+    codeOf,
+    ...workspaceMakers(h, send, options),
+    ...workspaceReaders(send),
+  };
 }
