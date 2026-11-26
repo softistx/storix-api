@@ -1,4 +1,3 @@
-import { isMediaKey, mediaPlace } from "@softistx/alxia-media";
 import { ConflictError } from "@softistx/mongo";
 import type { WorkspacesMongo } from "@/core/workspaces";
 import { renditionJobId } from "@/queues/renditions";
@@ -6,19 +5,30 @@ import type { FilesMongo } from "../models";
 import { filesMongo } from "../models";
 import type { RenditionsQueue } from "../rules";
 import {
+  cannotAfford,
+  oldKeysOf,
+  RELEASE_GRACE_MS,
+  RELEASED_BRAKE,
   removeObjects,
   type StuckReport,
   type Sweep,
   type SweepBucket,
   type SweepReport,
-  sizesOf,
 } from "../utils";
 import {
   giveSweepLockBack,
   renewSweepLock,
   takeSweepLock,
 } from "./sweep.lock.service";
+import { dryPass, releaseOne, unrecordedOf } from "./sweep.release.service";
 
+export {
+  CLOCK_SKEW_MS,
+  ORPHAN_BRAKE,
+  ORPHAN_BRAKE_RATIO,
+  RELEASE_GRACE_MS,
+  RELEASED_BRAKE,
+} from "../utils";
 export type { StuckReport, SweepBucket, SweepReport };
 
 /** An object nobody recorded is an orphan this long after its last write. */
@@ -38,6 +48,8 @@ export interface SweepOptions extends StuckOptions {
   // Stuck files looked at per run (`batch` is the blobs and objects read).
   stuckBatch?: number;
   maxDeletes?: number;
+  // A `refs` 0 blob younger than this is kept (`RELEASE_GRACE_MS`).
+  graceMs?: number;
 }
 
 /** A file is stuck `PROCESSING` when untouched for this long. */
@@ -139,14 +151,8 @@ export async function requeueStuck(
   return report;
 }
 
-/**
- * A page of this many old, distinct keys that no blob records, in a workspace
- * whose `blobs` collection is empty, is not swept: a wrong database against
- * the real bucket would otherwise wipe it.
- */
-export const ORPHAN_BRAKE = 10;
-
-// Reserves a key nobody records: a blob with `refs` 0 under it. `addFile`
+// Reserves a key nobody records: a blob with `refs` 0 under it, released now
+// (so the next run removes it once the grace window has passed). `addFile`
 // finds a blob and refuses the key (`key-unknown`), and a key it recorded
 // first makes the insert conflict, so a recorded object is never deleted.
 async function claim(run: Sweep, key: string): Promise<boolean> {
@@ -156,6 +162,7 @@ async function claim(run: Sweep, key: string): Promise<boolean> {
       size: 0,
       mimeType: "application/octet-stream",
       refs: 0,
+      releasedAt: run.now(),
     });
     return true;
   } catch (error) {
@@ -167,80 +174,80 @@ async function claim(run: Sweep, key: string): Promise<boolean> {
 // The objects under the workspace's `files` prefix that no blob records and
 // that were last written before the margin: a `/media` PUT that `addFile`
 // never recorded, and its sizes. Each key is claimed, its objects removed,
-// the claim is kept (a released blob the next run removes), so a recorder that
-// opened the object before its removal is still refused after it.
+// the claim is kept (a released blob the next run removes after the grace
+// window), so a recorder that opened the object before its removal is still
+// refused after it. An object dated in the future stops the workspace.
 export async function sweepOrphans(run: Sweep) {
-  const blobs = run.mongo.db.blobs;
   const prefix = `workspaces/${run.workspaceId}/files/`;
-  const cutoff = run.now().getTime() - run.margin;
-  for (let cursor: string | null = null; run.left > 0; ) {
+  for (let cursor: string | null = null; ; ) {
+    if (!(await run.renew())) {
+      run.lost = true;
+      return;
+    }
     const page: Awaited<ReturnType<Sweep["bucket"]["list"]>> =
       await run.bucket.list({ prefix, limit: run.batch, cursor });
-    const old = new Map<string, string[]>();
-    for (const item of page.items) {
-      const key = item.key.slice(prefix.length).split("/")[0] ?? "";
-      const at = item.lastModified?.getTime();
-      if (!isMediaKey(key) || at === undefined || at >= cutoff) continue;
-      old.set(key, [...(old.get(key) ?? []), item.key]);
+    const { old, future } = oldKeysOf(run, page.items, prefix);
+    if (future) {
+      run.report.braked = true;
+      run.log(
+        `storage sweep ${run.workspaceId} stopped: an object is dated in the future (clock skew)`,
+      );
+      return;
     }
-    const keys = [...old.keys()];
-    if (keys.length > 0) {
-      const held = await blobs.raw
-        .find({ key: { $in: keys } }, { projection: { key: 1 } })
-        .toArray();
-      const recorded = new Set(held.map((blob) => blob.key));
-      const orphans = keys.filter((key) => !recorded.has(key));
-      if (
-        orphans.length >= ORPHAN_BRAKE &&
-        orphans.length === keys.length &&
-        (await blobs.raw.estimatedDocumentCount()) === 0
-      ) {
-        run.log(
-          `storage sweep ${run.workspaceId} stopped: no blob records any of ${orphans.length} old keys on a page`,
-        );
-        return;
-      }
-      for (const key of orphans) {
-        if (run.left <= 0) return;
-        if (!(await claim(run, key))) continue;
-        const objects = old.get(key) ?? [];
-        const failed = await removeObjects(run, objects);
-        // The claim stays: an `addFile` that opened the object before this
-        // removal and records after it still finds the blob and is refused.
-        // The next run's released step removes it (and retries a failed delete).
-        run.report.failed += failed;
-        run.report.orphans += objects.length - failed;
-      }
+    for (const key of await unrecordedOf(run, [...old.keys()])) {
+      const objects = old.get(key) ?? [];
+      if (cannotAfford(run, objects.length)) return;
+      if (!(await claim(run, key))) continue;
+      const failed = await removeObjects(run, objects);
+      // The claim stays: an `addFile` that opened the object before this
+      // removal and records after it still finds the blob and is refused.
+      // The released step removes it later (and retries a failed delete).
+      run.report.failed += failed;
+      run.report.orphans += objects.length - failed;
     }
     if (page.nextCursor === null) return;
     cursor = page.nextCursor;
   }
 }
 
-// The blobs nothing references (`refs` 0): the blob goes first, with a delete
-// that only matches while `refs` is still 0, then its object and its sizes. A
-// failed object delete leaves an unrecorded object that `sweepOrphans` removes
-// once it is old enough.
+// The blobs nothing references (`refs` 0) and released (or claimed) before
+// the grace window, that no node or version holds: the blob goes first, with a
+// delete that only matches while `refs` is still 0, then its object and its
+// sizes. A failed object delete leaves an unrecorded object that
+// `sweepOrphans` removes once it is old enough. Pages by key, so a blob kept
+// is not read again. A mass of them, far above the recorded blobs, stops the
+// step (braked).
 async function sweepReleased(run: Sweep) {
-  const place = mediaPlace("files", `workspaces/${run.workspaceId}`);
-  const blobs = run.mongo.db.blobs;
-  while (run.left > 0) {
-    const page = await blobs.findMany({
-      filter: { refs: 0 },
-      limit: run.batch,
-    });
+  const blobs = run.mongo.db.blobs.raw;
+  const cutoff = new Date(run.now().getTime() - run.graceMs);
+  const removable = { refs: 0, releasedAt: { $lt: cutoff } };
+  const count = await blobs.countDocuments(removable, {
+    limit: RELEASED_BRAKE,
+  });
+  if (
+    count >= RELEASED_BRAKE &&
+    count > 2 * (await blobs.countDocuments({ refs: { $gt: 0 } }))
+  ) {
+    run.report.braked = true;
+    run.log(
+      `storage sweep ${run.workspaceId} stopped: at least ${count} released blobs against the recorded ones`,
+    );
+    return;
+  }
+  for (let last = ""; ; ) {
+    if (!(await run.renew())) {
+      run.lost = true;
+      return;
+    }
+    const page = await blobs
+      .find({ ...removable, key: { $gt: last } })
+      .sort({ key: 1 })
+      .limit(run.batch)
+      .toArray();
     if (page.length === 0) return;
     for (const blob of page) {
-      if (run.left <= 0) return;
-      const gone = await blobs.raw.deleteOne({ key: blob.key, refs: 0 });
-      if (gone.deletedCount === 0) continue;
-      const objectKey = place(blob.key);
-      const failed = await removeObjects(run, [
-        objectKey,
-        ...(await sizesOf(run, objectKey)),
-      ]);
-      run.report.failed += failed;
-      if (failed === 0) run.report.released += 1;
+      last = blob.key;
+      if ((await releaseOne(run, blob.key, cutoff)) === "capped") return;
     }
   }
 }
@@ -259,7 +266,14 @@ export async function sweepWorkspace(
     (options.now ?? (() => new Date()))(),
   );
   if (held === null) {
-    return { released: 0, orphans: 0, failed: 0, skipped: true };
+    return {
+      released: 0,
+      orphans: 0,
+      failed: 0,
+      skipped: true,
+      braked: false,
+      capped: false,
+    };
   }
   try {
     return await sweepLocked(mongo, bucket, workspaceId, options, held);
@@ -268,11 +282,13 @@ export async function sweepWorkspace(
   }
 }
 
-// One workspace: its released blobs, then the unrecorded objects older than
-// the margin, then (given the renditions queue) the files stuck `PROCESSING`.
-// Usage is not touched: it counts only blobs with `refs` above 0
-// (`recountStorage`), and a released one is already out of it. Never throws
-// for a delete or the stuck scan: it logs, counts it in `failed` and goes on.
+// One workspace: a dry first pass (the brakes), then its released blobs, then
+// the unrecorded objects older than the margin, then (given the renditions
+// queue) the files stuck `PROCESSING`. Usage is not touched: it counts only
+// blobs with `refs` above 0 (`recountStorage`), and a released one is already
+// out of it. A brake stops the workspace (`braked`); the cap is `capped`.
+// Never throws for a delete or the stuck scan: it logs, counts it in `failed`
+// and goes on.
 async function sweepLocked(
   mongo: FilesMongo,
   bucket: SweepBucket,
@@ -280,25 +296,43 @@ async function sweepLocked(
   options: SweepOptions,
   held: string,
 ): Promise<SweepReport> {
-  const report: SweepReport = { released: 0, orphans: 0, failed: 0 };
+  const report: SweepReport = {
+    released: 0,
+    orphans: 0,
+    failed: 0,
+    braked: false,
+    capped: false,
+  };
+  const now = options.now ?? (() => new Date());
+  const max = options.maxDeletes ?? SWEEP_MAX_DELETES;
   const run: Sweep = {
     mongo,
     bucket,
     workspaceId,
     log: options.log ?? ((message) => console.warn(message)),
-    now: options.now ?? (() => new Date()),
+    now,
     margin: options.orphanMarginMs ?? ORPHAN_MARGIN_MS,
     batch: options.batch ?? SWEEP_BATCH,
-    left: options.maxDeletes ?? SWEEP_MAX_DELETES,
+    left: max,
+    max,
+    graceMs: options.graceMs ?? RELEASE_GRACE_MS,
+    // The lease is renewed every page and between the steps; a run that lost
+    // it stops there and reports the workspace skipped (what it did stays
+    // counted), never failed.
+    renew: () => renewSweepLock(mongo, held, now()),
+    lost: false,
     report,
   };
-  // The lease is renewed between the steps; a run that lost it stops there and
-  // reports the workspace skipped (what it did stays counted), never failed.
-  const stillHeld = () => renewSweepLock(mongo, held, run.now());
+  const why = await dryPass(run);
+  if (run.lost) return { ...report, skipped: true };
+  if (why !== null) {
+    run.log(`storage sweep ${workspaceId} stopped: ${why}`);
+    return { ...report, braked: true };
+  }
   await sweepReleased(run);
-  if (!(await stillHeld())) return { ...report, skipped: true };
-  if (run.left > 0) await sweepOrphans(run);
-  if (!(await stillHeld())) return { ...report, skipped: true };
+  if (run.lost || !(await run.renew())) return { ...report, skipped: true };
+  if (!report.braked) await sweepOrphans(run);
+  if (run.lost || !(await run.renew())) return { ...report, skipped: true };
   if (options.renditions) await requeueStep(run, options.renditions, options);
   return report;
 }

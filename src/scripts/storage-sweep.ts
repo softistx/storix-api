@@ -9,7 +9,8 @@ import { runStorageSweep } from "./storage-sweep.run";
 // of a `/media` PUT that `addFile` never recorded once they are 75 minutes
 // old. Usage is not touched. Schedule it from the host (cron, a systemd
 // timer) until the worker runs it; it exits 1 when a workspace failed, a stuck file
-// was left for the next run (`nodesLeft`) or no bucket is configured.
+// was left for the next run (`nodesLeft`) or no bucket is configured, and 2
+// when a safety brake stopped a workspace (a hit cap is printed, exit 0).
 //
 //   bun run storage:sweep
 try {

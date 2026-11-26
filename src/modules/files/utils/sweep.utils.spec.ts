@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type { FilesMongo } from "../models";
 import {
+  cannotAfford,
+  orphanBrake,
   removeObjects,
   type Sweep,
   type SweepBucket,
@@ -11,7 +13,7 @@ type Page = { items: { key: string }[]; nextCursor: string | null };
 
 function run(bucket: Partial<SweepBucket>, batch = 2) {
   const logs: string[] = [];
-  const sweep = {
+  const sweep: Sweep = {
     mongo: {} as FilesMongo,
     bucket: bucket as SweepBucket,
     workspaceId: "w1",
@@ -20,8 +22,18 @@ function run(bucket: Partial<SweepBucket>, batch = 2) {
     margin: 0,
     batch,
     left: 10,
-    report: { released: 0, orphans: 0, failed: 0 },
-  } satisfies Sweep;
+    max: 10,
+    graceMs: 0,
+    renew: async () => true,
+    lost: false,
+    report: {
+      released: 0,
+      orphans: 0,
+      failed: 0,
+      braked: false,
+      capped: false,
+    },
+  };
   return { sweep, logs };
 }
 
@@ -36,6 +48,16 @@ describe("removeObjects", () => {
     expect(await removeObjects(sweep, ["a", "b"])).toBe(0);
     expect(deleted).toEqual(["a", "b"]);
     expect(sweep.left).toBe(8);
+  });
+
+  test("counts only what was removed against the cap", async () => {
+    const { sweep } = run({
+      delete: (async ({ key }: { key: string }) => {
+        if (key === "a") throw new Error("down");
+      }) as SweepBucket["delete"],
+    });
+    await removeObjects(sweep, ["a", "b"]);
+    expect(sweep.left).toBe(9);
   });
 
   test("logs a failed delete, counts it and goes on", async () => {
@@ -69,5 +91,31 @@ describe("sizesOf", () => {
       "o/square",
     ]);
     expect(prefixes).toEqual(["o/", "o/"]);
+  });
+});
+
+describe("cannotAfford", () => {
+  test("fits within what is left, else marks the run capped", () => {
+    const { sweep } = run({});
+    expect(cannotAfford(sweep, 10)).toBe(false);
+    sweep.left = 2;
+    expect(cannotAfford(sweep, 3)).toBe(true);
+    expect(sweep.report.capped).toBe(true);
+  });
+
+  test("a key larger than the whole cap still goes first", () => {
+    const { sweep } = run({});
+    sweep.left = sweep.max = 2;
+    expect(cannotAfford(sweep, 3)).toBe(false);
+    expect(sweep.report.capped).toBe(false);
+  });
+});
+
+describe("orphanBrake", () => {
+  test("needs ten unrecorded keys, then no recorded blob or over half of them", () => {
+    expect(orphanBrake(9, 0)).toBe(false);
+    expect(orphanBrake(10, 0)).toBe(true);
+    expect(orphanBrake(10, 20)).toBe(false);
+    expect(orphanBrake(11, 20)).toBe(true);
   });
 });
