@@ -1,4 +1,4 @@
-import type { AuditActor, Auditor } from "@/core/audit";
+import { type AuditActor, type Auditor, toEvent } from "@/core/audit";
 import type { NodeDoc } from "@/modules/nodes/public";
 
 interface Done {
@@ -23,9 +23,7 @@ export const recordTrash = (
   node: NodeDoc,
 ) =>
   done.auditor.record({
-    workspaceId: done.workspaceId,
-    actor: done.actor,
-    ip: done.ip,
+    ...toEvent(done),
     action,
     target: targetOf(node),
     meta: { parentId: node.parentId?.toHexString() ?? "" },
@@ -37,9 +35,7 @@ export const recordEmpty = (
   counts: { entries: number; nodes: number },
 ) =>
   done.auditor.record({
-    workspaceId: done.workspaceId,
-    actor: done.actor,
-    ip: done.ip,
+    ...toEvent(done),
     action: "trash.empty",
     target: { type: "TRASH", id: accountId, name: "trash" },
     meta: counts,

@@ -1,4 +1,4 @@
-import type { AuditActor, Auditor } from "../../audit";
+import { type AuditActor, type Auditor, toEvent } from "../../audit";
 import type { WorkspaceRole } from "../roles";
 import type { MemberDoc } from "./members.service";
 
@@ -25,11 +25,9 @@ export const recordRoleChange = (
   done: Done & { from: WorkspaceRole; to: WorkspaceRole },
 ) =>
   done.auditor.record({
-    workspaceId: done.workspaceId,
-    actor: done.actor,
+    ...toEvent(done),
     action: "member.role-change",
     target: targetOf(done),
-    ip: done.ip,
     meta: { accountId: done.member.accountId, from: done.from, to: done.to },
   });
 
@@ -37,11 +35,9 @@ export const recordRemoval = (
   done: Done & { transferredTo?: string | undefined },
 ) =>
   done.auditor.record({
-    workspaceId: done.workspaceId,
-    actor: done.actor,
+    ...toEvent(done),
     action: "member.remove",
     target: targetOf(done),
-    ip: done.ip,
     meta: {
       accountId: done.member.accountId,
       role: done.member.role,
@@ -51,10 +47,8 @@ export const recordRemoval = (
 
 export const recordLeave = (done: Done) =>
   done.auditor.record({
-    workspaceId: done.workspaceId,
-    actor: done.actor,
+    ...toEvent(done),
     action: "member.leave",
     target: targetOf(done),
-    ip: done.ip,
     meta: { accountId: done.member.accountId, role: done.member.role },
   });

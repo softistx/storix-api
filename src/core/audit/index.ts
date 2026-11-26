@@ -11,3 +11,4 @@ export {
   createAuditor,
   memberActor,
 } from "./services";
+export { toEvent } from "./utils/event.utils";
