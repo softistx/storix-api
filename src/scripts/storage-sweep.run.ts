@@ -29,7 +29,7 @@ export async function runStorageSweep(
     done.reduce((sum, r) => sum + pick(r), 0);
   const nodesLeft = total((r) => r.stuck?.nodesLeft ?? 0);
   return {
-    summary: `swept ${done.length} workspaces: ${total((r) => r.released)} released blobs, ${total((r) => r.orphans)} orphan objects, ${total((r) => r.failed)} not removed, ${total((r) => r.stuck?.requeued ?? 0)} stuck files queued again, ${total((r) => r.stuck?.failed ?? 0)} given up, ${nodesLeft} stuck files left for the next run, ${failed.length} workspaces failed`,
+    summary: `swept ${done.length} workspaces: ${total((r) => r.released)} released blobs, ${total((r) => r.orphans)} orphan objects, ${total((r) => r.failed)} not removed, ${total((r) => r.stuck?.requeued ?? 0)} stuck files queued again, ${total((r) => r.stuck?.failed ?? 0)} given up, ${nodesLeft} stuck files left for the next run, ${done.filter((r) => r.skipped).length} workspaces skipped (another sweep held the lock), ${failed.length} workspaces failed`,
     exitCode:
       failed.length > 0 || total((r) => r.failed) > 0 || nodesLeft > 0 ? 1 : 0,
   };

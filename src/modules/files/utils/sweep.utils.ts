@@ -27,6 +27,8 @@ export interface SweepReport {
   failed: number;
   // Present when the sweep was given the renditions queue.
   stuck?: StuckReport;
+  // True when another sweep of the workspace held the lock: nothing was done.
+  skipped?: boolean;
 }
 
 export interface Sweep {

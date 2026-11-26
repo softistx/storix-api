@@ -13,6 +13,7 @@ import {
   type SweepReport,
   sizesOf,
 } from "../utils";
+import { giveSweepLockBack, takeSweepLock } from "./sweep.lock.service";
 
 export type { StuckReport, SweepBucket, SweepReport };
 
@@ -238,16 +239,39 @@ async function sweepReleased(run: Sweep) {
   }
 }
 
-// One workspace: its released blobs, then the unrecorded objects older than
-// the margin, then (given the renditions queue) the files stuck `PROCESSING`.
-// Usage is not touched: it counts only blobs with `refs` above 0
-// (`recountStorage`), and a released one is already out of it. Never throws
-// for a delete or the stuck scan: it logs, counts it in `failed` and goes on.
+// One workspace, under its sweep lock: a run that finds another holding it
+// does nothing and says `skipped`, so two sweeps never both act (nor both raise
+// a stuck file's `renditionRequeues`). A crashed run's lock expires.
 export async function sweepWorkspace(
   mongo: FilesMongo,
   bucket: SweepBucket,
   workspaceId: string,
   options: SweepOptions = {},
+): Promise<SweepReport> {
+  const held = await takeSweepLock(
+    mongo,
+    (options.now ?? (() => new Date()))(),
+  );
+  if (held === null) {
+    return { released: 0, orphans: 0, failed: 0, skipped: true };
+  }
+  try {
+    return await sweepLocked(mongo, bucket, workspaceId, options);
+  } finally {
+    await giveSweepLockBack(mongo, held);
+  }
+}
+
+// One workspace: its released blobs, then the unrecorded objects older than
+// the margin, then (given the renditions queue) the files stuck `PROCESSING`.
+// Usage is not touched: it counts only blobs with `refs` above 0
+// (`recountStorage`), and a released one is already out of it. Never throws
+// for a delete or the stuck scan: it logs, counts it in `failed` and goes on.
+async function sweepLocked(
+  mongo: FilesMongo,
+  bucket: SweepBucket,
+  workspaceId: string,
+  options: SweepOptions,
 ): Promise<SweepReport> {
   const report: SweepReport = { released: 0, orphans: 0, failed: 0 };
   const run: Sweep = {

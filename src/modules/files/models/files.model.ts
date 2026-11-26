@@ -89,3 +89,15 @@ export const versions = defineCollection({
     { key: { createdAt: 1 }, name: "versions_created" },
   ],
 });
+
+// The lease of the storage sweep: at most one document per workspace database
+// (`_id` "sweep"), held until `until` by the run named `heldBy`. A crashed
+// sweep leaves it to expire; no index beyond `_id` is needed.
+export const sweepLocks = defineCollection({
+  name: "sweepLocks",
+  schema: z.object({
+    _id: z.literal("sweep"),
+    heldBy: z.string().min(1),
+    until: z.date(),
+  }),
+});
