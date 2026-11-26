@@ -1,4 +1,4 @@
-import type { AuditActor, Auditor } from "@/core/audit";
+import { type AuditActor, type Auditor, toEvent } from "@/core/audit";
 import type { GrantDoc } from "../models";
 
 export interface Done {
@@ -16,9 +16,7 @@ const record = (
   meta: Record<string, string>,
 ) =>
   done.auditor.record({
-    workspaceId: done.workspaceId,
-    actor: done.actor,
-    ip: done.ip,
+    ...toEvent(done),
     action,
     target: {
       type: node.type,

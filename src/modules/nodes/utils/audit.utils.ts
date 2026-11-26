@@ -1,4 +1,4 @@
-import type { AuditActor, Auditor } from "@/core/audit";
+import { type AuditActor, type Auditor, toEvent } from "@/core/audit";
 import type { NodeDoc } from "../models";
 
 interface Done {
@@ -18,9 +18,7 @@ const targetOf = (node: NodeDoc) => ({
 // (`auditor.record` never throws).
 export const recordFolderCreate = (done: Done, node: NodeDoc) =>
   done.auditor.record({
-    workspaceId: done.workspaceId,
-    actor: done.actor,
-    ip: done.ip,
+    ...toEvent(done),
     action: "node.folder-create",
     target: targetOf(node),
     meta: { parentId: node.parentId?.toHexString() ?? "" },
@@ -28,9 +26,7 @@ export const recordFolderCreate = (done: Done, node: NodeDoc) =>
 
 export const recordRename = (done: Done, node: NodeDoc, before: NodeDoc) =>
   done.auditor.record({
-    workspaceId: done.workspaceId,
-    actor: done.actor,
-    ip: done.ip,
+    ...toEvent(done),
     action: "node.rename",
     target: targetOf(node),
     meta: { from: before.name, to: node.name },
@@ -38,9 +34,7 @@ export const recordRename = (done: Done, node: NodeDoc, before: NodeDoc) =>
 
 export const recordMove = (done: Done, node: NodeDoc, from: string | null) =>
   done.auditor.record({
-    workspaceId: done.workspaceId,
-    actor: done.actor,
-    ip: done.ip,
+    ...toEvent(done),
     action: "node.move",
     target: targetOf(node),
     meta: { from: from ?? "", to: node.parentId?.toHexString() ?? "" },

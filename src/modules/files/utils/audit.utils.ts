@@ -1,4 +1,9 @@
-import { type AuditActor, type Auditor, memberActor } from "@/core/audit";
+import {
+  type AuditActor,
+  type Auditor,
+  memberActor,
+  toEvent,
+} from "@/core/audit";
 import type { NodeDoc } from "@/modules/nodes/public";
 
 export interface Done {
@@ -13,9 +18,7 @@ export interface Done {
 // and stays out of them.
 export const recordFileAdd = (done: Done, node: NodeDoc) =>
   done.auditor.record({
-    workspaceId: done.workspaceId,
-    actor: done.actor,
-    ip: done.ip,
+    ...toEvent(done),
     action: "file.add",
     target: { type: node.type, id: node.id, name: node.name },
     meta: {
@@ -28,9 +31,7 @@ export const recordFileAdd = (done: Done, node: NodeDoc) =>
 // A copy: the target is the new node, `from` the node it was made from.
 export const recordCopy = (done: Done, node: NodeDoc, from: string) =>
   done.auditor.record({
-    workspaceId: done.workspaceId,
-    actor: done.actor,
-    ip: done.ip,
+    ...toEvent(done),
     action: "node.copy",
     target: { type: node.type, id: node.id, name: node.name },
     meta: { from, parentId: node.parentId?.toHexString() ?? "" },
@@ -43,9 +44,7 @@ export const recordFileUpdate = (
   changed: readonly ("tags" | "meta")[],
 ) =>
   done.auditor.record({
-    workspaceId: done.workspaceId,
-    actor: done.actor,
-    ip: done.ip,
+    ...toEvent(done),
     action: "file.update",
     target: { type: node.type, id: node.id, name: node.name },
     meta: { changed: changed.join(",") },
@@ -54,9 +53,7 @@ export const recordFileUpdate = (
 // A move of a picture's focal point: the target only, never the coordinates.
 export const recordFileFocal = (done: Done, node: NodeDoc) =>
   done.auditor.record({
-    workspaceId: done.workspaceId,
-    actor: done.actor,
-    ip: done.ip,
+    ...toEvent(done),
     action: "file.focal",
     target: { type: node.type, id: node.id, name: node.name },
   });
@@ -66,9 +63,7 @@ export const recordFileFocal = (done: Done, node: NodeDoc) =>
 // quota's figures are not for the audit log).
 export const recordQuotaRefusal = (done: Done, name: string) =>
   done.auditor.record({
-    workspaceId: done.workspaceId,
-    actor: done.actor,
-    ip: done.ip,
+    ...toEvent(done),
     action: "quota.exceeded",
     target: { type: "WORKSPACE", id: done.workspaceId, name },
   });
@@ -82,9 +77,7 @@ export const recordVersion = (
   meta: { number: number; from?: number },
 ) =>
   done.auditor.record({
-    workspaceId: done.workspaceId,
-    actor: done.actor,
-    ip: done.ip,
+    ...toEvent(done),
     action,
     target: { type: node.type, id: node.id, name: node.name },
     meta,
