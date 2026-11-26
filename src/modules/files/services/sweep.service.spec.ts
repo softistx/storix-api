@@ -1,67 +1,14 @@
-import { describe, expect, spyOn, test } from "bun:test";
-import { mediaPlace, newMediaKey } from "@softistx/alxia-media";
-import { Collection } from "mongodb";
+import { describe, expect, test } from "bun:test";
 import { store } from "@/config/tenancy";
-import { ADD, filesWorld } from "../../../../test/files.harness";
-import { setup } from "../../nodes/nodes.harness";
-import { filesMongo } from "../models";
+import { filesWorld } from "../../../../test/files.harness";
 import type { SweepBucket } from "./index";
-import { recountStorage, sweepWorkspace } from "./index";
+import { recountStorage } from "./index";
+import { area as areaOf, later } from "./sweep.harness";
 
 // The orphan sweep against a real S3 API and the real Mongo: released blobs
-// with their sizes, objects nobody recorded once they are old enough, and a
-// recorded object that no interleaving can remove.
+// with their sizes, and objects nobody recorded once they are old enough.
 const files = filesWorld();
-const HOUR = 60 * 60_000;
-const later = () => new Date(Date.now() + 2 * HOUR);
-
-const databaseOf = async (id: string) => filesMongo(await store.databaseOf(id));
-
-async function area() {
-  const s = await setup(files.ctx.w);
-  const { id, owner } = s.workspace;
-  const root = await s.owner.root();
-  const mongo = await databaseOf(id);
-  const place = mediaPlace("files", `workspaces/${id}`);
-  const bucket = files.ctx.bucket as SweepBucket;
-  const keys = async () =>
-    (
-      await bucket.list({ prefix: `workspaces/${id}/files/`, limit: 1000 })
-    ).items
-      .map((item) => item.key)
-      .sort();
-  // An object nobody recorded, as a /media PUT that `addFile` never saw.
-  const stray = async (key = newMediaKey(), sizes: string[] = []) => {
-    for (const name of ["", ...sizes.map((size) => `/${size}`)]) {
-      await files.ctx.bucket.put({ key: place(key) + name }, "x", {
-        type: "text/plain",
-      });
-    }
-    return key;
-  };
-  const record = (key: string, name: string) =>
-    s.w.send(owner, ADD, {
-      workspace: id,
-      variables: { input: { key, name, parentId: root.id } },
-    });
-  const upload = (body: string) => files.upload(owner, id, body);
-  const sweep = (over = {}, on: SweepBucket = bucket) =>
-    sweepWorkspace(mongo, on, id, { log: () => {}, ...over });
-  return {
-    ...s,
-    id,
-    owner,
-    root,
-    mongo,
-    place,
-    keys,
-    stray,
-    record,
-    upload,
-    sweep,
-    bucket,
-  };
-}
+const area = () => areaOf(files);
 
 describe("the orphan sweep", () => {
   test("a released blob goes with its object and its sizes", async () => {
@@ -162,94 +109,5 @@ describe("the orphan sweep", () => {
     expect(report.orphans).toBe(0);
     expect(await a.keys()).toHaveLength(10);
     expect(logs.some((m) => m.includes("stopped"))).toBe(true);
-  });
-});
-
-describe("the sweep against addFile", () => {
-  test("a key recorded between the sweep's check and its claim is never removed", async () => {
-    const a = await area();
-    const up = await a.upload("raced");
-    let recorded: Awaited<ReturnType<typeof a.record>> | undefined;
-    const original = Collection.prototype.insertOne;
-    // The interleaving is forced: right before the sweep claims the key, a
-    // whole addFile of it commits. The claim then conflicts and the object stays.
-    const spy = spyOn(Collection.prototype, "insertOne").mockImplementation(
-      async function (this: Collection, ...args: never[]) {
-        const doc = (args as unknown[])[0] as { refs?: number };
-        if (this.collectionName === "blobs" && doc.refs === 0 && !recorded) {
-          recorded = await a.record(up.key, "raced.txt");
-        }
-        return original.apply(this, args as never);
-      } as never,
-    );
-    try {
-      await a.sweep({ now: later });
-    } finally {
-      spy.mockRestore();
-    }
-    expect(recorded?.errors).toBeUndefined();
-    expect(await a.keys()).toEqual([a.place(up.key)]);
-    expect(await a.mongo.db.blobs.findFirst({ key: up.key })).toMatchObject({
-      refs: 2,
-    });
-  });
-
-  test("an addFile that arrives while the sweep removes the object is refused, never half recorded", async () => {
-    const a = await area();
-    const up = await a.upload("late");
-    let recorded: Awaited<ReturnType<typeof a.record>> | undefined;
-    const racing: SweepBucket = {
-      list: (...args) => a.bucket.list(...args),
-      delete: async (...args) => {
-        recorded ??= await a.record(up.key, "late.txt");
-        return a.bucket.delete(...args);
-      },
-    };
-    await a.sweep({ now: later }, racing);
-    const code = (
-      recorded?.errors?.[0]?.extensions as { code?: string } | undefined
-    )?.code;
-    expect(code).toBe("files.errors.key-unknown");
-    expect(await a.keys()).toEqual([]);
-    // Only the sweep's own claim remains, never a held blob.
-    expect(await a.mongo.db.blobs.findFirst({ key: up.key })).toMatchObject({
-      refs: 0,
-    });
-    expect(
-      await a.mongo.db.nodes.findFirst({ blobKey: up.key }),
-    ).toBeUndefined();
-  });
-
-  test("an addFile that opened the object before the sweep removed it is refused after the sweep", async () => {
-    const a = await area();
-    const up = await a.upload("gap");
-    const original = files.ctx.bucket.open.bind(files.ctx.bucket);
-    let swept = false;
-    // The gap: addFile has opened the object (it exists), then a whole sweep
-    // claims it, removes it and finishes, before addFile's transaction.
-    const spy = spyOn(files.ctx.bucket, "open").mockImplementation((async (
-      ...args: Parameters<typeof original>
-    ) => {
-      const opened = await original(...args);
-      if (!swept) {
-        swept = true;
-        await a.sweep({ now: later });
-      }
-      return opened;
-    }) as never);
-    let recorded: Awaited<ReturnType<typeof a.record>>;
-    try {
-      recorded = await a.record(up.key, "gap.txt");
-    } finally {
-      spy.mockRestore();
-    }
-    const code = (
-      recorded.errors?.[0]?.extensions as { code?: string } | undefined
-    )?.code;
-    expect(code).toBe("files.errors.key-unknown");
-    expect(await a.keys()).toEqual([]);
-    expect(
-      await a.mongo.db.nodes.findFirst({ blobKey: up.key }),
-    ).toBeUndefined();
   });
 });
