@@ -2,6 +2,7 @@ export * from "./access.service";
 export * from "./accounting.service";
 export * from "./blob.service";
 export * from "./copy.service";
+export * from "./crops.service";
 export * from "./enqueue.service";
 export * from "./favourites.service";
 export * from "./files.service";

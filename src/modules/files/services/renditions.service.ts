@@ -21,14 +21,8 @@ import {
   sameFocal,
   targetSize,
 } from "../rules";
-import {
-  fitSide,
-  limits,
-  type MadeRendition,
-  makeFromPdf,
-  pruneCrops,
-  storeRenditions,
-} from "../utils";
+import { fitSide, limits, type MadeRendition, makeFromPdf } from "../utils";
+import { pruneCrops, storeRenditions } from "./crops.service";
 
 export interface MakeOptions {
   signal?: AbortSignal | undefined;
@@ -117,10 +111,10 @@ class OriginalMissing extends Error {}
 // Every node of the blob (a copy shares it) still `PROCESSING` takes the
 // status. Silent: the nodes' versions stay what a client holds.
 //
-// `authoritative` (a full job that succeeded) also settles nodes the stuck
-// sweep gave up on (`FAILED`): the sizes are stored, a backlog that outlived
-// `maxRequeues` must not leave them `FAILED` for good. A crops job keeps the
-// `PROCESSING`-only rule. `READY` resets the requeue counter.
+// `authoritative` (a job that succeeded) also settles nodes that were given up
+// on (`FAILED`, by the stuck sweep or by a failed job of the same point): the
+// sizes are stored, so a later success heals them. `READY` resets the requeue
+// counter.
 //
 // `rendered` (the focal point the job's crops were made for, `null` for the
 // centre) settles only the nodes at that point: a node moved to another point
@@ -245,8 +239,12 @@ export function renditionsHandler(
     } catch (error) {
       const permanent =
         error instanceof ImageError || error instanceof OriginalMissing;
+      // A crops job gives up the nodes at its own point only.
       if (permanent || attempt >= attempts)
-        await setStatus(mongo, key, "FAILED", { scope });
+        await setStatus(mongo, key, "FAILED", {
+          scope,
+          ...(scope === "crops" && { rendered: { focal: focal ?? null } }),
+        });
       if (permanent) {
         throw new JobError(
           error instanceof Error ? error.message : "unrenderable",
@@ -257,7 +255,7 @@ export function renditionsHandler(
     }
     await setStatus(mongo, key, "READY", {
       scope,
-      authoritative: crops !== true,
+      authoritative: true,
       rendered: { focal: focal ?? null },
     });
     await pruneCrops({ ...deps, mongo }, workspaceId, key).catch((error) =>
