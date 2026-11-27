@@ -198,10 +198,17 @@ export async function markRenditionsFailed(
 ) {
   const job = parseRenditionJobId(jobId);
   if (!job) return;
-  // The id does not say which job it was: whichever is pending gives up.
+  // The id does not say which scope it was: whichever is pending gives up. The
+  // previews are the blob's; the crops are at the job's point (an id with no
+  // point, queued before it existed, gives up the blob's).
   const mongo = await deps.mongoOf(job.workspaceId);
   await setStatus(mongo, job.key, "FAILED");
-  await setStatus(mongo, job.key, "FAILED", { scope: "crops" });
+  await setStatus(mongo, job.key, "FAILED", {
+    scope: "crops",
+    ...(job.focalPoint !== undefined && {
+      rendered: { focal: job.focalPoint },
+    }),
+  });
 }
 
 export function renditionsHandler(
