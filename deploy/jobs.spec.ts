@@ -87,4 +87,36 @@ describe("jobs-loop", () => {
     expect(err).toContain("storage-sweep interval");
     expect(calls).toEqual([]);
   });
+
+  test("a TERM reaches the running job at once and stops the loop", async () => {
+    // A script that records its TERM and exits, instead of finishing its work.
+    await writeFile(
+      join(dir, "run.sh"),
+      `trap 'echo term >> "${dir}/calls"; exit 0' TERM\necho started >> "${dir}/calls"\nsleep 30 >/dev/null 2>&1 &\nwait $!\n`,
+    );
+    const proc = Bun.spawn(["bash", script], {
+      env: {
+        PATH: Bun.env["PATH"] ?? "",
+        JOBS_RUN: `bash ${join(dir, "run.sh")}`,
+        JOBS_ALIVE_FILE: join(dir, "alive"),
+        JOBS_TICK: "1",
+      },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    for (let i = 0; i < 50; i++) {
+      const seen = await readFile(join(dir, "calls"), "utf8").catch(() => "");
+      if (seen.includes("started")) break;
+      await Bun.sleep(100);
+    }
+    const t0 = Date.now();
+    proc.kill("SIGTERM");
+    const code = await proc.exited;
+    const out = await new Response(proc.stdout).text();
+    const calls = await readFile(join(dir, "calls"), "utf8");
+    expect(calls).toContain("term");
+    expect(out).toContain("jobs: stopped");
+    expect(code).toBe(0);
+    expect(Date.now() - t0).toBeLessThan(10_000);
+  });
 });

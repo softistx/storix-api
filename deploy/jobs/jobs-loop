@@ -7,8 +7,9 @@
 #   quota reconcile every JOBS_RECONCILE_EVERY seconds  (default 86400)
 #
 # One job at a time, in this order. A job that fails is logged and tried again
-# at its next due time; it never stops the loop or the others. Each script
-# takes its own lease, so a second copy never doubles the work. /tmp/jobs-alive
+# at its next due time; it never stops the loop or the others. One jobs
+# container per stack (the sweep also holds its own per-workspace lock).
+# Each new container runs the three jobs once at start. /tmp/jobs-alive
 # holds the time of the last tick, which the service's healthcheck reads.
 #
 # JOBS_TICK (seconds between two checks, default 30), JOBS_MAX_TICKS (stop
@@ -46,11 +47,23 @@ while [ "$stopping" -eq 0 ]; do
     # The first tick runs every job once, so a restart never skips a due run.
     if [ $((now - last[i])) -ge "${every[$i]}" ]; then
       echo "jobs: ${names[$i]} start"
+      # In the background, so a TERM (docker stop) reaches the script at once
+      # and lets it release its lock, instead of waiting for it to finish.
       # shellcheck disable=SC2086
-      if $run "dist/scripts/${names[$i]}.js"; then
+      $run "dist/scripts/${names[$i]}.js" &
+      runner=$!
+      trap 'stopping=1; kill -TERM "$runner" 2>/dev/null' TERM INT
+      rc=0
+      wait "$runner" || rc=$?
+      # A TERM interrupts the first wait: wait again for the script's own exit.
+      if [ "$stopping" -eq 1 ] && kill -0 "$runner" 2>/dev/null; then
+        wait "$runner" || rc=$?
+      fi
+      trap 'stopping=1' TERM INT
+      if [ "$rc" -eq 0 ]; then
         echo "jobs: ${names[$i]} done"
       else
-        echo "jobs: ${names[$i]} failed (exit $?), next run in ${every[$i]}s" >&2
+        echo "jobs: ${names[$i]} failed (exit $rc), next run in ${every[$i]}s" >&2
       fi
       last[i]=$(date +%s)
     fi

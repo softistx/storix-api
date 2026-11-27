@@ -6,8 +6,8 @@ The staging stack of storix-api, after pulsarix-api's `deploy/`. Everything live
 
 | Service                | Image                         | Role                                                                                                                                                      |
 | ---------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mongo`                | `mongo:8.3`                   | one-node replica set, auth on (keyfile from `MONGO_KEYFILE`)                                                                                              |
-| `mongo-init`           | `mongo:8.3`                   | one-shot: the app user, and the backup user when `MONGO_BACKUP_PASSWORD` is set (re-applied on every `up`)                                                |
+| `mongo`                | `mongo:8.3`, by digest         | one-node replica set, auth on (keyfile from `MONGO_KEYFILE`)                                                                                              |
+| `mongo-init`           | `mongo:8.3`, by digest         | one-shot: the app user, and the backup user when `MONGO_BACKUP_PASSWORD` is set (re-applied on every `up`)                                                |
 | `redis`                | `redis:8.12`, pinned by digest | password, append-only. **Required**: rate limits, the renditions and mails queues, tokens                                                                 |
 | `seaweedfs`, `s3-init` | SeaweedFS and `mc`, by digest | the S3 store of the files: master, volume server and S3 gateway in one process; `s3-init` creates the private bucket                                      |
 | `api`                  | root `Dockerfile`             | the GraphQL API and the `/media` routes, port 3000, on the stack network and on `proxy`                                                                   |
@@ -19,7 +19,7 @@ The staging stack of storix-api, after pulsarix-api's `deploy/`. Everything live
 
 No service publishes a port. Two networks: `internal`, private to the stack, holds every service; the external `proxy` network (nxgt-docker creates it) holds only `api` and `ui` as well, so Traefik reaches them by container name. `mongo`, `redis`, `seaweedfs`, the worker, the jobs and `backup` are on `internal` only. In development (`docker-compose.yml`) the published ports are bound to `127.0.0.1`.
 
-Every container is capped (`deploy.resources.limits`: mongo and api 1 cpu / 1G, ui, seaweedfs, worker, jobs, migrate and backup 0.5 / 512M, redis 0.25 / 256M, one-shots 0.25 / 256M). Healthchecks run every 30 s or more (a bash TCP probe for mongo, `redis-cli ping`, a bash HTTP probe for the api, `wget` for seaweedfs and the ui, the loop's heartbeat for the jobs), never `mongosh` or `bun -e`. The worker has none: it serves nothing, and `restart: unless-stopped` brings it back. Images are pinned: mongo by tag, Redis, SeaweedFS and the bucket client by digest, like `docker-compose.yml`.
+Every container is capped (`deploy.resources.limits`: mongo and api 1 cpu / 1G, ui, seaweedfs, worker, jobs, migrate and backup 0.5 / 512M, redis 0.25 / 256M, one-shots 0.25 / 256M). Healthchecks run every 30 s or more (a bash TCP probe for mongo, `redis-cli ping`, a bash HTTP probe for the api, `wget` for seaweedfs and the ui, the loop's heartbeat for the jobs), never `mongosh` or `bun -e`. The worker has none: it serves nothing, and `restart: unless-stopped` brings it back. Images are pinned: mongo, Redis, SeaweedFS and the bucket client by digest, like `docker-compose.yml`.
 
 ## Routing and the client address
 
@@ -45,7 +45,7 @@ The worker runs the renditions and mails queues; nothing in-process schedules th
 - `retention`, every `JOBS_RETENTION_EVERY` (3600): purges the trash and the file versions past their limits;
 - `quota-reconcile`, every `JOBS_RECONCILE_EVERY` (86400): recounts each workspace's usage.
 
-One job at a time. A job that fails is logged and tried again at its next due time; the others still run. Each script takes its own lease, so no host `flock` is needed. The loop stamps `/tmp/jobs-alive` every tick and the healthcheck turns unhealthy after ten minutes without one. When the worker takes these schedules over, the `jobs` service is removed.
+One job at a time, and each new `jobs` container runs all three once at start (the quota reconcile is idempotent). Keep one `jobs` container per stack. A job that fails is logged and tried again at its next due time; the others still run. The sweep also holds its own per-workspace lock. The loop stamps `/tmp/jobs-alive` every tick and the healthcheck turns unhealthy after ten minutes without one. When the worker takes these schedules over, the `jobs` service is removed.
 
 ## The widget bundle
 

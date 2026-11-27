@@ -1,6 +1,6 @@
 # ── storix-api, staging ──────────────────────────────────────────────────────
 #
-# Modelled on storix-api/deploy. One stack: mongo (a one-node replica set, auth
+# Modelled on pulsarix-api's deploy/. One stack: mongo (a one-node replica set, auth
 # on), redis, SeaweedFS (the S3 store of the files), their init one-shots, the
 # API, the worker (renditions and notification mails), the jobs scheduler, the
 # backup service and, optionally, the UI. The UI (storix-ui) is a service of the
@@ -63,7 +63,7 @@
 #   the backup-data volume, copies the dump and a mirror of the files bucket to
 #   an offsite S3 bucket, and mails BACKUP_ALERT_TO on failure. deploy/restore.ts
 #   and deploy/restore-drill.ts run inside it.
-# - Images are pinned like docker-compose.yml: mongo 8.3 by tag, Redis,
+# - Images are pinned like docker-compose.yml: mongo, Redis,
 #   SeaweedFS and the bucket client by digest.
 
 name: ${STACK_PREFIX:+${STACK_PREFIX}-}storix
@@ -132,7 +132,7 @@ services:
         limits:
           cpus: "1.0"
           memory: 1G
-    image: mongo:8.3
+    image: mongo:8.3@sha256:747773029b84309981a3624a1af64ffc8c4d792283cc0834f26fe01fc6d28b34
     container_name: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-mongo
     # mongod runs as PID 1 and never reaped the healthcheck's mongosh processes
     # (the check is a bash TCP probe now): tini (init) still reaps stray children.
@@ -190,7 +190,7 @@ services:
         limits:
           cpus: "0.25"
           memory: 256M
-    image: mongo:8.3
+    image: mongo:8.3@sha256:747773029b84309981a3624a1af64ffc8c4d792283cc0834f26fe01fc6d28b34
     container_name: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-mongo-init
     depends_on:
       mongo:
@@ -521,8 +521,8 @@ services:
 
   # The scheduled scripts no process schedules yet: storage sweep and retention
   # every hour, the quota reconcile every night (deploy/jobs/jobs-loop, mounted
-  # read only: the image holds dist/ alone). Each script takes its own lease, so
-  # a second copy never doubles the work. The healthcheck is the loop's heartbeat.
+  # read only: the image holds dist/ alone). One job at a time, one jobs container
+  # per stack; the sweep also holds its own per-workspace lock. The healthcheck is the loop's heartbeat.
   jobs:
     <<: *common
     deploy:
