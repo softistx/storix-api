@@ -37,7 +37,7 @@ function picture() {
 }
 
 const FOCAL = `mutation($id: ID!, $focalPoint: FocalPointInput) {
-  setFocalPoint(id: $id, focalPoint: $focalPoint) { ${NODE} status }
+  setFocalPoint(id: $id, focalPoint: $focalPoint) { ${NODE} status cropsStatus }
 }`;
 
 async function record(body: Uint8Array, name: string) {
@@ -190,10 +190,18 @@ describe("renditions that recover or fail", () => {
 
   test("a crops job over an undecodable picture ends FAILED, without a retry", async () => {
     const { file, workspace } = await record(png(600), "bad.png");
+    const mongo = await databaseOf(workspace.id);
+    await mongo.db.nodes.updateMany(
+      { blobKey: file.key },
+      { cropsStatus: "PROCESSING" },
+      { audit: false },
+    );
     await expect(
       attempt(workspace.id, file.key, { attempt: 1, crops: true }),
     ).rejects.toThrow();
-    expect(await statusOf(workspace.id, file.key)).toBe("FAILED");
+    // Only the crops give up: the file's own status is not a crops job's.
+    const node = await mongo.db.nodes.findFirst({ blobKey: file.key });
+    expect(node?.cropsStatus).toBe("FAILED");
   });
 
   test("a job Redis refuses during setFocalPoint leaves the file FAILED, the point kept", async () => {
@@ -207,14 +215,18 @@ describe("renditions that recover or fail", () => {
         variables: { id: file.id, focalPoint: { x: 0.2, y: 0.3 } },
       });
       expect(code(moved)).toBeUndefined();
-      expect(moved.data?.["setFocalPoint"]).toMatchObject({ status: "FAILED" });
+      expect(moved.data?.["setFocalPoint"]).toMatchObject({
+        status: "READY",
+        cropsStatus: "FAILED",
+      });
     } finally {
       refuse = false;
     }
     const node = await (await databaseOf(workspace.id)).db.nodes.findFirst({
       blobKey: file.key,
     });
-    expect(node?.status).toBe("FAILED");
+    expect(node?.status).toBe("READY");
+    expect(node?.cropsStatus).toBe("FAILED");
     expect(node?.focalPoint).toEqual({ x: 0.2, y: 0.3 });
   });
 

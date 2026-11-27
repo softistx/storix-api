@@ -5,7 +5,8 @@ import type { RenditionsQueue } from "../rules";
 
 // Adds the node's `renditions` job (`redo` names a repeat of the same blob's
 // job, see `renditionJobId`). When Redis refuses it, the previews are given
-// up: the node is `FAILED` (logged), never left `PROCESSING` for ever.
+// up: the node is `FAILED` (logged), never left `PROCESSING` for ever (a
+// crops job gives up the `cropsStatus` alone).
 export async function enqueue(
   mongo: FilesMongo,
   queue: RenditionsQueue,
@@ -21,15 +22,18 @@ export async function enqueue(
       `storix-api: could not queue the renditions of ${job.key} in workspace ${job.workspaceId}: ${error instanceof Error ? error.message : error}`,
     );
     // The file is recorded either way: a second failure is logged, not thrown.
+    const field = job.crops ? "cropsStatus" : "status";
     await mongo.db.nodes
       .updateMany(
-        { blobKey: job.key, status: "PROCESSING" },
-        { status: "FAILED" },
+        { blobKey: job.key, [field]: "PROCESSING" },
+        { [field]: "FAILED" },
         { audit: false },
       )
       .catch((cause) =>
         console.error(`storix-api: could not mark ${job.key} FAILED: ${cause}`),
       );
-    return { ...node, status: "FAILED" };
+    return job.crops
+      ? { ...node, cropsStatus: "FAILED" }
+      : { ...node, status: "FAILED" };
   }
 }

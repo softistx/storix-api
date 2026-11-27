@@ -366,15 +366,15 @@ the common social-media ratios. Each is the largest box of its ratio, centred on
 until one is set) and held inside the picture near an edge. A PDF has `thumb` and `preview` only.
 
 ```graphql
-mutation { setFocalPoint(id: "<file id>", focalPoint: { x: 0.2, y: 0.4 }) { status focalPoint { x y } } }
+mutation { setFocalPoint(id: "<file id>", focalPoint: { x: 0.2, y: 0.4 }) { status cropsStatus focalPoint { x y } } }
 query { node(id: "<file id>") { ... on File { renditions { preset size mimeType } rendition(preset: SQUARE) { size } } } }
 ```
 
 `setFocalPoint(id, focalPoint)` (needs `nodes:manage`) takes `x` and `y` as fractions of the picture from its top left corner, 0
 to 1 (`focalPoint: null` puts it back at the centre). A coordinate outside 0 to 1 is `files.errors.invalid-focal` (400, field
 `focalPoint`), a folder `files.errors.not-a-file`, any file that is not a JPEG, PNG or WebP picture
-`files.errors.not-renderable` (400, field `id`). The point is written to the file and to its copies in the same tree (same owner); a copy another member holds keeps its own point. The file goes `PROCESSING` and a `renditions` job (`crops: true`) redoes the
-four crops from the stored original, then `READY` (or `FAILED` when only they failed, the original stays readable); without
+`files.errors.not-renderable` (400, field `id`). The point is written to the file and to its copies in the same tree (same owner); a copy another member holds keeps its own point. A `READY` file stays `READY` and its `cropsStatus` goes `PROCESSING` while a `renditions` job (`crops: true`) redoes the
+four crops from the stored original, then `READY` (or `FAILED` when only they failed, the original stays readable); a file that is not `READY` goes `PROCESSING` and gets the full job. Without
 `REDIS_URL` the point is recorded and the crops stay as they were. The
 move is audited as `file.focal` (the target only, never the coordinates).
 

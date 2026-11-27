@@ -355,11 +355,11 @@ Any operation can answer 403 with this code.
 
 **Fix:** page with the `pageInfo.endCursor` of the same list, or start again without `after`.
 
-## A picture is `PROCESSING` or `FAILED` after `setFocalPoint`
+## A picture's `cropsStatus` is `PROCESSING` or `FAILED` after `setFocalPoint`
 
-**When:** the file was `READY`, and a move of its focal point leaves it `PROCESSING`, or `FAILED`.
+**When:** the file was `READY`, and after a move of its focal point its `cropsStatus` stays `PROCESSING`, or is `FAILED` (its `status` stays `READY`).
 
-**Why:** a `crops` job redoes the four crops; without a running worker it stays `PROCESSING`, and if only it failed the file is `FAILED` (the original and the previews stay readable). Two quick moves queue two jobs: the file can read `READY` for a moment while the second still runs, and the crops follow the last point.
+**Why:** a `crops` job redoes the four crops; without a running worker `cropsStatus` stays `PROCESSING`, and if only it failed it is `FAILED` (the original and the previews stay readable and listed). Two quick moves queue two jobs: `cropsStatus` can read `READY` for a moment while the second still runs, and the crops follow the last point. The stuck sweep queues a crops job lost this way again after 60 minutes.
 
 **Fix:** start the worker (`bun run worker`), or call `setFocalPoint` again with the same point to redo the crops.
 

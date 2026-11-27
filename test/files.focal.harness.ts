@@ -13,14 +13,14 @@ type Files = ReturnType<typeof filesWorld>;
 
 export const FOCAL = `mutation($id: ID!, $focalPoint: FocalPointInput) {
   setFocalPoint(id: $id, focalPoint: $focalPoint) {
-    ${NODE} key status focalPoint { x y }
+    ${NODE} key status cropsStatus focalPoint { x y }
     renditions { preset size mimeType }
     square: rendition(preset: SQUARE) { size }
     story: rendition(preset: STORY) { size }
   }
 }`;
 export const READ = `query($id: ID!) { node(id: $id) { ... on File {
-  focalPoint { x y } renditions { preset size } rendition(preset: THUMB) { size }
+  status cropsStatus focalPoint { x y } renditions { preset size } rendition(preset: THUMB) { size }
 } } }`;
 
 // Left half red, right half blue: where a crop lands shows in its pixels.
@@ -64,7 +64,13 @@ export function focalKit(files: Files) {
     const db = filesMongo(await store.databaseOf(workspaceId));
     for (let i = 0; i < 300; i++) {
       const node = await db.db.nodes.findFirst({ blobKey: key });
-      if (node && node.status !== "PROCESSING") return node.status;
+      // A focal move on a READY file keeps `status`: its crops are `cropsStatus`.
+      if (
+        node &&
+        node.status !== "PROCESSING" &&
+        node.cropsStatus !== "PROCESSING"
+      )
+        return node.cropsStatus ?? node.status;
       await Bun.sleep(100);
     }
     throw new Error("the renditions did not settle");

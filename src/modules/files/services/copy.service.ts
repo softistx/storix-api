@@ -195,8 +195,10 @@ async function makeCopy(
       tags: node.tags,
       meta: node.meta,
       status: node.status,
+      cropsStatus: node.cropsStatus,
       focalPoint: node.focalPoint,
-      ...(node.status === "PROCESSING" && {
+      ...((node.status === "PROCESSING" ||
+        node.cropsStatus === "PROCESSING") && {
         renditionsAt: node.renditionsAt ?? new Date(),
       }),
     }),

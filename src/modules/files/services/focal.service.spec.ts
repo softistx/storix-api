@@ -51,18 +51,25 @@ describe("focal point and crops", () => {
     expect(moved.errors).toBeUndefined();
     const view = moved.data?.["setFocalPoint"] as {
       status: string;
+      cropsStatus: string;
       version: number;
       focalPoint: { x: number; y: number };
       renditions: unknown[];
       square: unknown;
     };
-    // PROCESSING while the worker redoes them: nothing is listed meanwhile.
-    expect(view.status).toBe("PROCESSING");
+    // The file stays READY (its sizes stay listed) while the worker redoes
+    // the crops: only `cropsStatus` is PROCESSING.
+    expect(view.status).toBe("READY");
+    expect(view.cropsStatus).toBe("PROCESSING");
     expect(view.focalPoint).toEqual({ x: 0.05, y: 0.5 });
-    expect(view.renditions).toEqual([]);
-    expect(view.square).toBeNull();
+    expect(view.renditions.length).toBeGreaterThan(0);
     expect(view.version).toBeGreaterThan(file.version);
     expect(await settled(a.workspace.id, file.key)).toBe("READY");
+    const after = await a.send(READ, { id: file.id });
+    expect(after.data?.["node"]).toMatchObject({
+      status: "READY",
+      cropsStatus: "READY",
+    });
 
     const left = await crop(a, file.key, "square");
     expect(left).toMatchObject({ left: "red", right: "red" });

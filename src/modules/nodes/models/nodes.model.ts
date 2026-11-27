@@ -58,6 +58,11 @@ export const nodes = defineCollection({
     tags: z.array(z.string()).default([]),
     meta: z.record(z.string(), z.unknown()).default({}),
     status: z.enum(fileStatuses).nullable().default(null),
+    // Where the four crops of a picture stand while the file itself is
+    // `READY`: `PROCESSING` while a focal-point move has them redone, `FAILED`
+    // when only that redo failed. Null is "as the file's `status`" (every file
+    // recorded before the field, and every file a full job settled).
+    cropsStatus: z.enum(fileStatuses).nullable().default(null),
     // The focal point of a picture, fractions of it from the top left (0 to 1);
     // null is the centre. Every node of a shared blob holds the same one.
     focalPoint: z
@@ -173,6 +178,12 @@ export const nodes = defineCollection({
       key: { renditionsAt: 1 },
       name: "nodes_processing",
       partialFilterExpression: { status: "PROCESSING" },
+    },
+    // The same scan for crops redone and stuck (2026-11-27-nodes-crops-index).
+    {
+      key: { renditionsAt: 1 },
+      name: "nodes_crops_processing",
+      partialFilterExpression: { cropsStatus: "PROCESSING" },
     },
     {
       key: { parentId: 1, type: -1, size: 1, name: 1, _id: 1 },

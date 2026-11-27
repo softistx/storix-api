@@ -107,9 +107,10 @@ describe("a renditions job settles only the focal point it rendered", () => {
     await gate.arrived;
     await a.send(FOCAL, { id: file.id, focalPoint: { x: 0.05, y: 0.5 } });
 
-    // The redo stores the moved crops and settles READY first.
+    // The redo stores the moved crops and settles READY first (the file was
+    // never READY, so it is a full job).
     await renditionsHandler({ bucket: files.ctx.bucket, mongoOf: databaseOf })(
-      job(a.workspace.id, file.key, true),
+      job(a.workspace.id, file.key, false),
     );
     expect((await read())?.status).toBe("READY");
 

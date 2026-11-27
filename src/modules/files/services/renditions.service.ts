@@ -124,20 +124,35 @@ class OriginalMissing extends Error {}
 // centre) settles only the nodes still at that point. The job re-renders until
 // the point holds (`storeUntilStable`); this guard covers a move after its last
 // read, leaving the node `PROCESSING` for the redo job `setFocalPoint` queued.
+//
+// A crops job (`scope` "crops") settles `cropsStatus` alone and leaves the
+// file's `status` as it is; a full job settles `status` and clears
+// `cropsStatus` (its crops are the current ones).
 async function setStatus(
   mongo: FilesMongo,
   key: string,
   status: "READY" | "FAILED",
-  authoritative = false,
-  rendered?: { focal: Focal | null },
+  options: {
+    scope?: "file" | "crops";
+    authoritative?: boolean;
+    rendered?: { focal: Focal | null };
+  } = {},
 ) {
+  const { scope = "file", authoritative = false, rendered } = options;
+  const field = scope === "crops" ? "cropsStatus" : "status";
   await mongo.db.nodes.updateMany(
     {
       blobKey: key,
       ...(rendered && sameFocal(rendered.focal)),
-      status: authoritative ? { $in: ["PROCESSING", "FAILED"] } : "PROCESSING",
+      [field]: authoritative ? { $in: ["PROCESSING", "FAILED"] } : "PROCESSING",
     },
-    status === "READY" ? { status, renditionRequeues: 0 } : { status },
+    {
+      [field]: status,
+      ...(status === "READY" && {
+        renditionRequeues: 0,
+        ...(scope === "file" && { cropsStatus: null }),
+      }),
+    },
     { audit: false },
   );
 }
@@ -152,7 +167,10 @@ async function setStatus(
 async function touch(mongo: FilesMongo, key: string) {
   try {
     await mongo.db.nodes.raw.updateMany(
-      { blobKey: key, status: "PROCESSING" },
+      {
+        blobKey: key,
+        $or: [{ status: "PROCESSING" }, { cropsStatus: "PROCESSING" }],
+      },
       { $set: { renditionsAt: new Date() } },
     );
   } catch (error) {
@@ -181,8 +199,11 @@ export async function markRenditionsFailed(
   jobId: string,
 ) {
   const job = parseRenditionJobId(jobId);
-  if (job)
-    await setStatus(await deps.mongoOf(job.workspaceId), job.key, "FAILED");
+  if (!job) return;
+  // The id does not say which job it was: whichever is pending gives up.
+  const mongo = await deps.mongoOf(job.workspaceId);
+  await setStatus(mongo, job.key, "FAILED");
+  await setStatus(mongo, job.key, "FAILED", { scope: "crops" });
 }
 
 export function renditionsHandler(
@@ -190,12 +211,13 @@ export function renditionsHandler(
 ): Handler<typeof renditionJob> {
   return async ({ data, attempt, attempts, signal }) => {
     const { workspaceId, key, crops } = data;
+    const scope = crops === true ? "crops" : "file";
     const mongo = await deps.mongoOf(workspaceId);
     const node = await mongo.db.nodes.findFirst({ blobKey: key });
     const kind = node?.mimeType ? renditionKindOf(node.mimeType) : null;
     // Deleted since, or a type with no previews: nothing to make.
     if (!node || !kind || !isMediaKey(key)) {
-      if (node) await setStatus(mongo, key, "READY");
+      if (node) await setStatus(mongo, key, "READY", { scope });
       return;
     }
     let rendered = node.focalPoint;
@@ -232,7 +254,7 @@ export function renditionsHandler(
       const permanent =
         error instanceof ImageError || error instanceof OriginalMissing;
       if (permanent || attempt >= attempts)
-        await setStatus(mongo, key, "FAILED");
+        await setStatus(mongo, key, "FAILED", { scope });
       if (permanent) {
         throw new JobError(
           error instanceof Error ? error.message : "unrenderable",
@@ -241,8 +263,10 @@ export function renditionsHandler(
       }
       throw error;
     }
-    await setStatus(mongo, key, "READY", crops !== true, {
-      focal: rendered,
+    await setStatus(mongo, key, "READY", {
+      scope,
+      authoritative: crops !== true,
+      rendered: { focal: rendered },
     });
   };
 }
