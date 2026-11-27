@@ -11,7 +11,7 @@ import {
   renditionsHandler,
 } from "@/modules/files/public";
 import { defineRenditionsQueue } from "@/queues/renditions";
-import { NODE } from "../src/modules/nodes/nodes.harness";
+import { NODE } from "./nodes.harness";
 import { world } from "./workspaces.harness";
 
 export const BUCKET = "storix-files-spec";

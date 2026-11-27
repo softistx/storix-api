@@ -4,8 +4,8 @@ import { actionsOf, storedEvents } from "@/core/audit/audit.harness";
 import { code, field } from "../../../../test/files.area";
 import { FOCAL, READ } from "../../../../test/files.focal.harness";
 import { COPY, filesWorld, png } from "../../../../test/files.harness";
+import { ROOTS } from "../../../../test/nodes.harness";
 import { sharesArea } from "../../../../test/shares.harness";
-import { ROOTS } from "../../nodes/nodes.harness";
 import { filesMongo } from "../models";
 import type { RenditionsQueue } from "../public";
 

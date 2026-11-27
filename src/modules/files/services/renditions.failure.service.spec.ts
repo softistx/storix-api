@@ -8,7 +8,7 @@ import {
   filesWorld,
   png,
 } from "../../../../test/files.harness";
-import { setup } from "../../nodes/nodes.harness";
+import { setup } from "../../../../test/nodes.harness";
 import type { RenditionsQueue } from "../public";
 import { filesMongo, markRenditionsFailed, renditionsHandler } from "../public";
 

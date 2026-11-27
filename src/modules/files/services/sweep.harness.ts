@@ -1,7 +1,7 @@
 import { mediaPlace, newMediaKey } from "@softistx/alxia-media";
 import { store } from "@/config/tenancy";
 import { ADD, type filesWorld } from "../../../../test/files.harness";
-import { setup } from "../../nodes/nodes.harness";
+import { setup } from "../../../../test/nodes.harness";
 import { filesMongo } from "../models";
 import { type SweepBucket, sweepWorkspace } from "./index";
 

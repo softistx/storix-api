@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { store, tenancy } from "@/config/tenancy";
 import { filesWorld } from "../../test/files.harness";
+import { setup } from "../../test/nodes.harness";
 import { workspacesMongo } from "../core/workspaces";
 import { filesMongo } from "../modules/files/public";
-import { setup } from "../modules/nodes/nodes.harness";
 import { runStorageSweep } from "./storage-sweep.run";
 
 // The script's summary and exit code when a brake trips or the cap is hit.

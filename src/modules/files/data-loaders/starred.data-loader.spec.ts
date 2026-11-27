@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { filesWorld } from "../../../../test/files.harness";
+import { NODE } from "../../../../test/nodes.harness";
 import { SHARE } from "../../../../test/shares.harness";
-import { NODE } from "../../nodes/nodes.harness";
 import { area as areaOf, code, STAR } from "../services/personal.harness";
 
 const files = filesWorld();

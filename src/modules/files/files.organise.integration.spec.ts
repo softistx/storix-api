@@ -8,7 +8,7 @@ import {
   filesWorld,
   UPDATE,
 } from "../../../test/files.harness";
-import { MOVE, type NodeView, RENAME } from "../nodes/nodes.harness";
+import { MOVE, type NodeView, RENAME } from "../../../test/nodes.harness";
 import { filesMongo } from "./models";
 
 const files = filesWorld();

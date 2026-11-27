@@ -2,9 +2,9 @@ import { expect } from "bun:test";
 import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { store } from "@/config/tenancy";
 import { filesMongo } from "../src/modules/files/models";
-import { NODE, setup } from "../src/modules/nodes/nodes.harness";
 import { field } from "./files.area";
 import { ADD, type FileView, type filesWorld } from "./files.harness";
+import { NODE, setup } from "./nodes.harness";
 
 // What the focal-point specs share: the two queries, a two-coloured
 // picture, and the helpers that need the world (an area, waiting for the

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { filesWorld } from "../../../test/files.harness";
+import { CREATE, MOVE, RENAME } from "../../../test/nodes.harness";
 import {
   ADD_VERSION,
   CHANGE,
@@ -9,7 +10,6 @@ import {
   UNSHARE,
   VERSIONS,
 } from "../../../test/shares.harness";
-import { CREATE, MOVE, RENAME } from "../nodes/nodes.harness";
 
 const files = filesWorld();
 

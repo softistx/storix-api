@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { store } from "@/config/tenancy";
+import {
+  MOVE,
+  type NodeView,
+  PATH,
+  setup,
+} from "../../../../test/nodes.harness";
 import { nodesMongo } from "../models";
-import { MOVE, type NodeView, PATH, setup } from "../nodes.harness";
 
 const databaseOf = async (id: string) => nodesMongo(await store.databaseOf(id));
 

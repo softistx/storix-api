@@ -2,8 +2,8 @@ import { S3Client } from "bun";
 import { store } from "@/config/tenancy";
 import { workspacesMongo } from "@/core/workspaces";
 import { BUCKET, type filesWorld } from "../../../test/files.harness";
+import { setup } from "../../../test/nodes.harness";
 import { filesMongo } from "../files/public";
-import { setup } from "../nodes/nodes.harness";
 
 type FilesWorld = ReturnType<typeof filesWorld>;
 

@@ -9,7 +9,7 @@ import {
   filesWorld,
   png,
 } from "../../../../test/files.harness";
-import { NODE, setup } from "../../nodes/nodes.harness";
+import { NODE, setup } from "../../../../test/nodes.harness";
 import { filesMongo } from "../models";
 import { type RenditionsQueue, renditionsHandler } from "../public";
 import { makeRenditions, requeueStuck } from "./index";

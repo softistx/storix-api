@@ -1,5 +1,5 @@
-import { setup } from "../src/modules/nodes/nodes.harness";
 import { FILE, type filesWorld } from "./files.harness";
+import { setup } from "./nodes.harness";
 
 export const GRANT = "id nodeId principal { type id } role grantedBy createdAt";
 export const SHARE = `mutation($id: ID!, $principal: GrantPrincipalInput!, $role: GrantRole!) { shareNode(id: $id, principal: $principal, role: $role) { ${GRANT} } }`;

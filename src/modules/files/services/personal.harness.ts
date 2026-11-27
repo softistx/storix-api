@@ -1,6 +1,6 @@
 import { store } from "@/config/tenancy";
 import type { filesWorld } from "../../../../test/files.harness";
-import { NODE, setup } from "../../nodes/nodes.harness";
+import { NODE, setup } from "../../../../test/nodes.harness";
 import { filesMongo } from "../models";
 
 export const STAR = `mutation($id: ID!, $starred: Boolean!) { setStarred(id: $id, starred: $starred) { ${NODE} } }`;
