@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { filesWorld } from "../../../../test/files.harness";
+import { SHARE } from "../../../../test/shares.harness";
 import { NODE } from "../../nodes/nodes.harness";
-import { area as areaOf, STAR } from "../services/personal.harness";
+import { area as areaOf, code, STAR } from "../services/personal.harness";
 
 const files = filesWorld();
 let a: Awaited<ReturnType<typeof areaOf>>;
@@ -10,6 +11,8 @@ beforeAll(async () => {
 });
 
 const LISTING = `query($parentId: ID!) { nodes(parentId: $parentId, first: 100) { nodes { ${NODE} starred } } }`;
+
+const SEEN = `query($id: ID!) { node(id: $id) { id starred } }`;
 
 const flags = async (user: typeof a.owner) => {
   const r = await a.send(user, LISTING, { parentId: a.root.id });
@@ -41,14 +44,19 @@ describe("Node.starred loader", () => {
     const f = await a.file("shared-star.txt");
     await a.send(a.owner, STAR, { id: f.id, starred: true });
     const other = await a.w.join(a.workspace, "MEMBER");
-    const r = await a.send(other.user, LISTING, { parentId: a.root.id });
-    const nodes = (
-      r.data as unknown as {
-        nodes: { nodes: { name: string; starred: boolean }[] };
-      }
-    )?.nodes?.nodes;
-    const seen = nodes?.find((n) => n.name === "shared-star.txt");
-    expect(seen?.starred ?? false).toBe(false);
+    const shared = await a.send(a.owner, SHARE, {
+      id: f.id,
+      principal: { type: "MEMBER", id: other.memberId },
+      role: "VIEWER",
+    });
+    expect(shared.errors).toBeUndefined();
+    const r = await a.send(other.user, SEEN, { id: f.id });
+    expect(r.errors).toBeUndefined();
+    const seen = (r.data as unknown as { node: { starred: boolean } | null })
+      .node;
+    expect(seen).toBeDefined();
+    expect(seen).not.toBeNull();
+    expect(seen?.starred).toBe(false);
     expect((await flags(a.owner)).get("shared-star.txt")).toBe(true);
   });
 
@@ -59,5 +67,6 @@ describe("Node.starred loader", () => {
       variables: { parentId: a.root.id },
     });
     expect(r.errors?.length ?? 0).toBeGreaterThan(0);
+    expect(code(r)).toBeDefined();
   });
 });
