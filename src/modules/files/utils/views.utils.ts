@@ -21,10 +21,10 @@ export const recentPageOf = (
   page: PersonalPage,
   after: string | null | undefined,
 ) => ({
-  entries: page.items.map((node, i) => ({
-    node: fileOf(node),
-    openedAt: page.dates[i] as Date,
-  })),
+  entries: page.items.flatMap((node, i) => {
+    const openedAt = page.dates[i];
+    return openedAt ? [{ node: fileOf(node), openedAt }] : [];
+  }),
   pageInfo: pageOf(page, after).pageInfo,
 });
 

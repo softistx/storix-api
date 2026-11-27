@@ -27,11 +27,11 @@ describe("the notification mails", () => {
 
   test("the params reach the translation", () => {
     const seen: unknown[] = [];
-    mailOf("quota", { workspace: "W", percent: 80 }, (_, params) => {
+    mailOf("quota", { workspace: "W", percent: 85 }, (_, params) => {
       seen.push(params);
       return "x";
     });
-    expect(seen[0]).toEqual({ workspace: "W", percent: 80 });
+    expect(seen[0]).toEqual({ workspace: "W", percent: 85 });
   });
 
   test("the html is the body escaped, one paragraph per line", () => {

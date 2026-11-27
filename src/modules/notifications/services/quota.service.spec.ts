@@ -57,4 +57,33 @@ describe("claiming a quota level", () => {
     );
     expect(results.filter(Boolean)).toHaveLength(1);
   });
+
+  test("a mark stored at the old 80 alerts once at 85, then stays quiet", async () => {
+    await world();
+    const id = fresh();
+    const now = new Date();
+    await mongo().db.quotaMarks.raw.insertOne({
+      workspaceId: new ObjectId(id),
+      level: 80,
+      createdAt: now,
+      updatedAt: now,
+    } as never);
+    expect(await claimLevel(mongo(), id, 85)).toBe(true);
+    expect(await claimLevel(mongo(), id, 85)).toBe(false);
+  });
+
+  test("a mark stored at the old 100 is lowered to 95 without a repeat alert", async () => {
+    await world();
+    const id = fresh();
+    const now = new Date();
+    await mongo().db.quotaMarks.raw.insertOne({
+      workspaceId: new ObjectId(id),
+      level: 100,
+      createdAt: now,
+      updatedAt: now,
+    } as never);
+    expect(await claimLevel(mongo(), id, 95)).toBe(false);
+    expect(await claimLevel(mongo(), id, 95)).toBe(false);
+    expect(await claimLevel(mongo(), id, 85)).toBe(false);
+  });
 });

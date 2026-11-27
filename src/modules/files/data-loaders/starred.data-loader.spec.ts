@@ -36,4 +36,28 @@ describe("Node.starred loader", () => {
     await a.send(a.owner, STAR, { id: x.id, starred: false });
     expect((await flags(a.owner)).get("x.txt")).toBe(false);
   });
+
+  test("another member sees false for the owner's star", async () => {
+    const f = await a.file("shared-star.txt");
+    await a.send(a.owner, STAR, { id: f.id, starred: true });
+    const other = await a.w.join(a.workspace, "MEMBER");
+    const r = await a.send(other.user, LISTING, { parentId: a.root.id });
+    const nodes = (
+      r.data as unknown as {
+        nodes: { nodes: { name: string; starred: boolean }[] };
+      }
+    )?.nodes?.nodes;
+    const seen = nodes?.find((n) => n.name === "shared-star.txt");
+    expect(seen?.starred ?? false).toBe(false);
+    expect((await flags(a.owner)).get("shared-star.txt")).toBe(true);
+  });
+
+  test("a refused guard refuses the field, not a false", async () => {
+    const elsewhere = await a.w.workspaceOf();
+    const r = await a.w.send(elsewhere.owner, LISTING, {
+      ...a.at,
+      variables: { parentId: a.root.id },
+    });
+    expect(r.errors?.length ?? 0).toBeGreaterThan(0);
+  });
 });

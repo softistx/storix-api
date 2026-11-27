@@ -1718,7 +1718,8 @@ type Storage {
   files: Int!
   """
   The largest live files, biggest first: trashed files and folders are left out,
-  and so is a file the caller cannot read. `first` is 1 to 50.
+  and so is a file the caller cannot read. `first` is 1 to 50. The answer can be
+  shorter than `first` when the caller can read few of the large files.
   """
   largestFiles(first: Int! = 10 @constraint(min: 1, max: 50)): [File!]!
   """

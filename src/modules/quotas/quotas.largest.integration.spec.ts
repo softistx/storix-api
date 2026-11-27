@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { filesWorld } from "../../../test/files.harness";
+import { SHARE } from "../../../test/shares.harness";
 import { area as areaOf } from "./quotas.harness";
 
 const files = filesWorld();
@@ -88,4 +89,55 @@ describe("Storage.largestFiles", () => {
     expect(names).toEqual(["mine.txt"]);
     expect(mine.id).toBeTruthy();
   });
+
+  test("a private file shared with the caller is named", async () => {
+    const a = await area();
+    const sharer = await a.w.join(a.workspace, "MEMBER");
+    const reader = await a.w.join(a.workspace, "MEMBER");
+    const root = await a.as(sharer.user).root();
+    const hidden = await files.addFile(
+      sharer.user,
+      a.workspace.id,
+      root.id,
+      "hidden.txt",
+      "a".repeat(40),
+    );
+    const before = await a.w.send(reader.user, LARGEST, { ...a.at });
+    expect(largest(before)).toEqual([]);
+    const shared = await a.w.send(sharer.user, SHARE, {
+      ...a.at,
+      variables: {
+        id: hidden.id,
+        principal: { type: "MEMBER", id: reader.memberId },
+        role: "VIEWER",
+      },
+    });
+    expect(shared.errors).toBeUndefined();
+    const after = await a.w.send(reader.user, LARGEST, { ...a.at });
+    expect(largest(after).map((f) => f.id)).toEqual([hidden.id]);
+  });
+
+  test("keeps reading past a batch of files the caller cannot read", async () => {
+    const a = await area();
+    const member = await a.w.join(a.workspace, "MEMBER");
+    const root = await a.as(member.user).root();
+    for (let n = 0; n < 101; n++) {
+      await files.addFile(
+        member.user,
+        a.workspace.id,
+        root.id,
+        `p${n}.txt`,
+        "a".repeat(20),
+      );
+    }
+    const mine = await files.addFile(
+      a.workspace.owner,
+      a.workspace.id,
+      a.root.id,
+      "mine.txt",
+      "a",
+    );
+    const result = await a.w.send(a.workspace.owner, LARGEST, { ...a.at });
+    expect(largest(result).map((f) => f.id)).toEqual([mine.id]);
+  }, 120_000);
 });
