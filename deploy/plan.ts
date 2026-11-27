@@ -21,8 +21,39 @@ export const REQUIRED = [
   "AUDIT_IP_KEY",
   "CONTACT_EMAIL",
   "MAIL_FROM",
-  "MAIL_URL",
 ] as const;
+
+/** Where the bumail service key sits, relative to deploy/ (compose secret `mail_api_key`). */
+export const MAIL_KEY_FILE = "secrets/mail_api_key";
+
+/** The mail transport the env file selects: bumail unless it says smtp. */
+export const mailTransportOf = (values: Record<string, string>) =>
+  values["MAIL_TRANSPORT"] === "smtp" ? "smtp" : "bumail";
+
+/**
+ * What is wrong with the mail settings and the key file. `key` is what the
+ * caller found at deploy/secrets/mail_api_key (nothing is read here, and never
+ * its content): with the bumail transport it must exist with mode 600 or 400;
+ * with smtp, MAIL_URL is required instead.
+ */
+export function mailProblems(
+  values: Record<string, string>,
+  key: { exists: boolean; mode: number },
+): string[] {
+  if (mailTransportOf(values) === "smtp") {
+    const url = values["MAIL_URL"];
+    return url === undefined || url === "" || url === "CHANGE_ME"
+      ? ["MAIL_URL is required with MAIL_TRANSPORT=smtp"]
+      : [];
+  }
+  if (!key.exists)
+    return [
+      `deploy/${MAIL_KEY_FILE} is missing: the bumail service key, mode 600 (docs/deployment.md, "Mail")`,
+    ];
+  return key.mode === 0o600 || key.mode === 0o400
+    ? []
+    : [`deploy/${MAIL_KEY_FILE} has mode ${key.mode.toString(8)}: chmod 600`];
+}
 
 /** Passwords that sit in a URL: no character that needs escaping there. */
 const URL_SAFE = ["MONGO_APP_PASSWORD", "REDIS_PASSWORD"] as const;
@@ -104,8 +135,9 @@ export function deploySteps(input: {
     },
     {
       name: "network",
-      detail: "the external docker network `proxy` exists",
-      command: "docker network inspect proxy",
+      detail:
+        "the external docker networks `proxy` and `bumail-internal` exist",
+      command: "docker network inspect proxy bumail-internal",
     },
   ];
   if (options.noPull) {

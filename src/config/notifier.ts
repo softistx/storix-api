@@ -12,7 +12,7 @@ import { serverMailer } from "./mailer";
 import { appRedis } from "./redis";
 
 // The mailer of the server's notification mails, shared by every request.
-const defaultMailer = serverMailer(env.MAIL_URL);
+const defaultMailer = serverMailer();
 
 // The notifier an app runs: the notifications module's, over the identity
 // (recipients' addresses and languages), the translations (the mail texts) and

@@ -26,6 +26,7 @@ const compose = Bun.YAML.parse(composeText) as {
       }[];
       labels?: string[];
       networks?: string[];
+      secrets?: string[];
       deploy?: { resources?: { limits?: { cpus?: string; memory?: string } } };
       healthcheck?: {
         test?: string[];
@@ -47,14 +48,32 @@ describe("docker-compose.yaml", () => {
       expect(service.ports, `${name} publishes a port`).toBeUndefined();
   });
 
-  test("the data services are on the stack network only; only api and ui join the external proxy network", () => {
+  test("the data services are on the stack network only; only api and ui join the external proxy network, only api and worker bumail's", () => {
     expect(compose.networks["proxy"]?.external).toBe(true);
+    expect(compose.networks["bumail-internal"]?.external).toBe(true);
     expect(compose.networks["internal"]?.external).toBeUndefined();
+    const extra: Record<string, string[]> = {
+      api: ["bumail-internal", "proxy"],
+      ui: ["proxy"],
+      worker: ["bumail-internal"],
+    };
     for (const [name, service] of Object.entries(compose.services)) {
-      const expected =
-        name === "api" || name === "ui" ? ["internal", "proxy"] : ["internal"];
+      const expected = ["internal", ...(extra[name] ?? [])].sort();
       expect([...(service.networks ?? [])].sort(), name).toEqual(expected);
     }
+  });
+
+  test("mail goes through bumail by default, its key a read-only secret file, never an environment value", () => {
+    expect(apiEnv["MAIL_TRANSPORT"]).toBe(v("MAIL_TRANSPORT:-bumail"));
+    expect(apiEnv["BUMAIL_URL"]).toBe(
+      v("BUMAIL_URL:-http://bumail-app:8090/graphql"),
+    );
+    expect(apiEnv["BUMAIL_API_KEY_FILE"]).toBe("/run/secrets/mail_api_key");
+    expect(composeText).not.toMatch(/bumail_[A-Za-z0-9]/);
+    for (const name of ["api", "worker", "jobs", "migrate"])
+      expect(compose.services[name]?.secrets, name).toEqual(["mail_api_key"]);
+    // MAIL_URL only serves the smtp fallback (and the backup alert): never required.
+    expect(composeText).not.toContain(v("MAIL_URL:?"));
   });
 
   test("the stack is mongo, redis, seaweedfs, their init one-shots, api, worker, jobs, migrate and the opt-in backup and ui", () => {

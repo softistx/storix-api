@@ -25,6 +25,7 @@ const run = async (nodeEnv: string, flag?: string) => {
         MONGO_URI: "mongodb://localhost:27017",
         UI_ORIGIN: "https://storix.test",
         MAIL_FROM: "noreply@storix.test",
+        MAIL_TRANSPORT: "smtp",
         MAIL_URL: "smtp://localhost:1025",
         TOTP_KEYS: "k:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
         REDIS_URL: "redis://localhost:6379",

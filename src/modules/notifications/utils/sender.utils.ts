@@ -1,4 +1,4 @@
-import type { Mailer } from "@softistx/mail";
+import { type Mailer, MailRefused } from "@softistx/mail";
 import type { Handler } from "@softistx/redis";
 import type { mailJob } from "@/queues/mails";
 
@@ -32,8 +32,21 @@ export const directSender =
   };
 
 // The worker's handler: a send that fails throws, and the queue retries it.
+// A refusal (MailRefused: the mail cannot go as it is) is final: it is logged
+// by its code, never its detail (which may quote an address), and the job is
+// dropped instead of retried.
 export const mailsHandler =
-  (mailer: Mailer, from: string): Handler<typeof mailJob> =>
+  (
+    mailer: Mailer,
+    from: string,
+    log: (message: string) => void = (message) => console.warn(message),
+  ): Handler<typeof mailJob> =>
   async ({ data, id }) => {
-    await directSender(mailer, from)(data, id);
+    try {
+      await directSender(mailer, from)(data, id);
+    } catch (error) {
+      if (!(error instanceof MailRefused)) throw error;
+      const code = (error.cause as { code?: string | null } | undefined)?.code;
+      log(`mails job ${id} refused, dropped: ${code ?? "no code"}`);
+    }
   };

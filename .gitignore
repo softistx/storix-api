@@ -6,3 +6,6 @@ build
 .env
 .env.local
 generated
+
+# The bumail service key of deploy/ (docs/deployment.md, "Mail"): never committed.
+deploy/secrets/

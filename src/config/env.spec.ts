@@ -7,6 +7,7 @@ const base = {
   MONGO_URI: "mongodb://localhost:27017",
   UI_ORIGIN: "https://storix.test",
   MAIL_FROM: "noreply@storix.test",
+  MAIL_TRANSPORT: "smtp",
   MAIL_URL: "smtp://localhost:1025",
   REDIS_URL: "redis://localhost:6379",
   TRUSTED_PROXIES: "10.0.0.0/8",
@@ -42,7 +43,6 @@ describe("env in production", () => {
   for (const name of [
     "UI_ORIGIN",
     "MAIL_FROM",
-    "MAIL_URL",
     "REDIS_URL",
     "TRUSTED_PROXIES",
     "API_PROXY_SECRET",
@@ -54,6 +54,12 @@ describe("env in production", () => {
       expect(stderr).toContain(name);
     });
   }
+
+  test("MAIL_TRANSPORT is bumail or smtp, bumail by default", async () => {
+    expect((await load({ MAIL_TRANSPORT: "carrier-pigeon" })).code).not.toBe(0);
+    expect((await load({ MAIL_TRANSPORT: undefined })).code).toBe(0);
+    expect((await load({ MAIL_URL: "http://x" })).code).not.toBe(0);
+  });
 
   test("AUDIT_IP_KEY needs at least 32 characters", async () => {
     const short = await load({ AUDIT_IP_KEY: "k".repeat(31) });

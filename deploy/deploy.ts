@@ -32,7 +32,7 @@
  * and prove a dump restores.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { $ } from "bun";
 import {
   API_ROOT,
@@ -49,9 +49,19 @@ import {
   BACKUP_OFF_LINE,
   deploySteps,
   envProblems,
+  MAIL_KEY_FILE,
+  mailProblems,
   renderPlan,
   staleImages,
 } from "./plan";
+
+// The bumail service key file, found or not (its content is never read here).
+function mailKeyFile() {
+  const path = `${DEPLOY_DIR}/${MAIL_KEY_FILE}`;
+  return existsSync(path)
+    ? { exists: true, mode: statSync(path).mode & 0o777 }
+    : { exists: false, mode: 0 };
+}
 
 const args = Bun.argv.slice(2);
 const known = new Set([
@@ -108,7 +118,10 @@ if (args.includes("--dry-run")) {
   );
   if (!options.backup) console.log(`\n${BACKUP_OFF_LINE}`);
   const problems = existsSync(envFile)
-    ? envProblems(values, { backup: options.backup })
+    ? [
+        ...envProblems(values, { backup: options.backup }),
+        ...mailProblems(values, mailKeyFile()),
+      ]
     : [`${envFile} is missing: cp deploy/.env.example ${envFile}, fill it`];
   if (problems.length > 0) {
     console.log(`\nthe real run would stop on:\n  ${problems.join("\n  ")}`);
@@ -123,7 +136,10 @@ if (args.includes("--dry-run")) {
 ensureReadToken();
 const stack = await loadStack(args);
 
-const problems = envProblems(stack.values, { backup: options.backup });
+const problems = [
+  ...envProblems(stack.values, { backup: options.backup }),
+  ...mailProblems(stack.values, mailKeyFile()),
+];
 if (problems.length > 0)
   fail(`the settings in ${stack.envFile}:\n  ${problems.join("\n  ")}`);
 
@@ -131,6 +147,13 @@ const proxy = await $`docker network inspect proxy`.quiet().nothrow();
 if (proxy.exitCode !== 0)
   fail(
     "the external docker network `proxy` does not exist (nxgt-docker creates it)",
+  );
+const bumailNetwork = await $`docker network inspect bumail-internal`
+  .quiet()
+  .nothrow();
+if (bumailNetwork.exitCode !== 0)
+  fail(
+    "the external docker network `bumail-internal` does not exist (bumail's stack creates it)",
   );
 
 if (!options.noPull) {

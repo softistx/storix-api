@@ -40,8 +40,13 @@ async function run(args: string[], env: Record<string, string> = {}) {
 
 const example = readFileSync(join(import.meta.dir, ".env.example"), "utf8");
 const filledFile = join(root, "filled.env");
-const base = example.replace(/=CHANGE_ME/g, "=a1b2c3");
+const filled = example.replace(/=CHANGE_ME/g, "=a1b2c3");
+// The smtp transport, so the dry run needs no bumail key file (deploy/secrets).
+const base = `${filled}\nMAIL_TRANSPORT=smtp\nMAIL_URL=smtp://u:p@bumail:587\n`;
 writeFileSync(filledFile, base);
+// The default (bumail) transport: the key file is missing in a checkout.
+const bumailFile = join(root, "bumail.env");
+writeFileSync(bumailFile, filled);
 // The same file with the opt-in backup settings.
 const backupFile = join(root, "backup.env");
 writeFileSync(
@@ -69,6 +74,12 @@ describe("deploy.ts --dry-run", () => {
     expect(out).toContain("docker builder prune -f --filter until=24h");
     expect(out).not.toMatch(/system prune|--volumes/);
     expect(existsSync(calls)).toBe(false);
+  });
+
+  test("the default bumail transport needs the key file, which a dry run reports missing", async () => {
+    const { code, out } = await run(["--dry-run", "--env", bumailFile]);
+    expect(code).toBe(1);
+    expect(out).toContain("mail_api_key");
   });
 
   test("--backup plans the backup profile and needs the offsite settings", async () => {

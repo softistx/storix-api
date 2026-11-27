@@ -21,7 +21,7 @@ if (bucket === undefined) {
 }
 startRenditionsWorker(appRedis, bucket);
 console.log("renditions worker started");
-startMailsWorker(appRedis, serverMailer(env.MAIL_URL), env.MAIL_FROM);
+startMailsWorker(appRedis, serverMailer(), env.MAIL_FROM);
 console.log("mails worker started");
 
 let stopping = false;
