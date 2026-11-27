@@ -1,0 +1,115 @@
+#!/bin/sh
+# Mails BACKUP_ALERT_TO through the same SMTP server as the API (MAIL_URL, MAIL_FROM),
+# with curl. Never fails its caller: a mail that cannot leave is logged, nothing else.
+#
+#   backup-alert failed <detail>   a backup run failed (called by backup-run)
+#   backup-alert check             mails when /backups/last-success is older than
+#                                  26 h, at most once per 24 h (called hourly by
+#                                  backup-loop)
+#
+# Without BACKUP_ALERT_TO it does nothing. MAIL_URL is the API's nodemailer URL:
+# smtp[s]://user:password@host[:port][?tls.servername=name], login percent-encoded
+# (curl decodes it). A login on a port other than 465 means STARTTLS is required
+# (--ssl-reqd), so the password never leaves in clear; with none (a local relay)
+# the session is plain. tls.servername is the name the certificate carries: curl
+# connects to the host but verifies and sends SNI for that name (--connect-to).
+set -u
+
+dir="${BACKUP_DIR:-/backups}"
+to="${BACKUP_ALERT_TO:-}"
+[ -n "$to" ] || exit 0
+
+send() { # subject, body
+  subject="$1"
+  from="${MAIL_FROM:-}"
+  url="${MAIL_URL:-}"
+  case "$url" in
+    smtp://*|smtps://*) ;;
+    *)
+      echo "backup-alert: MAIL_URL (smtp:// or smtps://) is needed to mail $to" >&2
+      return 1
+      ;;
+  esac
+  if [ -z "$from" ]; then
+    echo "backup-alert: MAIL_FROM is needed to mail $to" >&2
+    return 1
+  fi
+  scheme="${url%%://*}"
+  rest="${url#*://}"
+  query=
+  case "$rest" in *\?*) query="${rest#*\?}"; rest="${rest%%\?*}" ;; esac
+  rest="${rest%/}"
+  hostport="${rest##*@}"
+  userinfo=
+  [ "$hostport" = "$rest" ] || userinfo="${rest%"$hostport"}"
+  host="${hostport%%:*}"
+  if [ "$hostport" = "$host" ]; then
+    if [ "$scheme" = smtps ]; then port=465; else port=587; fi
+  else
+    port="${hostport##*:}"
+  fi
+  name="$(printf '%s' "$query" | tr '&' '\n' | sed -n 's/^tls\.servername=//p' | head -1)"
+  [ -n "$name" ] || name="$host"
+  # Port 465 (or smtps) is TLS from the first byte; any other port is STARTTLS,
+  # required once there is a login, as in the API's smtpOptions.
+  if [ "$scheme" = smtps ] || [ "$port" = 465 ]; then scheme=smtps; else scheme=smtp; fi
+  msg="$(mktemp)"
+  {
+    printf 'From: %s\r\nTo: %s\r\nSubject: %s\r\n' "$from" "$to" "$subject"
+    printf 'Date: %s\r\n' "$(date -u '+%a, %d %b %Y %H:%M:%S +0000')"
+    printf 'Content-Type: text/plain; charset=utf-8\r\n\r\n'
+    printf '%s\n' "$2" | while IFS= read -r line; do printf '%s\r\n' "$line"; done
+  } > "$msg"
+  tls=
+  [ -n "$userinfo" ] && [ "$scheme" = smtp ] && tls=--ssl-reqd
+  # The URL, login included, goes to curl on stdin (-K -), never on its argument
+  # list, where ps and /proc would show it. Backslashes and quotes are escaped
+  # for curl's config syntax.
+  target="$(printf '%s' "$scheme://$userinfo$name:$port" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+  if printf 'url = "%s"\n' "$target" | curl --silent --show-error --max-time 60 -K - $tls \
+    --connect-to "$name:$port:$host:$port" \
+    --mail-from "$from" --mail-rcpt "$to" --upload-file "$msg"; then
+    echo "backup-alert: mailed $to ($subject)"
+    rc=0
+  else
+    echo "backup-alert: could not mail $to ($subject)" >&2
+    rc=1
+  fi
+  rm -f "$msg"
+  return "$rc"
+}
+
+label="${BACKUP_S3_PREFIX:-storix}"
+
+case "${1:-}" in
+  failed)
+    send "[$label] backup FAILED" "A backup run failed (${2:-no detail}) at $(date -u +%FT%TZ).
+See: docker logs --tail 100 <the backup container>" || true
+    ;;
+  check)
+    now="$(date -u +%s)"
+    if [ -f "$dir/last-success" ]; then
+      last="$(cat "$dir/last-success")"
+    else
+      # No success yet (a fresh volume): measure from the first check, so the
+      # alert needs 26 h without any success.
+      [ -f "$dir/first-seen" ] || echo "$now" > "$dir/first-seen"
+      last="$(cat "$dir/first-seen")"
+    fi
+    if [ "$((now - last))" -lt 93600 ]; then
+      rm -f "$dir/last-alert"
+      exit 0
+    fi
+    # Once per 24 h while it stays stale.
+    if [ -f "$dir/last-alert" ] && [ "$((now - $(cat "$dir/last-alert")))" -lt 86400 ]; then
+      exit 0
+    fi
+    send "[$label] backup is stale" "The last successful backup is older than 26 h ($(date -u -d "@$last" +%FT%TZ 2>/dev/null || echo "epoch $last")). It is checked at $(date -u +%FT%TZ)." \
+      && echo "$now" > "$dir/last-alert"
+    ;;
+  *)
+    echo "usage: backup-alert failed <detail> | check" >&2
+    exit 2
+    ;;
+esac
+exit 0

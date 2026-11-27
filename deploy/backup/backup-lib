@@ -1,0 +1,76 @@
+#!/bin/sh
+# Sourced by backup-run and by the script restore.ts runs in the container. Not
+# executable on its own.
+#
+# mc reads an alias from MC_HOST_<alias> (the pinned minio-client build does:
+# s3-init uses it), so the keys never reach a command line, where ps and
+# /proc would show them. The secret is percent-encoded for the URL.
+
+urlenc() {
+  _ue_s="$1"
+  _ue_out=
+  while [ -n "$_ue_s" ]; do
+    _ue_rest="${_ue_s#?}"
+    _ue_c="${_ue_s%"$_ue_rest"}"
+    case "$_ue_c" in
+      [A-Za-z0-9._~-]) _ue_out="$_ue_out$_ue_c" ;;
+      *) _ue_out="$_ue_out$(printf '%%%02X' "'$_ue_c")" ;;
+    esac
+    _ue_s="$_ue_rest"
+  done
+  printf '%s' "$_ue_out"
+}
+
+# mc_host <endpoint> <access key> <secret key>: prints the MC_HOST value.
+mc_host() {
+  printf '%s://%s:%s@%s' "${1%%://*}" "$(urlenc "$2")" "$(urlenc "$3")" "${1#*://}"
+}
+
+# The live media bucket (alias `local`) and the offsite one (alias `offsite`).
+mc_aliases() {
+  MC_HOST_local="$(mc_host "$S3_ENDPOINT" "$S3_ACCESS_KEY" "$S3_SECRET_KEY")"
+  MC_HOST_offsite="$(mc_host "$BACKUP_S3_ENDPOINT" "$BACKUP_S3_ACCESS_KEY" "$BACKUP_S3_SECRET_KEY")"
+  export MC_HOST_local MC_HOST_offsite
+}
+
+# A consistent instance dump (`mongodump --oplog`, backup-run) cannot be restored
+# through mongorestore's namespace filters: `--oplogReplay` refuses --nsInclude,
+# --nsExclude and --nsFrom, and without them it also restores `admin` (the Mongo
+# users, root included) and every other database. So an instance archive is
+# replayed, whole, into a throwaway mongod of this container (no auth, loopback
+# only, a temp folder); the databases wanted are then read from it (consistent
+# there, nothing writes to it) and restored into the live instance with the
+# usual filters. scratch_start <archive> sets SCRATCH_URI; scratch_stop (call it
+# from the EXIT trap) shuts it down and deletes its folder.
+scratch_start() {
+  _base="${TMPBASE:-/tmp}"
+  # One restore or drill at a time: the scratch mongod and its data are heavy.
+  # The lock is a folder; backup-loop clears a stale one when the container starts.
+  mkdir "$_base/scratch.lock" 2>/dev/null \
+    || { echo "another restore or drill is running in this container ($_base/scratch.lock exists; remove it if none is)" >&2; return 1; }
+  scratch_locked=1
+  # The scratch data is the uncompressed databases: about 4 times the archive.
+  _size="$(wc -c < "$1")"
+  _free="$(df -Pk "$_base" | awk 'NR==2 { print $4 * 1024 }')"
+  if [ "$_free" -lt $((_size * 4)) ]; then
+    echo "not enough free space in $_base for the scratch mongod: $_free bytes free, about $((_size * 4)) needed (4 times the $_size bytes archive)" >&2
+    return 1
+  fi
+  scratch_dir="$(mktemp -d "$_base/scratch.XXXXXX")"
+  _port="${SCRATCH_PORT:-27018}"
+  SCRATCH_URI="mongodb://127.0.0.1:$_port"
+  export SCRATCH_URI
+  mongod --dbpath "$scratch_dir" --port "$_port" --bind_ip 127.0.0.1 \
+    --wiredTigerCacheSizeGB 0.25 --fork --logpath "$scratch_dir/mongod.log" >/dev/null \
+    || { tail -n 20 "$scratch_dir/mongod.log" >&2; return 1; }
+  mongorestore --uri="$SCRATCH_URI" --gzip --archive="$1" --oplogReplay --quiet
+}
+
+scratch_stop() {
+  if [ -n "${scratch_dir:-}" ]; then
+    mongod --dbpath "$scratch_dir" --shutdown >/dev/null 2>&1 || true
+    rm -rf "$scratch_dir"
+  fi
+  if [ -n "${scratch_locked:-}" ]; then rm -rf "${TMPBASE:-/tmp}/scratch.lock"; fi
+  return 0
+}

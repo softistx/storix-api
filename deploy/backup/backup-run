@@ -1,0 +1,96 @@
+#!/bin/sh
+# One backup: a full-instance `mongodump --oplog` (the core database, every
+# workspace's and the rest of the instance, as of one moment), packed in one tar,
+# copied offsite, then a mirror of the media bucket offsite, then pruning of local
+# dumps older than BACKUP_RETENTION_DAYS.
+#
+# - The dump is ONE `mongodump --oplog --gzip --archive` run by a user holding the
+#   `backup` role (MONGO_URI; created by mongo-init; the app user cannot read
+#   admin or the oplog). The oplog window makes it point-in-time consistent across
+#   every database, which a dump database by database was not. The tar
+#   mongo-<ts>.tar holds one file, instance.archive.gz. (Tars made before this
+#   held one <db>.archive.gz per database, without an oplog; restore.ts and the
+#   drill still read them.) The archive also holds `admin`, the Mongo users: the
+#   restore never applies them (restore.ts), mongo-init recreates them on `up`.
+# - The offsite key can write and read, never delete or create the bucket (a
+#   leaked key cannot erase the backups): this script creates no bucket and
+#   prunes nothing offsite. The 14-day offsite retention is an expiry (ILM) rule
+#   on the bucket, set once by hand (docs/deployment.md, Backups).
+#
+# - Secrets stay off command lines: mc reads its aliases from MC_HOST_* (backup-lib),
+#   mongodump reads its URI from a 0600 config file, mongosh from the environment.
+# - SIGTERM / SIGINT (backup-loop's timeout) stop the running command and exit
+#   143 through the same cleanup and alert as any failure; the long commands run
+#   in the background and are waited on, so the signal is handled at once. A
+#   `docker stop` reaches backup-loop (init: true), which forwards it here; if
+#   the container is killed anyway, the next start clears the leftover files.
+# - The tar is written to <name>.part and renamed only when every dump succeeded;
+#   a failed run leaves no .part behind, and only finished files are uploaded.
+# - $dir/last-success (epoch seconds, read by the container's healthcheck) is
+#   written once the dump and the mirror both succeeded.
+# - Local pruning (backup-prune) always runs, even when an earlier step failed,
+#   and never deletes the newest finished dump.
+# - The media mirror never deletes: a file removed from the live bucket stays
+#   offsite. The window applies to the dumps only.
+# - A failed run mails BACKUP_ALERT_TO (backup-alert), when it is set.
+set -eu
+here="$(dirname "$0")"
+[ -f "$here/backup-lib" ] || here=/usr/local/bin
+. "$here/backup-lib"
+
+dir="${BACKUP_DIR:-/backups}"
+: "${MONGO_URI:?}" "${MONGO_CORE_DATABASE:?}" "${S3_ENDPOINT:?}" "${S3_ACCESS_KEY:?}" "${S3_SECRET_KEY:?}" "${S3_BUCKET:?}"
+: "${BACKUP_S3_ENDPOINT:?}" "${BACKUP_S3_BUCKET:?}" "${BACKUP_S3_ACCESS_KEY:?}" "${BACKUP_S3_SECRET_KEY:?}"
+prefix="${BACKUP_S3_PREFIX:-storix}"
+ts="$(date -u +%Y%m%dT%H%M%SZ)"
+file="mongo-$ts.tar"
+work="$dir/.work-$ts"
+dest="offsite/$BACKUP_S3_BUCKET/$prefix"
+
+cleanup() {
+  status=$?
+  rm -rf "$dir/$file.part" "$work" "${conf:-}"
+  # Local retention only (offsite is the bucket's expiry rule); keeps the newest
+  # finished dump.
+  backup-prune || true
+  if [ "$status" -ne 0 ]; then
+    echo "backup: FAILED (exit $status)" >&2
+    backup-alert failed "exit $status" || true
+  fi
+}
+trap cleanup EXIT
+child=
+# (A TERM between `&` and `child=$!` is a known microsecond gap, accepted.)
+# On a signal: stop the child and wait for it, so the cleanup never deletes
+# .part / .work under a command still writing; then exit 143.
+trap 'if [ -n "${child:-}" ]; then kill "$child" 2>/dev/null; wait "$child" 2>/dev/null; fi; exit 143' TERM INT
+
+# Runs a command in the background and waits, so a trapped signal is handled now
+# and the command is stopped with it.
+run() { "$@" & child=$!; rc=0; wait "$child" || rc=$?; child=; return $rc; }
+
+mc_aliases
+
+echo "backup: dumping to $dir/$file"
+mkdir "$work"
+# The URI (it holds the password) goes to mongodump in a 0600 config file and to
+# mongosh through the environment, never as an argument.
+conf="$(mktemp /tmp/backup.XXXXXX)"
+printf "uri: '%s'\n" "$MONGO_URI" > "$conf"
+# (listDatabases is granted by the backup role.)
+dbs="$(mongosh --nodb --quiet --eval 'connect(process.env.MONGO_URI).adminCommand({ listDatabases: 1, nameOnly: true }).databases.map((d) => d.name).join("\n")')"
+found_core=
+for db in $dbs; do
+  if [ "$db" = "$MONGO_CORE_DATABASE" ]; then found_core=1; fi
+done
+[ -n "$found_core" ] || { echo "backup: core database $MONGO_CORE_DATABASE not found" >&2; exit 1; }
+run mongodump --config="$conf" --oplog --gzip --archive="$work/instance.archive.gz" --quiet
+run tar -cf "$dir/$file.part" -C "$work" .
+rm -rf "$work"
+mv "$dir/$file.part" "$dir/$file"
+run mc cp --quiet "$dir/$file" "$dest/mongo/$file"
+echo "backup: mirroring media"
+run mc mirror --quiet --overwrite "local/$S3_BUCKET" "$dest/media"
+date -u +%s > "$dir/last-success"
+
+echo "backup: done $file"

@@ -1,0 +1,658 @@
+# ── storix-api, staging ──────────────────────────────────────────────────────
+#
+# Modelled on pulsarix-api's deploy/. One stack: mongo (a one-node replica set, auth
+# on), redis, SeaweedFS (the S3 store of the files), their init one-shots, the
+# API, the worker (renditions and notification mails), the jobs scheduler, the
+# backup service and, optionally, the UI. The UI (storix-ui) is a service of the
+# `ui` profile, started with `--ui` (its Dockerfile is in that repository). The
+# backup service is the `backup` profile; `migrate` is the one-shot of the `ops`
+# profile that deploy.ts runs before the API and the worker roll. Run it with
+# `flock /tmp/deploy.lock bun deploy/deploy.ts` (see docs/deployment.md); by
+# hand, from this folder:
+#
+#   cp .env.example .env     # fill every CHANGE_ME, chmod 600
+#   docker compose build && docker compose up -d
+#
+# Images are built on the host from checkouts, there is no registry: the API,
+# the worker and the jobs from `..` (this repository, one image), the UI from
+# UI_CONTEXT (../../storix-ui).
+#
+# - No `ports:` anywhere. Two networks: `internal`, private to this stack, holds
+#   every service; `proxy`, the external network nxgt-docker creates, holds only
+#   `api` and `ui` besides, so Traefik reaches them and nothing else. mongo,
+#   redis, seaweedfs, the worker, the jobs and backup are not on `proxy`.
+#   `internal` is an ordinary bridge, not `internal: true`: backup needs egress
+#   (offsite S3, mail) and so does the API (mail). Behind the parc's
+#   Cloudflare Tunnel (visitor, Cloudflare, cloudflared, Traefik, app) the
+#   hostname is covered by the proxied `*.softistx.com` wildcard: this file adds
+#   Traefik router labels and never a DNS record.
+# - One public hostname, UI_HOSTNAME. The API's router takes `/public/` on it
+#   (the public share links); the rest of the host is the UI's (profile `ui`).
+#   The authenticated /graphql and /media have no router: the UI's server reaches
+#   them by container name. SeaweedFS has none either: the API streams files.
+# - TRUSTED_PROXIES=172.16.0.0/12 (the docker range) makes the API read the
+#   client address from X-Forwarded-For past Traefik only. The API publishes no
+#   port, but it is on `proxy`: any other container on that network can reach it
+#   directly and send a forged header. That is accepted while the parc's `proxy`
+#   network holds only trusted stacks; Traefik is the only intended client.
+# - Redis is required: the rate limits, the queues (renditions, mails) and the
+#   tokens live in it, and the worker refuses to start without it.
+# - STACK_PREFIX is the DOCKER namespace (project name, container names, image
+#   tags, router names); the `${X:+${X}-}` form leaves every name unchanged when
+#   it is empty. UI_HOSTNAME is the DNS namespace.
+# - Secrets are `${X:?}`: compose refuses to start with one missing.
+# - Two Mongo credentials. Storix has one database per workspace
+#   (storix_ws_<id>, created at runtime), so a role scoped to one database
+#   cannot work: `mongo-init` creates the app user (readWriteAnyDatabase plus
+#   dbAdminAnyDatabase: the API creates each new workspace database's
+#   validators and indexes on first use, MONGO_AUTO_SYNC=true) and the backup
+#   user (the `backup` role, what the nightly `mongodump --oplog` of the whole
+#   instance runs with). The root user exists only to create them.
+#   MONGO_ROOT_PASSWORD is read only on the first start of an empty volume; the
+#   app and backup passwords are re-applied on every `up`. The replica set
+#   member is named after the container, never localhost.
+# - SeaweedFS (master, volume server and S3 gateway in one process) reads its
+#   identities from a JSON written at each start from env: an admin identity
+#   (S3_ADMIN_*, used by `s3-init` only) and the app identity (S3_ACCESS_KEY /
+#   S3_SECRET_KEY, limited to the bucket).
+# - `worker` runs the renditions and the mails (dist/worker.js). `jobs` runs
+#   the scheduled scripts the worker does not schedule yet: the hourly storage
+#   sweep and retention, the nightly quota reconcile (deploy/jobs/jobs-loop).
+# - `backup` (profile `backup`, opt-in: deploy.ts --backup) dumps the
+#   whole Mongo instance, with its oplog (one consistent moment), every night to
+#   the backup-data volume, copies the dump and a mirror of the files bucket to
+#   an offsite S3 bucket, and mails BACKUP_ALERT_TO on failure. deploy/restore.ts
+#   and deploy/restore-drill.ts run inside it.
+# - Images are pinned like docker-compose.yml: mongo, Redis,
+#   SeaweedFS and the bucket client by digest.
+
+name: ${STACK_PREFIX:+${STACK_PREFIX}-}storix
+
+networks:
+  # The stack's own network: every service is on it, nothing outside the stack.
+  internal: {}
+  # Traefik's network, shared with the parc's other stacks: `api` and `ui` only.
+  proxy:
+    external: true
+
+volumes:
+  mongo-data:
+  redis-data:
+  seaweed-data:
+  backup-data:
+
+# The read-only npm token for @softistx, from the host's environment (never
+# written to an image): the `api` and `ui` builds mount it as `npm_read`.
+secrets:
+  npm_read:
+    environment: NPM_SOFTISTX_READ_TOKEN
+
+x-common: &common
+  restart: unless-stopped
+  networks:
+    - internal
+
+x-oneshot: &oneshot
+  restart: "no"
+  networks:
+    - internal
+
+# What Traefik routes to: also on the shared `proxy` network.
+x-routed: &routed
+  networks:
+    - internal
+    - proxy
+
+x-api-env: &api-env
+  NODE_ENV: production
+  UI_ORIGIN: ${PUBLIC_SCHEME:-https}://${UI_HOSTNAME:?}
+  MAIL_FROM: ${MAIL_FROM:?}
+  MAIL_URL: ${MAIL_URL:?}
+  REDIS_URL: redis://:${REDIS_PASSWORD:?}@${STACK_PREFIX:+${STACK_PREFIX}-}storix-redis:6379
+  TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
+  API_PROXY_SECRET: ${API_PROXY_SECRET:?}
+  TOTP_KEYS: ${TOTP_KEYS:?}
+  AUDIT_IP_KEY: ${AUDIT_IP_KEY:?}
+  MONGO_AUTO_SYNC: "true"
+  MONGO_URI: mongodb://${MONGO_APP_USER:-sx_app}:${MONGO_APP_PASSWORD:?}@${STACK_PREFIX:+${STACK_PREFIX}-}storix-mongo:27017/?replicaSet=rs0&authSource=admin
+  MONGO_CORE_DATABASE: ${MONGO_CORE_DATABASE:-storix_core}
+  MONGO_WORKSPACE_PREFIX: ${MONGO_WORKSPACE_PREFIX:-storix_ws_}
+  S3_ENDPOINT: http://${STACK_PREFIX:+${STACK_PREFIX}-}storix-seaweedfs:8333
+  S3_REGION: ${S3_REGION:-us-east-1}
+  S3_BUCKET: ${S3_BUCKET:-storix-files}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:?}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?}
+
+services:
+  # ── data ────────────────────────────────────────────────────────────────────
+  mongo:
+    <<: *common
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    image: mongo:8.3@sha256:747773029b84309981a3624a1af64ffc8c4d792283cc0834f26fe01fc6d28b34
+    container_name: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-mongo
+    # mongod runs as PID 1 and never reaped the healthcheck's mongosh processes
+    # (the check is a bash TCP probe now): tini (init) still reaps stray children.
+    init: true
+    # Auth on a replica set needs a keyfile. It is written from MONGO_KEYFILE at
+    # each start (mongod insists on mode 400 and its own owner), so nothing
+    # secret lives in the image or the repository. On the first start the
+    # image's entrypoint creates the root user from MONGO_INITDB_ROOT_*.
+    entrypoint:
+      - bash
+      - -c
+      - |
+        printf '%s' "$$MONGO_KEYFILE" > /tmp/mongo-keyfile
+        chmod 400 /tmp/mongo-keyfile
+        chown mongodb:mongodb /tmp/mongo-keyfile
+        exec docker-entrypoint.sh "$$@"
+      - --
+    command:
+      [
+        "mongod",
+        "--replSet",
+        "rs0",
+        "--bind_ip_all",
+        "--keyFile",
+        "/tmp/mongo-keyfile",
+      ]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?}
+      MONGO_KEYFILE: ${MONGO_KEYFILE:?}
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      # A TCP probe from bash (the image has no nc, wget or curl): no mongosh per
+      # check, which cost ~1 s of CPU each run and left zombies. The replica set
+      # is initiated and awaited by mongo-init, not by this check.
+      test:
+        - CMD
+        - bash
+        - -c
+        - "echo > /dev/tcp/127.0.0.1/27017"
+      # Every 2 s while starting, so the stack still comes up fast, then 30 s.
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+    labels:
+      - traefik.enable=false
+
+  mongo-init:
+    <<: *oneshot
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+    image: mongo:8.3@sha256:747773029b84309981a3624a1af64ffc8c4d792283cc0834f26fe01fc6d28b34
+    container_name: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-mongo-init
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      # The member's name in the replica set: the container name, which every
+      # other container resolves. `localhost` would make drivers outside this
+      # container connect to themselves.
+      MONGO_RS_HOST: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-mongo
+      DIRECT_URI: mongodb://root:${MONGO_ROOT_PASSWORD:?}@${STACK_PREFIX:+${STACK_PREFIX}-}storix-mongo:27017/admin?directConnection=true
+      ROOT_URI: mongodb://root:${MONGO_ROOT_PASSWORD:?}@${STACK_PREFIX:+${STACK_PREFIX}-}storix-mongo:27017/admin?replicaSet=rs0
+      APP_USER: ${MONGO_APP_USER:-sx_app}
+      APP_PASSWORD: ${MONGO_APP_PASSWORD:?}
+      BACKUP_USER: ${MONGO_BACKUP_USER:-sx_backup}
+      # Optional: only the `backup` profile needs the backup user. Empty, none is
+      # created (an existing one is left as it is).
+      BACKUP_PASSWORD: ${MONGO_BACKUP_PASSWORD:-}
+    # Idempotent: a user that exists gets its password and roles set again, so a
+    # rotated secret in .env is applied by `up`.
+    command:
+      - sh
+      - -c
+      - |
+        mongosh --nodb --quiet --eval '
+          // Initiates the replica set (once) and waits for its primary; the
+          // mongo healthcheck only probes the port. Retried: the first start
+          // runs a temporary mongod before the real one and the root user.
+          let ready = false;
+          let last = "";
+          for (let i = 0; i < 120 && !ready; i++) {
+            try {
+              const direct = new Mongo(process.env.DIRECT_URI).getDB("admin");
+              try {
+                direct.adminCommand({ replSetGetStatus: 1 });
+              } catch (e) {
+                direct.adminCommand({
+                  replSetInitiate: { _id: "rs0", members: [{ _id: 0, host: process.env.MONGO_RS_HOST + ":27017" }] },
+                });
+              }
+              ready = direct.adminCommand({ hello: 1 }).isWritablePrimary === true;
+            } catch (e) { last = String(e); }
+            if (!ready) sleep(1000);
+          }
+          if (!ready) throw new Error("no replica set primary after 120 s: " + last);
+          const admin = new Mongo(process.env.ROOT_URI).getDB("admin");
+          const upsert = (user, pwd, roles) =>
+            admin.getUser(user) ? admin.updateUser(user, { pwd, roles }) : admin.createUser({ user, pwd, roles });
+          upsert(process.env.APP_USER, process.env.APP_PASSWORD, [{ role: "readWriteAnyDatabase", db: "admin" }, { role: "dbAdminAnyDatabase", db: "admin" }]);
+          if (process.env.BACKUP_PASSWORD)
+            upsert(process.env.BACKUP_USER, process.env.BACKUP_PASSWORD, [{ role: "backup", db: "admin" }]);
+          print("users ready");
+        '
+    labels:
+      - traefik.enable=false
+
+  redis:
+    <<: *common
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+    image: redis:8.12@sha256:56a1737794e36c3ebe8a4544a8ab421af3ab1a6488fb2238aec228c404933fed
+    container_name: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-redis
+    # The password goes into a config file written at each start, so it is in
+    # no argument list (docker inspect, ps). The entrypoint is the image's, which
+    # drops to the redis user for `redis-server`.
+    entrypoint:
+      - bash
+      - -c
+      - |
+        printf 'requirepass %s\n' "$$REDIS_PASSWORD" > /tmp/redis.conf
+        chmod 400 /tmp/redis.conf
+        chown redis:redis /tmp/redis.conf
+        exec docker-entrypoint.sh "$$@"
+      - --
+    command: ["redis-server", "/tmp/redis.conf", "--appendonly", "yes"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?}
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+      start_interval: 2s
+    labels:
+      - traefik.enable=false
+
+  # SeaweedFS: master, volume server and S3 gateway in one process. Its
+  # identities are written at each start from env, so no secret is in the image
+  # or the repository: `admin` (S3_ADMIN_*, for s3-init) and the app's identity,
+  # limited to the files bucket.
+  seaweedfs:
+    <<: *common
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    image: chrislusf/seaweedfs:4.55@sha256:7ca46aeae2f223b37e5d91593c17ab37738eec6df6ab69b48a0487f7643342b9
+    container_name: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-seaweedfs
+    entrypoint:
+      - sh
+      - -c
+      - |
+        cat > /tmp/s3.json <<JSON
+        {"identities":[
+          {"name":"admin","credentials":[{"accessKey":"$$S3_ADMIN_ACCESS_KEY","secretKey":"$$S3_ADMIN_SECRET_KEY"}],
+           "actions":["Admin","Read","Write","List","Tagging"]},
+          {"name":"app","credentials":[{"accessKey":"$$S3_ACCESS_KEY","secretKey":"$$S3_SECRET_KEY"}],
+           "actions":["Read:$$BUCKET","Write:$$BUCKET","List:$$BUCKET","Tagging:$$BUCKET"]}]}
+        JSON
+        chmod 400 /tmp/s3.json
+        exec weed "$$@"
+      - --
+    command: ["server", "-dir=/data", "-s3", "-s3.config=/tmp/s3.json"]
+    environment:
+      S3_ADMIN_ACCESS_KEY: ${S3_ADMIN_ACCESS_KEY:?}
+      S3_ADMIN_SECRET_KEY: ${S3_ADMIN_SECRET_KEY:?}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?}
+      BUCKET: ${S3_BUCKET:-storix-files}
+    volumes:
+      - seaweed-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9333/cluster/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+    labels:
+      # Never public: the API streams the files (S3_ENDPOINT stays private).
+      - traefik.enable=false
+
+  # One-shot, idempotent: creates the private bucket with the admin identity,
+  # then exits. The minio-client image has no shell, so `mc` is copied into a
+  # Wolfi base that has one.
+  s3-init:
+    <<: *oneshot
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+    image: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-s3-init:${TAG:-local}
+    build:
+      dockerfile_inline: |
+        FROM cgr.dev/chainguard/minio-client@sha256:59f1924e417b6fcfdc0aca321e3bdebe8a56fd0efa7da80037d5eb65a203d687 AS mc
+        FROM cgr.dev/chainguard/wolfi-base@sha256:88a20e2d017bd20cdc0cb3910de603e7bea9512a6c351a8dd3c9df212ab03d73
+        COPY --from=mc /usr/bin/mc /usr/local/bin/mc
+    container_name: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-s3-init
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+    environment:
+      MC_HOST_local: http://${S3_ADMIN_ACCESS_KEY:?}:${S3_ADMIN_SECRET_KEY:?}@${STACK_PREFIX:+${STACK_PREFIX}-}storix-seaweedfs:8333
+      BUCKET: ${S3_BUCKET:-storix-files}
+    command:
+      - sh
+      - -ec
+      - |
+        mc mb --ignore-existing "local/$$BUCKET"
+        echo "bucket ready"
+    labels:
+      - traefik.enable=false
+
+  # ── backups ─────────────────────────────────────────────────────────────────
+  # Built from ./backup: the mongo image (mongodump, mongorestore) plus mc and
+  # curl. It holds the backup user's credential (the `backup` role: reads the whole
+  # instance and its oplog, writes nothing), which the full-instance
+  # `mongodump --oplog` needs; restore.ts brings the root one in per run, never
+  # stored here.
+  backup:
+    <<: *common
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    # Opt-in: `docker compose --profile backup up` (deploy.ts --backup). Without
+    # the profile the service is neither built nor started.
+    profiles: [backup]
+    image: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-backup:${TAG:-local}
+    build:
+      context: ./backup
+    container_name: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-backup
+    # A real init as PID 1 reaps the children and passes `docker stop`'s TERM to
+    # backup-loop, which forwards it to a running backup.
+    init: true
+    # Time for the stopped run to wait for its child, clean up and mail the
+    # failure alert (curl up to 60 s) before docker kills the container.
+    stop_grace_period: 90s
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+      s3-init:
+        condition: service_completed_successfully
+    environment:
+      MONGO_URI: mongodb://${MONGO_BACKUP_USER:-sx_backup}:${MONGO_BACKUP_PASSWORD:-}@${STACK_PREFIX:+${STACK_PREFIX}-}storix-mongo:27017/?replicaSet=rs0&authSource=admin
+      MONGO_CORE_DATABASE: ${MONGO_CORE_DATABASE:-storix_core}
+      MONGO_WORKSPACE_PREFIX: ${MONGO_WORKSPACE_PREFIX:-storix_ws_}
+      S3_ENDPOINT: http://${STACK_PREFIX:+${STACK_PREFIX}-}storix-seaweedfs:8333
+      S3_BUCKET: ${S3_BUCKET:-storix-files}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:?}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:?}
+      # The offsite target: any S3-compatible endpoint (MinIO, B2, Wasabi, S3).
+      # Compose interpolates every service, profile or not, so these cannot be
+      # `${X:?}` without breaking a stack that leaves the backup out: they
+      # default to empty and `deploy.ts --backup` refuses to go on without them
+      # (backupProblems).
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+      BACKUP_S3_ACCESS_KEY: ${BACKUP_S3_ACCESS_KEY:-}
+      BACKUP_S3_SECRET_KEY: ${BACKUP_S3_SECRET_KEY:-}
+      # Per stack by default, so two stacks never share a prefix.
+      BACKUP_S3_PREFIX: ${BACKUP_S3_PREFIX:-storix${STACK_PREFIX:+-${STACK_PREFIX}}}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      BACKUP_HOUR: ${BACKUP_HOUR:-03}
+      # Mailed (through MAIL_URL, as the API) when a run fails, or when the last
+      # success is older than 26 h. Empty: no mail, the healthcheck still shows it.
+      BACKUP_ALERT_TO: ${BACKUP_ALERT_TO:-}
+      MAIL_FROM: ${MAIL_FROM:?}
+      MAIL_URL: ${MAIL_URL:?}
+    volumes:
+      - backup-data:/backups
+    healthcheck:
+      # Unhealthy when the last good backup is older than 26 h (a run failed or
+      # was missed). A new volume is seeded at boot, healthy until the first run.
+      test:
+        - CMD-SHELL
+        - "[ $$(( $$(date -u +%s) - $$(cat /backups/last-success) )) -lt 93600 ]"
+      interval: 5m
+      # Probes every 5 s during start_period, so `up --wait` does not wait a
+      # whole interval for the first answer. Needs Docker Engine 25+.
+      start_interval: 5s
+      timeout: 10s
+      retries: 1
+      start_period: 30s
+    labels:
+      - traefik.enable=false
+
+  # ── the API ─────────────────────────────────────────────────────────────────
+  api:
+    <<: [*routed, *common]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+    image: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-api:${TAG:-local}
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      secrets: [npm_read]
+    container_name: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-api
+    # bun spawns children (and runc leaves its own): tini (init) reaps them, else
+    # they pile up as zombies.
+    init: true
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      s3-init:
+        condition: service_completed_successfully
+    environment:
+      <<: *api-env
+      PORT: "3000"
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - |-
+          exec 3<>/dev/tcp/127.0.0.1/3000 && printf 'GET /ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && read -r line <&3 && [[ $$line == *' 200 '* ]]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
+    labels:
+      - traefik.enable=true
+      # Only the public share links are routed (priority above the UI's
+      # catch-all); /graphql and /media are reached by the UI's server, by
+      # container name.
+      - traefik.http.routers.${STACK_PREFIX:+${STACK_PREFIX}-}storix-api.rule=Host(`${UI_HOSTNAME:?}`) && PathPrefix(`/public/`)
+      - traefik.http.routers.${STACK_PREFIX:+${STACK_PREFIX}-}storix-api.priority=100
+      - traefik.http.routers.${STACK_PREFIX:+${STACK_PREFIX}-}storix-api.entrypoints=${TRAEFIK_HTTP_ENTRYPOINTS:-websecure}
+      - traefik.http.routers.${STACK_PREFIX:+${STACK_PREFIX}-}storix-api.tls=${TRAEFIK_USE_TLS:-true}
+      - traefik.http.routers.${STACK_PREFIX:+${STACK_PREFIX}-}storix-api.service=${STACK_PREFIX:+${STACK_PREFIX}-}storix-api
+      - traefik.http.services.${STACK_PREFIX:+${STACK_PREFIX}-}storix-api.loadbalancer.server.port=3000
+
+  # The renditions (thumbnails, previews) and the notification mails, from the
+  # API's image (dist/worker.js). No port and no healthcheck: it serves nothing;
+  # `restart` brings it back, and it exits 1 without Redis or the bucket.
+  worker:
+    <<: *common
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    image: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-api:${TAG:-local}
+    container_name: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-worker
+    init: true
+    # Time for the running jobs to finish (20 s) before docker kills it.
+    stop_grace_period: 30s
+    command: ["bun", "--no-install", "dist/worker.js"]
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      s3-init:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+        required: false
+    environment:
+      <<: *api-env
+    labels:
+      - traefik.enable=false
+
+  # The scheduled scripts no process schedules yet: storage sweep and retention
+  # every hour, the quota reconcile every night (deploy/jobs/jobs-loop, mounted
+  # read only: the image holds dist/ alone). One job at a time, one jobs container
+  # per stack; the sweep also holds its own per-workspace lock. The healthcheck is the loop's heartbeat.
+  jobs:
+    <<: *common
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    image: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-api:${TAG:-local}
+    container_name: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-jobs
+    init: true
+    stop_grace_period: 60s
+    entrypoint: ["bash", "/jobs/jobs-loop"]
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      s3-init:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+        required: false
+    environment:
+      <<: *api-env
+      JOBS_SWEEP_EVERY: ${JOBS_SWEEP_EVERY:-3600}
+      JOBS_RETENTION_EVERY: ${JOBS_RETENTION_EVERY:-3600}
+      JOBS_RECONCILE_EVERY: ${JOBS_RECONCILE_EVERY:-86400}
+    volumes:
+      - ./jobs:/jobs:ro
+    healthcheck:
+      # Unhealthy when the loop has not ticked for 10 minutes.
+      test:
+        - CMD-SHELL
+        - "[ $$(( $$(date +%s) - $$(cat /tmp/jobs-alive) )) -lt 600 ]"
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+      start_interval: 5s
+    labels:
+      - traefik.enable=false
+
+  # One-shot of the `ops` profile, run by deploy.ts before the API and the
+  # worker roll: `db:sync` (validators and indexes of the core collections and
+  # the identity's) then `db:migrate` (the core and every workspace database),
+  # from the bundled scripts of dist/scripts. Without it a boot with a pending
+  # migration refuses to start (MigrationsOutOfSyncError).
+  migrate:
+    <<: *oneshot
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    profiles: [ops]
+    image: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-api:${TAG:-local}
+    container_name: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-migrate
+    init: true
+    command:
+      - sh
+      - -ec
+      - |
+        bun --no-install dist/scripts/db-sync.js
+        bun --no-install dist/scripts/db-migrate.js
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *api-env
+    labels:
+      - traefik.enable=false
+
+  # ── the UI (profile `ui`, started with `--ui`) ───────────────────────────────
+  ui:
+    <<: [*routed, *common]
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    profiles: [ui]
+    image: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-ui:${TAG:-local}
+    build:
+      context: ${UI_CONTEXT:-../../storix-ui}
+      dockerfile: Dockerfile
+      secrets: [npm_read]
+    container_name: ${STACK_PREFIX:+${STACK_PREFIX}-}storix-ui
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      STORIX_API_URL: http://${STACK_PREFIX:+${STACK_PREFIX}-}storix-api:3000/graphql
+      APP_ORIGIN: ${PUBLIC_SCHEME:-https}://${UI_HOSTNAME:?}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
+      # Sent to the API as x-storix-proxy-secret; the UI refuses to start in
+      # production without it (32 characters or more), and the API honours the
+      # forwarded client address only on a request that carries it.
+      API_PROXY_SECRET: ${API_PROXY_SECRET:?}
+      # The address the legal pages give for questions; the UI refuses to start
+      # in production without it.
+      CONTACT_EMAIL: ${CONTACT_EMAIL:?}
+      # The widget's `dist`, which the UI serves (loader.js, the hashed bundle,
+      # manifest.json). Without it the route answers 404 in production.
+      WIDGET_DIST_DIR: /widget
+    volumes:
+      # storix-widget's built `dist` (`bun run build` there), read only, from
+      # WIDGET_DIST (default: the sibling checkout). A missing folder fails
+      # `up` instead of being created empty.
+      - type: bind
+        source: ${WIDGET_DIST:-../../storix-widget/dist}
+        target: /widget
+        read_only: true
+        bind:
+          create_host_path: false
+    healthcheck:
+      test:
+        ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+      start_interval: 2s
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.${STACK_PREFIX:+${STACK_PREFIX}-}storix-ui.rule=Host(`${UI_HOSTNAME:?}`)
+      - traefik.http.routers.${STACK_PREFIX:+${STACK_PREFIX}-}storix-ui.entrypoints=${TRAEFIK_HTTP_ENTRYPOINTS:-websecure}
+      - traefik.http.routers.${STACK_PREFIX:+${STACK_PREFIX}-}storix-ui.tls=${TRAEFIK_USE_TLS:-true}
+      - traefik.http.routers.${STACK_PREFIX:+${STACK_PREFIX}-}storix-ui.service=${STACK_PREFIX:+${STACK_PREFIX}-}storix-ui
+      - traefik.http.services.${STACK_PREFIX:+${STACK_PREFIX}-}storix-ui.loadbalancer.server.port=3000

@@ -16,6 +16,10 @@ curl localhost:3000/health
 
 `bun run services:down` stops the services. `docs/development.md` has the details.
 
+## Deploy
+
+`deploy/` holds the staging stack (api, worker, scheduled jobs, UI, MongoDB, Redis, SeaweedFS, optional backups), built after pulsarix-api's. `flock /tmp/deploy.lock bun deploy/deploy.ts --dry-run` prints the plan; `docs/deployment.md` is the runbook (first deploy, backups, restore drill, rollback).
+
 ## Scripts
 
 | Script                 | Does                                                                                                   |
@@ -49,6 +53,7 @@ curl localhost:3000/health
 | `src/config/`                   | `env.ts` (read once at import), the MongoDB handle                  |
 | `src/http/`                     | the base (request id, client address), the schema, the graxia plugins |
 | `docker-compose.yml`, `docker/` | the development services                                            |
+| `deploy/`                       | the staging stack, its deploy script, backups and restore (`docs/deployment.md`) |
 | `CONTEXT.md`                    | the domain glossary and the error-code table                        |
 
 Some runtime dependencies are declared ahead of the slices that import them; `mongodb` and `nodemailer` are peers of `@softistx/mongo` and `@softistx/mail-smtp` (which asks for `nodemailer` `>=7 <11`, `mongodb` `>=7 <8`), hence listed here.
