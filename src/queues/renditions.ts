@@ -25,18 +25,10 @@ export const renditionJob = z.object({
 });
 export type RenditionJob = z.output<typeof renditionJob>;
 
-// The job's id: one job per recorded upload, however often it is added. A job
-// that redoes the crops carries a `redo` token (each move of the focal point
-// is its own job: the queue keeps finished ids for an hour).
-export const renditionJobId = (job: RenditionJob, redo?: string) =>
-  `${job.workspaceId}:${job.key}${redo ? `:${redo}` : ""}`;
-
-// The blob a job id names (a workspace id, a media key and a token have no
-// colon).
-export const parseRenditionJobId = (id: string): RenditionJob | null => {
-  const [workspaceId, key] = id.split(":");
-  return workspaceId && key ? { workspaceId, key } : null;
-};
+export {
+  buildRenditionJobId as renditionJobId,
+  parseRenditionId as parseRenditionJobId,
+} from "./renditions.id";
 
 /** What a spec changes to wait milliseconds, not seconds. */
 export type RenditionsQueueOptions = {

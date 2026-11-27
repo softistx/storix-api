@@ -42,7 +42,7 @@ export async function requeueOne(
       },
       {
         id: renditionJobId(
-          { workspaceId, key },
+          { workspaceId, key, focalPoint: point },
           // Unique per attempt: the counter is reset to 0 by a READY, a
           // focal move or a new version, and the queue keeps the first job
           // of an id it already holds (failed ones for 7 days).
