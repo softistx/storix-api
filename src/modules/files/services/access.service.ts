@@ -18,7 +18,7 @@ export async function mayRead(
   const who = seat ?? read.accountId;
   // A crops key (a focal point's crops) reads as the blob it belongs to.
   const cropsOf = await mongo.db.blobs.raw.findOne(
-    { crops: read.key },
+    { $or: [{ key: read.key }, { crops: read.key }] },
     { projection: { key: 1 } },
   );
   const key = cropsOf?.key ?? read.key;

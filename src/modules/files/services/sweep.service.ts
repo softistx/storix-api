@@ -131,8 +131,11 @@ async function requeueScope(
   const seen = new Set<string>();
   for (const [index, node] of stuck.entries()) {
     const key = node["blobKey"] as string;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    const point = (node["focalPoint"] as Focal | null | undefined) ?? null;
+    // One job per blob and focal point: copies at other points need their own.
+    const once = `${key}:${point ? `${point.x}:${point.y}` : ""}`;
+    if (seen.has(once)) continue;
+    seen.add(once);
     const tries = (node["renditionRequeues"] as number | undefined) ?? 0;
     const blob = { blobKey: key, [field]: "PROCESSING" as const };
     if (tries >= max) {
@@ -147,7 +150,7 @@ async function requeueScope(
         {
           workspaceId,
           key,
-          focalPoint: (node["focalPoint"] as Focal | null | undefined) ?? null,
+          focalPoint: point,
           ...(scope === "crops" && { crops: true }),
         },
         {

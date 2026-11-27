@@ -6,6 +6,7 @@ import { nodesListingDescIndexes } from "./migrations/2026-11-24-nodes-listing-d
 import { nodesLargestIndex } from "./migrations/2026-11-26-nodes-largest-index.migration";
 import { nodesCropsIndex } from "./migrations/2026-11-27-nodes-crops-index.migration";
 import { blobsCropsIndex } from "./migrations/2026-11-28-blobs-crops-index.migration";
+import { nodesCropsRedo } from "./migrations/2026-11-28-nodes-crops-redo.migration";
 import {
   blobs,
   recents,
@@ -29,6 +30,7 @@ export const filesModule = defineModule({
     nodesLargestIndex,
     nodesCropsIndex,
     blobsCropsIndex,
+    nodesCropsRedo,
   ],
   collections: { blobs, stars, recents, sweepLocks, versions: versionRows },
   codes: [...files, ...versions],
