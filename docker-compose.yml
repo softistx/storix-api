@@ -11,7 +11,7 @@
 # `start_interval`, Compose 2.20+ and Engine 25+, keeps start-up fast). Start the stack with
 # `bun run services:up`, not a bare `docker compose up`: it also runs the one-shots of the `init`
 # profile (`mongo-init` starts the replica set, `media-bucket` creates the bucket).
-# Images are pinned (mongo 8.3, SeaweedFS 4.47 by multi-arch index digest, the bucket client by digest): bump them on purpose.
+# Images are pinned (mongo 8.3, Redis 8.12 and SeaweedFS 4.55 by multi-arch index digest, the bucket client by digest): bump them on purpose.
 name: storix-api
 services:
   mongo:
@@ -53,7 +53,7 @@ services:
         limits: { cpus: "0.25", memory: 256M }
 
   redis:
-    image: redis:7.4
+    image: redis:8.12@sha256:56a1737794e36c3ebe8a4544a8ab421af3ab1a6488fb2238aec228c404933fed
     ports:
       - "127.0.0.1:${REDIS_PORT:-6381}:6379"
     healthcheck:
@@ -78,7 +78,7 @@ services:
 
   # SeaweedFS: master, volume server and S3 gateway in one process.
   seaweedfs:
-    image: chrislusf/seaweedfs:4.47@sha256:ce9e796f1fe6f06968f4c04bdaf8f678dad9c8acdfef3d244133d71bfa6bf882
+    image: chrislusf/seaweedfs:4.55@sha256:7ca46aeae2f223b37e5d91593c17ab37738eec6df6ab69b48a0487f7643342b9
     command:
       ["server", "-dir=/data", "-s3", "-s3.config=/etc/seaweedfs/s3.json"]
     ports:
