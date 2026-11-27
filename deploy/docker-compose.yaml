@@ -74,6 +74,10 @@ networks:
   # Traefik's network, shared with the parc's other stacks: `api` and `ui` only.
   proxy:
     external: true
+  # bumail's private network: its Mail API (bumail-app:8090) is reached here
+  # only, `api` and `worker` (the services that send mail) join it.
+  bumail-internal:
+    external: true
 
 volumes:
   mongo-data:
@@ -86,6 +90,12 @@ volumes:
 secrets:
   npm_read:
     environment: NPM_SOFTISTX_READ_TOKEN
+  # The app's bumail service key (`bumail_...`), one line, mode 600, owned by
+  # uid 1000 (the image's `bun` user): docs/deployment.md, "Mail". Mounted
+  # read only at /run/secrets/mail_api_key in the services that load the
+  # server's config; never in the environment or on a command line.
+  mail_api_key:
+    file: ./secrets/mail_api_key
 
 x-common: &common
   restart: unless-stopped
@@ -107,7 +117,10 @@ x-api-env: &api-env
   NODE_ENV: production
   UI_ORIGIN: ${PUBLIC_SCHEME:-https}://${UI_HOSTNAME:?}
   MAIL_FROM: ${MAIL_FROM:?}
-  MAIL_URL: ${MAIL_URL:?}
+  MAIL_TRANSPORT: ${MAIL_TRANSPORT:-bumail}
+  MAIL_URL: ${MAIL_URL:-}
+  BUMAIL_URL: ${BUMAIL_URL:-http://bumail-app:8090/graphql}
+  BUMAIL_API_KEY_FILE: /run/secrets/mail_api_key
   REDIS_URL: redis://:${REDIS_PASSWORD:?}@${STACK_PREFIX:+${STACK_PREFIX}-}storix-redis:6379
   TRUSTED_PROXIES: ${TRUSTED_PROXIES:-172.16.0.0/12}
   API_PROXY_SECRET: ${API_PROXY_SECRET:?}
@@ -414,11 +427,11 @@ services:
       BACKUP_S3_PREFIX: ${BACKUP_S3_PREFIX:-storix${STACK_PREFIX:+-${STACK_PREFIX}}}
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
       BACKUP_HOUR: ${BACKUP_HOUR:-03}
-      # Mailed (through MAIL_URL, as the API) when a run fails, or when the last
+      # Mailed (through the SMTP MAIL_URL, which the alert needs even when the API sends through bumail) when a run fails, or when the last
       # success is older than 26 h. Empty: no mail, the healthcheck still shows it.
       BACKUP_ALERT_TO: ${BACKUP_ALERT_TO:-}
       MAIL_FROM: ${MAIL_FROM:?}
-      MAIL_URL: ${MAIL_URL:?}
+      MAIL_URL: ${MAIL_URL:-}
     volumes:
       - backup-data:/backups
     healthcheck:
@@ -440,6 +453,11 @@ services:
   # ── the API ─────────────────────────────────────────────────────────────────
   api:
     <<: [*routed, *common]
+    networks:
+      - internal
+      - proxy
+      - bumail-internal
+    secrets: [mail_api_key]
     deploy:
       resources:
         limits:
@@ -493,6 +511,10 @@ services:
   # `restart` brings it back, and it exits 1 without Redis or the bucket.
   worker:
     <<: *common
+    networks:
+      - internal
+      - bumail-internal
+    secrets: [mail_api_key]
     deploy:
       resources:
         limits:
@@ -525,6 +547,7 @@ services:
   # per stack; the sweep also holds its own per-workspace lock. The healthcheck is the loop's heartbeat.
   jobs:
     <<: *common
+    secrets: [mail_api_key]
     deploy:
       resources:
         limits:
@@ -572,6 +595,7 @@ services:
   # migration refuses to start (MigrationsOutOfSyncError).
   migrate:
     <<: *oneshot
+    secrets: [mail_api_key]
     deploy:
       resources:
         limits:

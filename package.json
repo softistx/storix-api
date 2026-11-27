@@ -60,6 +60,7 @@
     "@softistx/janus-mail": "^0.26.28",
     "@softistx/janus-mongo": "^0.35.1",
     "@softistx/mail": "^1.6.1",
+    "@softistx/mail-bumail": "^1.1.0",
     "@softistx/mail-smtp": "^1.1.1",
     "@softistx/mongo": "^0.31.0",
     "@softistx/redis": "^0.24.1",

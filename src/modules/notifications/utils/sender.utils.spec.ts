@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createMemoryMailer } from "@softistx/mail";
+import { createMemoryMailer, MailFailure, MailRefused } from "@softistx/mail";
 import { directSender, mailsHandler, queuedSender } from "./sender.utils";
 
 const mail = { to: "a@storix.test", subject: "S", text: "T", html: "<p>T</p>" };
@@ -51,5 +51,34 @@ describe("the senders of a prepared mail", () => {
         id: "n",
       } as never),
     ).rejects.toThrow("smtp down");
+  });
+
+  test("a refused mail is dropped and logged by its code, a failure still throws", async () => {
+    const logs: string[] = [];
+    const refusing = {
+      send: async () => {
+        throw new MailRefused("no", {
+          cause: { code: "SEND_DOMAIN_UNVERIFIED" },
+        });
+      },
+    } as never;
+    await mailsHandler(refusing, "noreply@storix.test", (m) => logs.push(m))({
+      data: mail,
+      id: "n",
+    } as never);
+    expect(logs).toEqual([
+      "mails job n refused, dropped: SEND_DOMAIN_UNVERIFIED",
+    ]);
+    const failing = {
+      send: async () => {
+        throw new MailFailure("down");
+      },
+    } as never;
+    await expect(
+      mailsHandler(
+        failing,
+        "noreply@storix.test",
+      )({ data: mail, id: "n" } as never),
+    ).rejects.toBeInstanceOf(MailFailure);
   });
 });

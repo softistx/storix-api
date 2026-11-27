@@ -32,6 +32,7 @@
         "@softistx/janus-mail": "^0.26.28",
         "@softistx/janus-mongo": "^0.35.1",
         "@softistx/mail": "^1.6.1",
+        "@softistx/mail-bumail": "^1.1.0",
         "@softistx/mail-smtp": "^1.1.1",
         "@softistx/mongo": "^0.31.0",
         "@softistx/redis": "^0.24.1",
@@ -346,6 +347,8 @@
     "@softistx/janus-mongo": ["@softistx/janus-mongo@0.35.1", "", { "peerDependencies": { "@softistx/janus": "^0.84.0", "@softistx/mongo": ">=0.27.0 <1", "mongodb": ">=7.0.0 <8", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-RUm0mtduHP/FQsCUF4MC/gwXX8yEBvzrmXU7+pdtWt09Y3PpOsS5OquxBa9Troa7QAnOg8D7NzgpJ0XuM9becw=="],
 
     "@softistx/mail": ["@softistx/mail@1.6.1", "", { "peerDependencies": { "@opentelemetry/api": "^1.9.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@opentelemetry/api"] }, "sha512-Vqys7bLz6QZpbjiGNezTgpi5VEvPUSCQq4B0ehdrqoCnAxaYXy7ENPZjoUYWu9Lng9AOFDH4qAdJhzujDODPxQ=="],
+
+    "@softistx/mail-bumail": ["@softistx/mail-bumail@1.1.0", "", { "peerDependencies": { "@softistx/mail": "^1.6.1", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-OiHtHVERjXLhooID6BAwL4f39fuUcgNBMT2IpmABSjxFCc9t5TisMVvLx2USz2GQZIRxa6BqHBdajxISzlxTGA=="],
 
     "@softistx/mail-smtp": ["@softistx/mail-smtp@1.1.1", "", { "peerDependencies": { "@softistx/mail": "^1.6.1", "nodemailer": ">=7.0.0 <11", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-6SNOzfxNGPFzgNLjBldh0gM5wPv1GmWUBfz6qLTjCDJzCKW1R9ZVDoze/vBQaKMDwTzFBy8jhf4wNCLIX6JxSA=="],
 

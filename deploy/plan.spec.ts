@@ -5,6 +5,7 @@ import { parseEnv } from "./lib";
 import {
   deploySteps,
   envProblems,
+  mailProblems,
   REQUIRED,
   renderPlan,
   staleImages,
@@ -242,5 +243,31 @@ describe("staleImages", () => {
         namePrefix: "staging-",
       }),
     ).toEqual(["staging-storix-api:old"]);
+  });
+});
+
+describe("mailProblems", () => {
+  const ok = { exists: true, mode: 0o600 };
+
+  test("bumail (the default) needs its key file with mode 600 or 400", () => {
+    expect(mailProblems({}, ok)).toEqual([]);
+    expect(mailProblems({}, { exists: true, mode: 0o400 })).toEqual([]);
+    expect(mailProblems({}, { exists: false, mode: 0 })[0]).toContain(
+      "secrets/mail_api_key is missing",
+    );
+    expect(mailProblems({}, { exists: true, mode: 0o644 })[0]).toContain(
+      "mode 644",
+    );
+  });
+
+  test("smtp needs MAIL_URL, not the key file", () => {
+    const smtp = { MAIL_TRANSPORT: "smtp" };
+    const none = { exists: false, mode: 0 };
+    expect(mailProblems(smtp, none)).toEqual([
+      "MAIL_URL is required with MAIL_TRANSPORT=smtp",
+    ]);
+    expect(
+      mailProblems({ ...smtp, MAIL_URL: "smtp://u:p@bumail:587" }, none),
+    ).toEqual([]);
   });
 });

@@ -62,9 +62,27 @@ flock /tmp/deploy.lock bun deploy/deploy.ts
 
 One deploy at a time on the host: `flock /tmp/deploy.lock` makes a second one wait. `--dry-run` pulls, builds and starts nothing and opens no connection; it exits 1 when the env file has problems, so it is also the preflight. Flags: `--env`, `--prefix` (a second stack), `--no-pull`, `--ui`, `--backup`, `--timeout`. A rerun with nothing changed recreates nothing.
 
-The steps: check the env file (mode 600, complete), check the external `proxy` network, `git pull --ff-only`, `build`, `migrate`, `up -d --wait`, `ps`. Once the stack is healthy, `deploy.ts` runs `docker image prune -f`, removes this app's previous image tags (never another product's, never one in use) and runs `docker builder prune -f --filter until=24h`. It never runs `system prune -a` and never touches a volume.
+The steps: check the env file (mode 600, complete) and the mail key file (mode 600), check the external `proxy` and `bumail-internal` networks, `git pull --ff-only`, `build`, `migrate`, `up -d --wait`, `ps`. Once the stack is healthy, `deploy.ts` runs `docker image prune -f`, removes this app's previous image tags (never another product's, never one in use) and runs `docker builder prune -f --filter until=24h`. It never runs `system prune -a` and never touches a volume.
 
 Check: `docker compose -f deploy/docker-compose.yaml --env-file deploy/.env ps` shows every service healthy; `GET /ready` answers 200 inside the API container. There is no bootstrap script: a person signs up, then creates a workspace (`createWorkspace`).
+
+## Mail
+
+Mail leaves through bumail's Mail API (`@softistx/mail-bumail`), from the `api` and the `worker` (the worker sends the queued notification mails). Both join bumail's external network `bumail-internal` and reach `http://bumail-app:8090/graphql` (`BUMAIL_URL`); the endpoint is private, never published. `MAIL_FROM` (`no-reply@softistx.com`) must be on a domain verified with DKIM in the bumail Compte that issued the key.
+
+The service key (`bumail_...`, scope `mail:send`, restricted to the sender's domain, lifetime "Never") is one line in `deploy/secrets/mail_api_key` (git-ignored). Compose mounts it read only at `/run/secrets/mail_api_key` and the API reads it from `BUMAIL_API_KEY_FILE`; it is never an environment value or on a command line. The image runs as uid 1000 (`bun`), so the file is owned by 1000 with mode 600. One-time, on the host (writing from a prompt, then renaming over the file, so the key never shows in `ps` or the shell history):
+
+```sh
+mkdir -p deploy/secrets && chmod 700 deploy/secrets
+(umask 077; read -rs -p 'Service key: ' k && printf '%s' "$k" > deploy/secrets/mail_api_key.new && mv -f deploy/secrets/mail_api_key.new deploy/secrets/mail_api_key; unset k)
+docker run --rm -v "$PWD/deploy/secrets:/s" alpine chown 1000:1000 /s/mail_api_key   # the host user can no longer read it; that is expected
+```
+
+`deploy.ts` (and `--dry-run`) checks that the file exists with mode 600 (or 400), never its content, and that `bumail-internal` exists. The API refuses to start in production without a key that starts with `bumail_`; the refusal quotes no value. A key revoked or expired is the console's to say: sends fail, so rotate it (new key written by rename as above, redeploy, then revoke the old one).
+
+A refused mail (`MailRefused`: unverified domain, suppressed address, ...) is final: the worker logs its code and drops the job, while a failure (`MailFailure`: outage, rate limit, quota) is retried by the queue. Every mail carries its notification id as `idempotencyKey`, so a retry never sends it twice.
+
+**Rollback to SMTP** (kept one release): set `MAIL_TRANSPORT=smtp` and `MAIL_URL` in `deploy/.env`, redeploy; the key file stays mounted but is no longer read. Mail sent over SMTP is not in bumail's send log. The backup alert (`BACKUP_ALERT_TO`) mails over SMTP only and so keeps needing `MAIL_URL`.
 
 ## Backups
 

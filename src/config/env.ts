@@ -49,6 +49,8 @@ const smtpUrl = z
   .string()
   .regex(/^smtps?:\/\/[^/]/, "not an smtp:// or smtps:// URL");
 
+const mailTransport = z.enum(["bumail", "smtp"]);
+
 const flag = z.preprocess(
   (value) => (typeof value === "string" ? value.trim().toLowerCase() : value),
   z
@@ -147,9 +149,34 @@ export const env = defineEnv({
   ),
   // MAIL_FROM: the address every mail is sent from.
   MAIL_FROM: inProduction(z.email(), "noreply@storix.test"),
-  // MAIL_URL: the SMTP server mails leave through. Required in production;
-  // unset elsewhere, mails are printed to the console.
-  MAIL_URL: orUnset(smtpUrl),
+  // MAIL_TRANSPORT: how mail leaves, `bumail` (the Mail API, the default in
+  // production) or `smtp` (the fallback kept one release for a rollback).
+  // Unset outside production: SMTP when MAIL_URL is set, else the console.
+  MAIL_TRANSPORT: production
+    ? mailTransport.default("bumail")
+    : z
+        .string()
+        .transform((value) => value || undefined)
+        .pipe(mailTransport.optional())
+        .optional(),
+  // MAIL_URL: the SMTP server of the `smtp` transport (required with it,
+  // src/config/mailer.ts). An empty value is unset.
+  MAIL_URL: z
+    .string()
+    .transform((value) => value || undefined)
+    .pipe(smtpUrl.optional())
+    .optional(),
+  // BUMAIL_URL: bumail's GraphQL endpoint, reached on the private network
+  // `bumail-internal` only.
+  BUMAIL_URL: z
+    .string()
+    .transform((value) => value || "http://bumail-app:8090/graphql")
+    .pipe(z.url({ protocol: /^https?$/ }))
+    .default("http://bumail-app:8090/graphql"),
+  // BUMAIL_API_KEY_FILE: the file holding the app's `bumail_...` service key
+  // (a mounted secret, mode 0600). Required with the `bumail` transport in
+  // production; the key itself is never an environment variable.
+  BUMAIL_API_KEY_FILE: unsetIfEmpty,
   // TOTP_KEYS: the sealing keys of the accounts' TOTP secrets. Required in
   // production; a development key stands in elsewhere.
   TOTP_KEYS: inProduction(totpKeys, `dev:${devTotpKey}`),
