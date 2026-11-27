@@ -77,12 +77,33 @@ export interface StuckOptions {
 // queue that refuses a job stops the scan (it is probably down) and leaves
 // that file and the rest for the next run. Every node of a
 // shared blob (a copy) moves together.
+//
+// A file whose focal-point crops are stuck (`cropsStatus` `PROCESSING`, its
+// `status` `READY`) is scanned the same way, with a crops job.
 export async function requeueStuck(
   mongo: FilesMongo,
   queue: RenditionsQueue,
   workspaceId: string,
   options: StuckOptions = {},
 ): Promise<StuckReport> {
+  const files = await requeueScope(mongo, queue, workspaceId, "file", options);
+  if (files.nodesLeft !== undefined) return files;
+  const crops = await requeueScope(mongo, queue, workspaceId, "crops", options);
+  return {
+    requeued: files.requeued + crops.requeued,
+    failed: files.failed + crops.failed,
+    ...(crops.nodesLeft !== undefined && { nodesLeft: crops.nodesLeft }),
+  };
+}
+
+async function requeueScope(
+  mongo: FilesMongo,
+  queue: RenditionsQueue,
+  workspaceId: string,
+  scope: "file" | "crops",
+  options: StuckOptions,
+): Promise<StuckReport> {
+  const field = scope === "crops" ? "cropsStatus" : "status";
   const now = (options.now ?? (() => new Date()))();
   const cutoff = new Date(
     now.getTime() - (options.stuckAfterMs ?? STUCK_AFTER_MS),
@@ -93,7 +114,7 @@ export async function requeueStuck(
   const nodes = mongo.db.nodes.raw;
   const stuck = await nodes
     .find({
-      status: "PROCESSING",
+      [field]: "PROCESSING",
       // `null` also matches a node with no `renditionsAt`: an older build
       // (rolling deploy, rollback) writes `PROCESSING` without it, and it is
       // then judged by `updatedAt`.
@@ -112,17 +133,17 @@ export async function requeueStuck(
     if (seen.has(key)) continue;
     seen.add(key);
     const tries = (node["renditionRequeues"] as number | undefined) ?? 0;
-    const blob = { blobKey: key, status: "PROCESSING" as const };
+    const blob = { blobKey: key, [field]: "PROCESSING" as const };
     if (tries >= max) {
       const done = await nodes.updateMany(blob, {
-        $set: { status: "FAILED" },
+        $set: { [field]: "FAILED" },
       });
       if (done.modifiedCount > 0) report.failed += 1;
       continue;
     }
     try {
       await queue.add(
-        { workspaceId, key },
+        { workspaceId, key, ...(scope === "crops" && { crops: true }) },
         {
           id: renditionJobId(
             { workspaceId, key },

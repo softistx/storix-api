@@ -66,7 +66,9 @@ extend type File {
   """
   The sizes available now: every one of a `READY` picture, `THUMB` and
   `PREVIEW` of a `READY` PDF. Empty while the file is `PROCESSING` or `FAILED`
-  and for any other type.
+  and for any other type. Sizes of a `READY` file stay listed while its crops
+  are redone (`cropsStatus`): a crop may be the previous one until `cropsStatus`
+  is `READY`.
   """
   renditions: [Rendition!]!
   "One of the renditions, or null when the file does not have it (yet)."
@@ -208,9 +210,11 @@ extend type Mutation {
   """
   Moves the focal point of a JPEG, PNG or WebP picture (`null` puts it back at
   the centre) and has the worker redo its four crops from the stored original:
-  the file is `PROCESSING`, then `READY` (or `FAILED` when only the crops
-  failed, the original stays readable), and the `ETag` of each crop changes
-  with its pixels. A copy shares the blob and so the point. Needs
+  the file's `cropsStatus` is `PROCESSING`, then `READY` (or `FAILED` when
+  only the crops failed, the original stays readable), and the `ETag` of each
+  crop changes with its pixels. A `READY` file keeps its `status` `READY`
+  meanwhile, and its previews stay served; a file that is not `READY` runs its
+  full job again, as `status` says. A copy shares the blob and so the point. Needs
   `nodes:manage`. 404 `nodes.errors.not-found`; 400 `files.errors.not-a-file`
   (field `id`) for a folder; 400 `files.errors.not-renderable` (field `id`)
   for any other type; 400 `files.errors.invalid-focal` (field `focalPoint`) for

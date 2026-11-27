@@ -135,6 +135,7 @@ export async function pushVersion(
         size: input.blob.size,
         family: familyOf(input.blob.mimeType),
         status: input.status,
+        cropsStatus: null,
         // A new blob starts its renditions afresh.
         renditionRequeues: 0,
         ...(input.status === "PROCESSING" && { renditionsAt: new Date() }),

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { NodeDoc } from "../models";
-import { fileView, nodePage, nodeView } from "./views.utils";
+import { cropsStatusOf, fileView, nodePage, nodeView } from "./views.utils";
 
 const at = (hex: string) => ({ toHexString: () => hex });
 const base = {
@@ -59,5 +59,32 @@ describe("nodePage", () => {
     const out = nodePage({ items: [], endCursor: null }, undefined);
     expect(out.pageInfo.hasNextPage).toBe(false);
     expect(out.pageInfo.hasPreviousPage).toBe(false);
+  });
+});
+
+describe("cropsStatusOf", () => {
+  const of = (status: string, cropsStatus?: string | null) =>
+    cropsStatusOf({ status, cropsStatus } as unknown as NodeDoc);
+
+  test("a READY file reads its stored crops status, READY when it has none", () => {
+    expect(of("READY")).toBe("READY");
+    expect(of("READY", null)).toBe("READY");
+    expect(of("READY", "PROCESSING")).toBe("PROCESSING");
+    expect(of("READY", "FAILED")).toBe("FAILED");
+  });
+
+  test("a file that is not READY mirrors its own status", () => {
+    expect(of("PROCESSING", "READY")).toBe("PROCESSING");
+    expect(of("FAILED")).toBe("FAILED");
+  });
+
+  test("fileView carries it", () => {
+    const view = fileView({
+      ...base,
+      type: "FILE",
+      status: "READY",
+      cropsStatus: "PROCESSING",
+    } as unknown as NodeDoc);
+    expect(view.cropsStatus).toBe("PROCESSING");
   });
 });

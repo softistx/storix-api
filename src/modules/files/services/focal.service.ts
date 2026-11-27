@@ -16,10 +16,12 @@ import { enqueue } from "./enqueue.service";
 // `not-renderable` for a file that is not a JPEG, PNG or WebP picture. The
 // point is the tree's: every copy of the same owner and space takes it, a copy
 // another member holds does not. With a
-// queue the file is `PROCESSING` until the crops are stored (`READY`, or
-// `FAILED` when only they failed); without one the point is recorded and the
-// crops stay as they were. A file that is not `READY` (still `PROCESSING`,
-// or `FAILED`) gets the full job, so its previews are made too. Answers the file as it is now and as it was.
+// queue a `READY` file stays `READY` and its `cropsStatus` is `PROCESSING`
+// until the crops are stored (`READY`, or `FAILED` when only they failed);
+// without one the point is recorded and the crops stay as they were. A file
+// that is not `READY` (still `PROCESSING`, or `FAILED`) gets the full job
+// (`status` `PROCESSING`), so its previews are made too. Answers the file as
+// it is now and as it was.
 export async function setFocalPoint(
   mongo: FilesMongo,
   renditions: RenditionsQueue | undefined,
@@ -36,13 +38,16 @@ export async function setFocalPoint(
   if (renditionKindOf(before.mimeType ?? "") !== "image") {
     throw notRenderable();
   }
+  const cropsOnly = before.status === "READY";
   const change = {
     focalPoint: input.focalPoint && {
       x: input.focalPoint.x,
       y: input.focalPoint.y,
     },
     ...(renditions && {
-      status: "PROCESSING" as const,
+      ...(cropsOnly
+        ? { cropsStatus: "PROCESSING" as const }
+        : { status: "PROCESSING" as const }),
       renditionRequeues: 0,
       renditionsAt: new Date(),
     }),
@@ -70,7 +75,7 @@ export async function setFocalPoint(
     {
       workspaceId: input.workspaceId,
       key: before.blobKey,
-      ...(before.status === "READY" && { crops: true }),
+      ...(cropsOnly && { crops: true }),
     },
     node,
     crypto.randomUUID(),

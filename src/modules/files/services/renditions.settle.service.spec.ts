@@ -135,7 +135,8 @@ describe("renditions settle by success", () => {
     });
     expect(moved.errors).toBeUndefined();
     const node = await a.node();
-    expect(node?.status).toBe("PROCESSING");
+    expect(node?.status).toBe("READY");
+    expect(node?.cropsStatus).toBe("PROCESSING");
     expect(node?.renditionRequeues).toBe(0);
     expect(node?.renditionsAt?.getTime()).toBeGreaterThan(Date.now() - 60_000);
   });

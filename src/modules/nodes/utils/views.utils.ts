@@ -29,6 +29,13 @@ const commonOf = (node: NodeDoc) => ({
   trashedBy: node.trashedBy ?? null,
 });
 
+// The crops' own status: the file's while the file is not `READY` (its
+// full job makes them too), else the redo's (`cropsStatus`), `READY` when none.
+export const cropsStatusOf = (node: NodeDoc) =>
+  node.status && node.status !== "READY"
+    ? node.status
+    : (node.cropsStatus ?? "READY");
+
 // A file node as the API says it, for a caller that knows the node is one (it
 // has just written a file): no type to narrow.
 export const fileView = (node: NodeDoc) => ({
@@ -41,6 +48,7 @@ export const fileView = (node: NodeDoc) => ({
   tags: node.tags,
   meta: node.meta,
   status: node.status ?? "READY",
+  cropsStatus: cropsStatusOf(node),
   focalPoint: node.focalPoint,
 });
 
