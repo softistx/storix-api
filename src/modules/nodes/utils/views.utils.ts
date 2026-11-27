@@ -50,6 +50,7 @@ export const fileView = (node: NodeDoc) => ({
   status: node.status ?? "READY",
   cropsStatus: cropsStatusOf(node),
   focalPoint: node.focalPoint,
+  cropsKey: node.cropsKey ?? node.blobKey ?? "",
 });
 
 // The node as the API says it: a `Folder`, or a `File` with what the storage

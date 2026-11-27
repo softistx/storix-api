@@ -17,9 +17,15 @@ export async function unrecordedOf(
 ): Promise<string[]> {
   if (keys.length === 0) return [];
   const held = await run.mongo.db.blobs.raw
-    .find({ key: { $in: [...keys] } }, { projection: { key: 1 } })
+    .find(
+      { $or: [{ key: { $in: [...keys] } }, { crops: { $in: [...keys] } }] },
+      { projection: { key: 1, crops: 1 } },
+    )
     .toArray();
-  const recorded = new Set(held.map((blob) => blob.key));
+  // A crops key is recorded on its blob: not an orphan of its own.
+  const recorded = new Set(
+    held.flatMap((blob) => [blob.key, ...(blob.crops ?? [])]),
+  );
   return keys.filter((key) => !recorded.has(key));
 }
 
@@ -76,7 +82,16 @@ export async function releaseOne(
     return "done";
   }
   const objectKey = mediaPlace("files", `workspaces/${run.workspaceId}`)(key);
+  const blob = await run.mongo.db.blobs.raw.findOne({ key });
   const objects = [objectKey, ...(await sizesOf(run, objectKey))];
+  // The crops made for each focal point sit under their own keys.
+  for (const crops of blob?.crops ?? []) {
+    const cropsKey = mediaPlace(
+      "files",
+      `workspaces/${run.workspaceId}`,
+    )(crops);
+    objects.push(cropsKey, ...(await sizesOf(run, cropsKey)));
+  }
   if (cannotAfford(run, objects.length)) return "capped";
   const gone = await run.mongo.db.blobs.raw.deleteOne({
     key,

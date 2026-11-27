@@ -10,12 +10,18 @@ import { z } from "zod";
 export const RENDITIONS_QUEUE = "renditions";
 
 // What to render: the blob of one workspace, by its key. `crops` redoes only
-// the four crops, from the focal point the node holds when the job runs (a move
-// of the point).
+// the four crops. `focalPoint` is the point the job was queued for (`null` is
+// the centre): the crops are stored under that point's key, so two copies at
+// different points never share them. A job without the field (queued before
+// it existed) reads the point of the blob's first node.
 export const renditionJob = z.object({
   workspaceId: z.string().min(1),
   key: z.string().min(1),
   crops: z.boolean().optional(),
+  focalPoint: z
+    .object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })
+    .nullable()
+    .optional(),
 });
 export type RenditionJob = z.output<typeof renditionJob>;
 

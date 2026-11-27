@@ -80,7 +80,11 @@ export async function addFile(
         ? await enqueue(
             mongo,
             renditions,
-            { workspaceId: input.workspaceId, key: input.key },
+            {
+              workspaceId: input.workspaceId,
+              key: input.key,
+              focalPoint: null,
+            },
             done.node,
           )
         : done.node;

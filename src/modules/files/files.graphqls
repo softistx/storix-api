@@ -64,6 +64,15 @@ extend type File {
   "Where the crops are centred; null is the centre of the picture."
   focalPoint: FocalPoint
   """
+  The media key the four crops (`SQUARE`, `PORTRAIT`, `STORY`, `LANDSCAPE`) are
+  served under for the file's focal point: `GET /media/files/<cropsKey>/<size>`.
+  It is `key` for the centre, and another key per focal point otherwise: two
+  copies at different points have different crops, copies at the same point
+  share them. After a move it keeps naming the previous crops until the new
+  ones are ready. `THUMB` and `PREVIEW` stay under `key`.
+  """
+  cropsKey: String!
+  """
   The sizes available now: every one of a `READY` picture, `THUMB` and
   `PREVIEW` of a `READY` PDF. Empty while the file is `PROCESSING` or `FAILED`
   and for any other type. Sizes of a `READY` file stay listed while its crops

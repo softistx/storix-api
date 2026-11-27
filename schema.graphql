@@ -330,6 +330,15 @@ type File implements Node {
   ancestors: [ID!]!
   createdAt: DateTime!
   """
+  The media key the four crops (`SQUARE`, `PORTRAIT`, `STORY`, `LANDSCAPE`) are
+  served under for the file's focal point: `GET /media/files/<cropsKey>/<size>`.
+  It is `key` for the centre, and another key per focal point otherwise: two
+  copies at different points have different crops, copies at the same point
+  share them. After a move it keeps naming the previous crops until the new
+  ones are ready. `THUMB` and `PREVIEW` stay under `key`.
+  """
+  cropsKey: String!
+  """
   Where the four crops of a picture stand. While `status` is `PROCESSING` or
   `FAILED` it is that status (the file's job makes the crops too). While
   `status` is `READY`, a move of the focal point (`setFocalPoint`) makes it

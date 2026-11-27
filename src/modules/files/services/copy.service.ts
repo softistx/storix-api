@@ -197,6 +197,7 @@ async function makeCopy(
       status: node.status,
       cropsStatus: node.cropsStatus,
       focalPoint: node.focalPoint,
+      cropsKey: node.cropsKey,
       ...((node.status === "PROCESSING" ||
         node.cropsStatus === "PROCESSING") && {
         renditionsAt: node.renditionsAt ?? new Date(),

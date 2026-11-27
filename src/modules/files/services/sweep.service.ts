@@ -1,9 +1,9 @@
 import { ConflictError } from "@softistx/mongo";
 import type { WorkspacesMongo } from "@/core/workspaces";
-import { renditionJobId } from "@/queues/renditions";
 import type { FilesMongo } from "../models";
 import { filesMongo } from "../models";
 import {
+  type Focal,
   RELEASE_GRACE_MS,
   RELEASED_BRAKE,
   type RenditionsQueue,
@@ -22,6 +22,7 @@ import {
   renewSweepLock,
   takeSweepLock,
 } from "./sweep.lock.service";
+import { type RequeueStep, requeueOne } from "./sweep.requeue.service";
 import { dryPass, releaseOne, unrecordedOf } from "./sweep.steps.service";
 
 export {
@@ -103,7 +104,8 @@ async function requeueScope(
   scope: "file" | "crops",
   options: StuckOptions,
 ): Promise<StuckReport> {
-  const field = scope === "crops" ? "cropsStatus" : "status";
+  const field: RequeueStep["field"] =
+    scope === "crops" ? "cropsStatus" : "status";
   const now = (options.now ?? (() => new Date()))();
   const cutoff = new Date(
     now.getTime() - (options.stuckAfterMs ?? STUCK_AFTER_MS),
@@ -128,48 +130,23 @@ async function requeueScope(
     .limit(options.batch ?? STUCK_BATCH)
     .toArray();
   const seen = new Set<string>();
+  const step = { queue, workspaceId, scope, field, now, max, log };
   for (const [index, node] of stuck.entries()) {
     const key = node["blobKey"] as string;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    const point = (node["focalPoint"] as Focal | null | undefined) ?? null;
+    // One job per blob and focal point: copies at other points need their own.
+    const once = `${key}:${point ? `${point.x}:${point.y}` : ""}`;
+    if (seen.has(once)) continue;
+    seen.add(once);
     const tries = (node["renditionRequeues"] as number | undefined) ?? 0;
-    const blob = { blobKey: key, [field]: "PROCESSING" as const };
-    if (tries >= max) {
-      const done = await nodes.updateMany(blob, {
-        $set: { [field]: "FAILED" },
-      });
-      if (done.modifiedCount > 0) report.failed += 1;
-      continue;
-    }
-    try {
-      await queue.add(
-        { workspaceId, key, ...(scope === "crops" && { crops: true }) },
-        {
-          id: renditionJobId(
-            { workspaceId, key },
-            // Unique per attempt: the counter is reset to 0 by a READY, a
-            // focal move or a new version, and the queue keeps the first job
-            // of an id it already holds (failed ones for 7 days).
-            `stuck${tries + 1}-${crypto.randomUUID()}`,
-          ),
-        },
-      );
-    } catch (error) {
-      log(
-        `stuck renditions ${workspaceId}: ${key} not queued: ${error instanceof Error ? error.message : error}`,
-      );
+    const outcome = await requeueOne(mongo, step, key, point, tries);
+    if (outcome === "down") {
       // The queue is probably down, and the refused node keeps its old
       // `renditionsAt`: going on would only retry the same oldest files.
       report.nodesLeft = stuck.length - index;
       break;
     }
-    // On purpose a raw write, past the optimistic lock and the audit: the
-    // sweep works at blob level, not on a node's versions.
-    await nodes.updateMany(blob, {
-      $inc: { renditionRequeues: 1 },
-      $set: { renditionsAt: now },
-    });
-    report.requeued += 1;
+    if (outcome !== "skipped") report[outcome] += 1;
   }
   return report;
 }

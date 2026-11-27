@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { FOCAL, focalKit, READ } from "../../../../test/files.focal.harness";
 import { filesWorld } from "../../../../test/files.harness";
+import { cropsKeyOf } from "../rules";
 
 const files = filesWorld({ renditions: true });
 const { area, settled, crop } = focalKit(files);
@@ -71,7 +72,11 @@ describe("focal point and crops", () => {
       cropsStatus: "READY",
     });
 
-    const left = await crop(a, file.key, "square");
+    const left = await crop(
+      a,
+      cropsKeyOf(file.key, { x: 0.05, y: 0.5 }),
+      "square",
+    );
     expect(left).toMatchObject({ left: "red", right: "red" });
     expect(left.etag).toBeTruthy();
     expect(left.etag).not.toBe(before.etag);
@@ -79,7 +84,11 @@ describe("focal point and crops", () => {
     // Back across to the right, then to the centre again.
     await a.send(FOCAL, { id: file.id, focalPoint: { x: 0.95, y: 0.5 } });
     await settled(a.workspace.id, file.key);
-    const right = await crop(a, file.key, "square");
+    const right = await crop(
+      a,
+      cropsKeyOf(file.key, { x: 0.95, y: 0.5 }),
+      "square",
+    );
     expect(right).toMatchObject({ left: "blue", right: "blue" });
     expect(right.etag).not.toBe(left.etag);
 
@@ -99,7 +108,11 @@ describe("focal point and crops", () => {
     });
     expect(moved.errors).toBeUndefined();
     expect(await settled(a.workspace.id, file.key)).toBe("READY");
-    const left = await crop(a, file.key, "square");
+    const left = await crop(
+      a,
+      cropsKeyOf(file.key, { x: 0.05, y: 0.5 }),
+      "square",
+    );
     expect(left).toMatchObject({ left: "red", right: "red" });
   });
 
@@ -113,7 +126,7 @@ describe("focal point and crops", () => {
     const res = await files.call(
       a.workspace.owner,
       a.workspace.id,
-      `/media/files/${file.key}/square`,
+      `/media/files/${cropsKeyOf(file.key, { x: 0, y: 0 })}/square`,
       { headers: { "if-none-match": before.etag ?? "" } },
     );
     expect(res.status).toBe(200);

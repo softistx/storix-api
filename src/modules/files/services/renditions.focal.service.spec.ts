@@ -1,10 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import type { MediaBucket } from "@softistx/alxia-media";
 import { store } from "@/config/tenancy";
 import { FOCAL, focalKit } from "../../../../test/files.focal.harness";
 import { filesWorld } from "../../../../test/files.harness";
 import { filesMongo } from "../models";
-import { type RenditionsQueue, renditionsHandler } from "../public";
+import { cropsKeyOf, type RenditionsQueue } from "../rules";
+import { renditionsHandler } from "./renditions.service";
 
 // A queue that holds its jobs: the spec calls the handler itself.
 const queue: RenditionsQueue = { add: async () => ({}) };
@@ -12,145 +12,82 @@ const files = filesWorld({ renditions: queue });
 const { area, crop } = focalKit(files);
 const databaseOf = async (id: string) => filesMongo(await store.databaseOf(id));
 
-const job = (workspaceId: string, key: string, crops: boolean) =>
-  ({
-    data: { workspaceId, key, ...(crops && { crops: true }) },
+const run = (data: Record<string, unknown>) =>
+  renditionsHandler({ bucket: files.ctx.bucket, mongoOf: databaseOf })({
+    data,
     attempt: 1,
     attempts: 3,
     signal: new AbortController().signal,
-  }) as never;
+  } as never);
 
-// A bucket whose first store waits for `release`, after telling `reached`:
-// the job is held past its read of the node, before it settles it.
-function held() {
-  let release = () => {};
-  let reached = () => {};
-  const gate = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  const arrived = new Promise<void>((resolve) => {
-    reached = resolve;
-  });
-  const real = files.ctx.bucket;
-  const bucket = {
-    open: (input: Parameters<MediaBucket["open"]>[0]) => real.open(input),
-    put: async (...args: Parameters<MediaBucket["put"]>) => {
-      reached();
-      await gate;
-      return real.put(...args);
-    },
-  } as unknown as MediaBucket;
-  return { bucket, release, arrived };
-}
-
-describe("a renditions job settles only the focal point it rendered", () => {
-  test("a move during the first job is rendered again by that job before it settles", async () => {
-    const a = await area();
-    const file = await a.record("stale.png");
-    const mongo = await databaseOf(a.workspace.id);
-    const status = async () =>
-      (await mongo.db.nodes.findFirst({ blobKey: file.key }))?.status;
-
-    // The first full job reads the centre, then waits before storing.
-    const gate = held();
-    const first = renditionsHandler({
-      bucket: gate.bucket,
-      mongoOf: databaseOf,
-    })(job(a.workspace.id, file.key, false));
-    await gate.arrived;
-
-    const moved = await a.send(FOCAL, {
-      id: file.id,
-      focalPoint: { x: 0.05, y: 0.5 },
-    });
-    expect(moved.errors).toBeUndefined();
-
-    // The stale job ends: it sees the move after storing, redoes the crops
-    // with the moved point and settles it.
-    gate.release();
-    await first;
-    expect(await status()).toBe("READY");
-    expect(await crop(a, file.key, "square")).toMatchObject({
-      left: "red",
-      right: "red",
-    });
-  });
-
-  test("a job that rendered the current point settles it", async () => {
+describe("a renditions job renders the point it was queued for", () => {
+  test("the crops of a point are stored under that point's key and settle its node", async () => {
     const a = await area();
     const file = await a.record("fresh.png");
     const mongo = await databaseOf(a.workspace.id);
-    await a.send(FOCAL, { id: file.id, focalPoint: { x: 0.95, y: 0.5 } });
-    await renditionsHandler({ bucket: files.ctx.bucket, mongoOf: databaseOf })(
-      job(a.workspace.id, file.key, false),
-    );
+    const focal = { x: 0.95, y: 0.5 };
+    await a.send(FOCAL, { id: file.id, focalPoint: focal });
+    await run({
+      workspaceId: a.workspace.id,
+      key: file.key,
+      focalPoint: focal,
+    });
     const node = await mongo.db.nodes.findFirst({ blobKey: file.key });
     expect(node?.status).toBe("READY");
-    expect(await crop(a, file.key, "square")).toMatchObject({
+    const cropsKey = cropsKeyOf(file.key, focal);
+    expect(cropsKey).not.toBe(file.key);
+    expect(await crop(a, cropsKey, "square")).toMatchObject({
       left: "blue",
       right: "blue",
     });
-  });
-
-  test("a stale job that stores after the redo settled READY stores the moved crops again", async () => {
-    const a = await area();
-    const file = await a.record("late.png");
-    const mongo = await databaseOf(a.workspace.id);
-    const read = () => mongo.db.nodes.findFirst({ blobKey: file.key });
-
-    // The stale full job read the centre and waits at its first store.
-    const gate = held();
-    const stale = renditionsHandler({
-      bucket: gate.bucket,
-      mongoOf: databaseOf,
-    })(job(a.workspace.id, file.key, false));
-    await gate.arrived;
-    await a.send(FOCAL, { id: file.id, focalPoint: { x: 0.05, y: 0.5 } });
-
-    // The redo stores the moved crops and settles READY first (the file was
-    // never READY, so it is a full job).
-    await renditionsHandler({ bucket: files.ctx.bucket, mongoOf: databaseOf })(
-      job(a.workspace.id, file.key, false),
+    // The centre's crops are not made by this job; the previews are the blob's.
+    const centre = await files.call(
+      a.workspace.owner,
+      a.workspace.id,
+      `/media/files/${file.key}/square`,
     );
-    expect((await read())?.status).toBe("READY");
-
-    // The stale job now overwrites them, then notices the move and redoes.
-    gate.release();
-    await stale;
-    expect((await read())?.status).toBe("READY");
-    expect(await crop(a, file.key, "square")).toMatchObject({
-      left: "red",
-      right: "red",
+    expect(centre.status).toBe(404);
+    expect(await crop(a, file.key, "thumb")).toMatchObject({
+      type: "image/webp",
     });
+    const blob = await mongo.db.blobs.raw.findOne({ key: file.key });
+    expect(blob?.crops).toEqual([cropsKey]);
   });
 
-  test("a point that moves on every store of the last attempt leaves the node processing", async () => {
+  test("a job for the centre leaves a node that moved meanwhile processing", async () => {
     const a = await area();
-    const file = await a.record("endless.png");
+    const file = await a.record("stale.png");
     const mongo = await databaseOf(a.workspace.id);
-    const real = files.ctx.bucket;
-    let moves = 0;
-    const bucket = {
-      open: (input: Parameters<MediaBucket["open"]>[0]) => real.open(input),
-      put: async (...args: Parameters<MediaBucket["put"]>) => {
-        moves += 1;
-        await a.send(FOCAL, {
-          id: file.id,
-          focalPoint: { x: 0.05 + moves / 100, y: 0.5 },
-        });
-        return real.put(...args);
-      },
-    } as unknown as MediaBucket;
-
-    await renditionsHandler({ bucket, mongoOf: databaseOf })({
-      data: { workspaceId: a.workspace.id, key: file.key },
-      attempt: 3,
-      attempts: 3,
-      signal: new AbortController().signal,
-    } as never);
-
-    expect(moves).toBeGreaterThan(1);
+    await a.send(FOCAL, { id: file.id, focalPoint: { x: 0.05, y: 0.5 } });
+    await run({ workspaceId: a.workspace.id, key: file.key, focalPoint: null });
     const node = await mongo.db.nodes.findFirst({ blobKey: file.key });
     expect(node?.status).toBe("PROCESSING");
+    // Its own job then settles it, without touching the centre's crops.
+    await run({
+      workspaceId: a.workspace.id,
+      key: file.key,
+      focalPoint: { x: 0.05, y: 0.5 },
+    });
+    expect(
+      (await mongo.db.nodes.findFirst({ blobKey: file.key }))?.status,
+    ).toBe("READY");
+    expect(await crop(a, file.key, "square")).toMatchObject({
+      left: "red",
+      right: "blue",
+    });
+    expect(
+      await crop(a, cropsKeyOf(file.key, { x: 0.05, y: 0.5 }), "square"),
+    ).toMatchObject({ left: "red", right: "red" });
+  });
+
+  test("a job queued before the field reads the node's point", async () => {
+    const a = await area();
+    const file = await a.record("legacy.png");
+    const focal = { x: 0.95, y: 0.5 };
+    await a.send(FOCAL, { id: file.id, focalPoint: focal });
+    await run({ workspaceId: a.workspace.id, key: file.key });
+    expect(await crop(a, cropsKeyOf(file.key, focal), "square")).toMatchObject({
+      left: "blue",
+    });
   });
 });

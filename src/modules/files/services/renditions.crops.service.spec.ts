@@ -12,6 +12,7 @@ const jobs: {
   workspaceId: string;
   key: string;
   crops?: boolean | undefined;
+  focalPoint?: { x: number; y: number } | null | undefined;
 }[] = [];
 const queue: RenditionsQueue = {
   add: async (job) => {
@@ -96,7 +97,12 @@ describe("a crops job settles cropsStatus and leaves status alone", () => {
     const first = await requeueStuck(mongo, queue, a.workspace.id);
     expect(first).toMatchObject({ requeued: 1, failed: 0 });
     expect(jobs).toEqual([
-      { workspaceId: a.workspace.id, key: file.key, crops: true },
+      {
+        workspaceId: a.workspace.id,
+        key: file.key,
+        crops: true,
+        focalPoint: { x: 0.05, y: 0.5 },
+      },
     ]);
     expect(await node()).toMatchObject({ status: "READY" });
 
