@@ -4,7 +4,7 @@ enum NotificationKind {
   SHARED
   "Your role on a shared node changed."
   ROLE_CHANGED
-  "A workspace you administer crossed 80 % or 100 % of its storage quota."
+  "A workspace you administer crossed 85 % or 95 % of its storage quota."
   QUOTA_THRESHOLD
 }
 
@@ -20,7 +20,7 @@ type Notification {
   nodeName: String
   "The role granted (SHARED, ROLE_CHANGED)."
   role: GrantRole
-  "The threshold crossed, 80 or 100 (QUOTA_THRESHOLD)."
+  "The threshold crossed, 85 or 95 (QUOTA_THRESHOLD)."
   percent: Int
   "Null while unread."
   readAt: DateTime

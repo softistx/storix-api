@@ -258,16 +258,17 @@ mutation { updateFile(id: "<file id>", input: { tags: ["invoice", "2026"], meta:
 
 `setStarred(id, starred)` stars or unstars any node of your tree (a repeat changes nothing) and answers it; `starred(first,
 after)` lists your favourites, the latest star first. `recentFiles(first, after)` lists the files you uploaded or opened,
-the latest first, one entry per file, 200 kept per member. `openFile(id)` is the "open": it notes the file as recent and
+the latest first, one entry per file, 200 kept per member, each as `{ node, openedAt }` (a `RecentPage`). `openFile(id)` is the "open": it notes the file as recent and
 answers it. The three need `nodes:read` and see only your own tree; a trashed node leaves both lists and returns with its
-restore. Both lists are paged by cursor (`pageInfo.endCursor`); a cursor of the other list is
+restore. `Node.starred` tells whether you starred a node, so any listing shows the flag; `Storage.largestFiles(first)` (1 to 50, `workspace:read`) names the biggest live files you can read, so it can be shorter than `first`. Both lists are paged by cursor (`pageInfo.endCursor`); a cursor of the other list is
 `validation.errors.invalid-cursor`.
 
 ```graphql
 mutation { setStarred(id: "<node id>", starred: true) { id name } }
 query { starred(first: 20) { nodes { id name } pageInfo { endCursor hasNextPage } } }
 mutation { openFile(id: "<file id>") { id name } }
-query { recentFiles(first: 20) { nodes { id name } pageInfo { endCursor } } }
+query { recentFiles(first: 20) { entries { node { id name starred } openedAt } pageInfo { endCursor } } }
+query { storage { largestFiles(first: 10) { id name size } } }
 ```
 
 The detail is in [Files storage](docs/development.md#files-storage-media); every `storage.errors.*` refusal is in

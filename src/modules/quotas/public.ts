@@ -5,4 +5,5 @@ export {
   type Reconciled,
   reconcileAll,
   reconcileUsage,
+  type StorageView,
 } from "./services";

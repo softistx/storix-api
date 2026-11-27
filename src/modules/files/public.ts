@@ -17,6 +17,8 @@ export type {
 export {
   accounted,
   fileReader,
+  largestFiles,
+  MAX_LARGEST,
   MAX_REQUEUES,
   markRenditionsFailed,
   type RetentionOptions,
@@ -31,3 +33,4 @@ export {
   sweepAll,
   sweepWorkspace,
 } from "./services";
+export { fileOf } from "./utils";

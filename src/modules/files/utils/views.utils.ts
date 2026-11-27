@@ -16,6 +16,18 @@ export const pageOf = (
   },
 });
 
+// The recent files page as the API says it: each file with when it was opened.
+export const recentPageOf = (
+  page: PersonalPage,
+  after: string | null | undefined,
+) => ({
+  entries: page.items.flatMap((node, i) => {
+    const openedAt = page.dates[i];
+    return openedAt ? [{ node: fileOf(node), openedAt }] : [];
+  }),
+  pageInfo: pageOf(page, after).pageInfo,
+});
+
 // The node as the API's `File`; a folder is `not-a-file`.
 export const fileOf = (node: Parameters<typeof nodeView>[0]) => {
   const view = nodeView(node);

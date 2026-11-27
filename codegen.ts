@@ -35,6 +35,9 @@ const config: CodegenConfig = {
           // `nodeView` makes, which holds what it reads.
           File: "@/modules/nodes/public#FileNode",
           Folder: "@/modules/nodes/public#FolderNode",
+          // `largestFiles` is the quotas resolver's field: the parent is the
+          // view `storageView` makes.
+          Storage: "@/modules/quotas/public#StorageView",
           // `settings` is read when asked: the parent is what `view` makes.
           Workspace: "@/core/workspaces#WorkspaceView",
         },

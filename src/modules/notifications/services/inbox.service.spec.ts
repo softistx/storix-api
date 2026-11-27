@@ -122,8 +122,8 @@ describe("the inbox of an account", () => {
     await world();
     const me = fresh();
     const [made] = await recordNotifications(mongo(), [
-      { accountId: me, workspaceId, kind: "QUOTA_THRESHOLD", percent: 80 },
+      { accountId: me, workspaceId, kind: "QUOTA_THRESHOLD", percent: 85 },
     ]);
-    expect(made).toMatchObject({ percent: 80, nodeId: null, actorId: null });
+    expect(made).toMatchObject({ percent: 85, nodeId: null, actorId: null });
   });
 });

@@ -11,6 +11,7 @@ import {
   nodeView,
   ownerOf,
 } from "@/modules/nodes/public";
+import { starredOf } from "../data-loaders";
 import { metaTooLong, notAFile } from "../files.errors";
 import { filesMongo } from "../models";
 import { checkTags, metaFits } from "../rules";
@@ -27,6 +28,7 @@ import {
 import {
   isQuotaExceeded,
   pageOf,
+  recentPageOf,
   recordCopy,
   recordFileAdd,
   recordFileUpdate,
@@ -60,14 +62,18 @@ export const filesResolvers: Resolvers = {
         first,
         after,
       });
-      return pageOf(page, after);
+      return recentPageOf(page, after);
     },
   },
   File: {
+    starred: (node, _, ctx) => starredOf(node, ctx),
     ...fileRenditionResolvers,
     ...fileVersionResolvers,
     owner: (node, _, ctx) => ownerOf(node, ctx),
     ...nodeRoleFields,
+  },
+  Folder: {
+    starred: (node, _, ctx) => starredOf(node, ctx),
   },
   Mutation: {
     ...versionMutations,

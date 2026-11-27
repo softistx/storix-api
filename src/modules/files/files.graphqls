@@ -110,6 +110,34 @@ extend type File {
   versions: [FileVersion!]!
 }
 
+extend interface Node {
+  "Whether the caller has starred it (`setStarred`), batched per request."
+  starred: Boolean!
+}
+
+extend type File {
+  "Whether the caller has starred it (`setStarred`), batched per request."
+  starred: Boolean!
+}
+
+extend type Folder {
+  "Whether the caller has starred it (`setStarred`), batched per request."
+  starred: Boolean!
+}
+
+"A file the caller opened or uploaded, and when."
+type RecentEntry {
+  node: File!
+  "When the caller last opened or uploaded it."
+  openedAt: DateTime!
+}
+
+"A page of the caller's recent files."
+type RecentPage {
+  entries: [RecentEntry!]!
+  pageInfo: PageInfo!
+}
+
 extend type Query {
   """
   The caller's favourites, the most recently starred first, one page: nodes of
@@ -124,7 +152,8 @@ extend type Query {
     after: String @constraint(maxLength: 500)
   ): NodePage!
   """
-  The files the caller opened or uploaded lately, the latest first, one page:
+  The files the caller opened or uploaded lately, the latest first, each with
+  when (`openedAt`), one page:
   at most 200 are kept per member, one entry per file, and a trashed file
   leaves the list. As for `starred`, a page may be short or empty with
   `hasNextPage` `true`. Needs `nodes:read`. 400 `validation.errors.invalid-cursor`
@@ -133,7 +162,7 @@ extend type Query {
   recentFiles(
     first: Int! = 50 @constraint(min: 1, max: 100)
     after: String @constraint(maxLength: 500)
-  ): NodePage!
+  ): RecentPage!
 }
 
 extend type Mutation {
