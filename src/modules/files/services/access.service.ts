@@ -16,12 +16,18 @@ export async function mayRead(
     read.accountId,
   );
   const who = seat ?? read.accountId;
+  // A crops key (a focal point's crops) reads as the blob it belongs to.
+  const cropsOf = await mongo.db.blobs.raw.findOne(
+    { crops: read.key },
+    { projection: { key: 1 } },
+  );
+  const key = cropsOf?.key ?? read.key;
   const fileIds = await mongo.db.versions.raw.distinct("fileId", {
-    blobKey: read.key,
+    blobKey: key,
   });
   const held = {
     trashedAt: null,
-    $or: [{ blobKey: read.key }, { _id: { $in: fileIds } }],
+    $or: [{ blobKey: key }, { _id: { $in: fileIds } }],
   };
   if (await mongo.db.nodes.findFirst({ ...held, ownerId: read.accountId })) {
     return true;

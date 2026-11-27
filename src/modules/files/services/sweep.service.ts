@@ -4,6 +4,7 @@ import { renditionJobId } from "@/queues/renditions";
 import type { FilesMongo } from "../models";
 import { filesMongo } from "../models";
 import {
+  type Focal,
   RELEASE_GRACE_MS,
   RELEASED_BRAKE,
   type RenditionsQueue,
@@ -143,7 +144,12 @@ async function requeueScope(
     }
     try {
       await queue.add(
-        { workspaceId, key, ...(scope === "crops" && { crops: true }) },
+        {
+          workspaceId,
+          key,
+          focalPoint: (node["focalPoint"] as Focal | null | undefined) ?? null,
+          ...(scope === "crops" && { crops: true }),
+        },
         {
           id: renditionJobId(
             { workspaceId, key },

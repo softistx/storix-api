@@ -11,22 +11,17 @@ import {
   CROP_SIZES,
   CROP_SPECS,
   cropBox,
+  cropsKeyOf,
   type Focal,
   PREVIEW_SIZES,
   RENDITION_SIDES,
   type RenditionKind,
   renditionKindOf,
+  roundFocal,
   sameFocal,
   targetSize,
 } from "../rules";
-import {
-  FocalMoved,
-  fitSide,
-  limits,
-  type MadeRendition,
-  makeFromPdf,
-  storeUntilStable,
-} from "../utils";
+import { fitSide, limits, type MadeRendition, makeFromPdf } from "../utils";
 
 export interface MakeOptions {
   signal?: AbortSignal | undefined;
@@ -84,7 +79,7 @@ export async function makeRenditions(
 
 // What the worker runs for each job of the `renditions` queue (plan §3.14):
 // read the original, make `thumb` and `preview` and the four crops (centred
-// on the node's focal point; a `crops` job redoes the crops only), store them where
+// on the job's focal point; a `crops` job redoes the crops only), store them where
 // `GET /media/files/<key>/<size>` serves them (`mediaPlace`), and move the
 // node from `PROCESSING` to `READY`. Everything the job writes is safe to
 // repeat, so a retry starts over.
@@ -120,10 +115,9 @@ class OriginalMissing extends Error {}
 // `maxRequeues` must not leave them `FAILED` for good. A crops job keeps the
 // `PROCESSING`-only rule. `READY` resets the requeue counter.
 //
-// `rendered` (the focal point the job's crops were made with, `null` for the
-// centre) settles only the nodes still at that point. The job re-renders until
-// the point holds (`storeUntilStable`); this guard covers a move after its last
-// read, leaving the node `PROCESSING` for the redo job `setFocalPoint` queued.
+// `rendered` (the focal point the job's crops were made for, `null` for the
+// centre) settles only the nodes at that point: a node moved to another point
+// meanwhile stays `PROCESSING` for the job `setFocalPoint` queued for it.
 //
 // A crops job (`scope` "crops") settles `cropsStatus` alone and leaves the
 // file's `status` as it is; a full job settles `status` and clears
@@ -206,6 +200,33 @@ export async function markRenditionsFailed(
   await setStatus(mongo, job.key, "FAILED", { scope: "crops" });
 }
 
+// Stores the sizes where `GET /media/files/<key>/<size>` serves them: the
+// previews under the blob's key, the four crops under the key of the focal
+// point they were made for (`cropsKeyOf`). That key is recorded on the blob
+// first, so the sweep and the read check know it before an object exists.
+async function storeRenditions(
+  deps: { mongo: FilesMongo; bucket: MediaBucket },
+  job: { workspaceId: string; key: string; focal: Focal | null | undefined },
+  made: MadeRendition[],
+) {
+  const place = mediaPlace("files", `workspaces/${job.workspaceId}`);
+  const cropsKey = cropsKeyOf(job.key, job.focal);
+  if (cropsKey !== job.key) {
+    await deps.mongo.db.blobs.raw.updateOne(
+      { key: job.key },
+      { $addToSet: { crops: cropsKey } },
+    );
+  }
+  for (const one of made) {
+    const owner = (CROP_SIZES as readonly string[]).includes(one.size)
+      ? cropsKey
+      : job.key;
+    await deps.bucket.put({ key: place(owner, one.size) }, one.bytes, {
+      type: one.contentType,
+    });
+  }
+}
+
 export function renditionsHandler(
   deps: RenditionsWorkDeps,
 ): Handler<typeof renditionJob> {
@@ -220,37 +241,25 @@ export function renditionsHandler(
       if (node) await setStatus(mongo, key, "READY", { scope });
       return;
     }
-    let rendered = node.focalPoint;
+    // The point the job was queued for; a job queued before the field reads
+    // the node's.
+    const focal =
+      data.focalPoint === undefined ? node.focalPoint : data.focalPoint;
     try {
       await touch(mongo, key);
       const bytes = await readOriginal(deps.bucket, workspaceId, key);
-      const place = mediaPlace("files", `workspaces/${workspaceId}`);
-      // Renders and stores the sizes for `focal`; a redo is crops only.
-      const renderAndStore = async (focal: Focal | null, again: boolean) => {
-        const made = await makeRenditions(bytes, kind, {
-          signal,
-          focal,
-          cropsOnly: again || crops === true,
-        });
-        await touch(mongo, key);
-        for (const one of made) {
-          await deps.bucket.put({ key: place(key, one.size) }, one.bytes, {
-            type: one.contentType,
-          });
-        }
-      };
-      rendered = await storeUntilStable({
-        focal: node.focalPoint,
-        store: renderAndStore,
-        current: async () => {
-          const now = await mongo.db.nodes.findFirst({ blobKey: key });
-          return now ? now.focalPoint : undefined;
-        },
+      const made = await makeRenditions(bytes, kind, {
+        signal,
+        focal: focal && roundFocal(focal),
+        cropsOnly: crops === true,
       });
+      await touch(mongo, key);
+      await storeRenditions(
+        { ...deps, mongo },
+        { workspaceId, key, focal },
+        made,
+      );
     } catch (error) {
-      // The point kept moving: PROCESSING stays for the redo; the last
-      // attempt returns, as throwing would end FAILED.
-      if (error instanceof FocalMoved && attempt >= attempts) return;
       const permanent =
         error instanceof ImageError || error instanceof OriginalMissing;
       if (permanent || attempt >= attempts)
@@ -266,7 +275,7 @@ export function renditionsHandler(
     await setStatus(mongo, key, "READY", {
       scope,
       authoritative: crops !== true,
-      rendered: { focal: rendered },
+      rendered: { focal: focal ?? null },
     });
   };
 }

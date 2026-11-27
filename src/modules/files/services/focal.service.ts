@@ -7,6 +7,7 @@ import {
   isFocal,
   type RenditionsQueue,
   renditionKindOf,
+  roundFocal,
 } from "../rules";
 import { enqueue } from "./enqueue.service";
 
@@ -14,7 +15,7 @@ import { enqueue } from "./enqueue.service";
 // centre) and has the worker redo its four crops from the stored original.
 // `invalid-focal` for a coordinate outside 0 to 1, `not-a-file` for a folder,
 // `not-renderable` for a file that is not a JPEG, PNG or WebP picture. The
-// point is the tree's: every copy of the same owner and space takes it, a copy
+// point is kept to a thousandth and is the tree's: every copy of the same owner and space takes it, a copy
 // another member holds does not. With a
 // queue a `READY` file stays `READY` and its `cropsStatus` is `PROCESSING`
 // until the crops are stored (`READY`, or `FAILED` when only they failed);
@@ -39,11 +40,10 @@ export async function setFocalPoint(
     throw notRenderable();
   }
   const cropsOnly = before.status === "READY";
+  // Kept to a thousandth, so the crops' key and pixels agree on the point.
+  const focalPoint = input.focalPoint && roundFocal(input.focalPoint);
   const change = {
-    focalPoint: input.focalPoint && {
-      x: input.focalPoint.x,
-      y: input.focalPoint.y,
-    },
+    focalPoint,
     ...(renditions && {
       ...(cropsOnly
         ? { cropsStatus: "PROCESSING" as const }
@@ -75,6 +75,7 @@ export async function setFocalPoint(
     {
       workspaceId: input.workspaceId,
       key: before.blobKey,
+      focalPoint,
       ...(cropsOnly && { crops: true }),
     },
     node,

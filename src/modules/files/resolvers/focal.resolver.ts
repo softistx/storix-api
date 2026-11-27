@@ -5,12 +5,13 @@ import type { Resolvers } from "@/generated/graphql/resolvers";
 import { nodeView } from "@/modules/nodes/public";
 import { notAFile } from "../files.errors";
 import { filesMongo } from "../models";
-import { renditionsOf } from "../rules";
+import { cropsKeyOf, renditionsOf } from "../rules";
 import { setFocalPoint as moveFocalPoint } from "../services";
 import { recordFileFocal } from "../utils";
 
 // `File.renditions` and `File.rendition(preset)`: derived from the node.
 export const fileRenditionResolvers: NonNullable<Resolvers["File"]> = {
+  cropsKey: (file) => cropsKeyOf(file.key, file.focalPoint),
   renditions: (file) => renditionsOf(file),
   rendition: (file, { preset }) =>
     renditionsOf(file).find((one) => one.preset === preset) ?? null,

@@ -16,9 +16,14 @@ export const blobs = defineCollection({
     mimeType: z.string().min(1),
     refs: z.number().int().nonnegative().default(1),
     releasedAt: z.date().nullable().default(null),
+    // The keys the blob's crops are stored under besides its own, one per
+    // focal point they were made for (`cropsKeyOf`): the sweep and the read
+    // check map them back to the blob.
+    crops: z.array(z.string()).optional(),
   }),
   timestamps: true,
   indexes: [
+    { key: { crops: 1 }, name: "blobs_crops" },
     // A key is recorded once: a second `addFile` of it is refused.
     { key: { key: 1 }, unique: true, name: "blobs_key_unique" },
     { key: { refs: 1, releasedAt: 1 }, name: "blobs_released" },
