@@ -20,9 +20,9 @@
         "@softistx/alxia-media": "^0.12.0",
         "@softistx/alxia-modules": "^0.6.0",
         "@softistx/alxia-tenancy": "^0.8.0",
-        "@softistx/graphql-client": "^0.12.0",
+        "@softistx/graphql-client": "^0.13.0",
         "@softistx/graphql-scalars": "^0.8.0",
-        "@softistx/graphql-validation": "^0.10.0",
+        "@softistx/graphql-validation": "^0.11.0",
         "@softistx/graxia": "^0.18.0",
         "@softistx/graxia-graphiql": "^0.4.2",
         "@softistx/i18n": "^3.2.2",
@@ -51,7 +51,7 @@
         "@graphql-codegen/typescript-resolvers": "6.1.1",
         "@graphql-tools/utils": "^13.2.3",
         "@softistx/ai-testing": "^0.4.0",
-        "@softistx/graphql-codegen-zod": "^0.6.0",
+        "@softistx/graphql-codegen-zod": "^0.6.1",
         "@types/bun": "^1.4.5",
         "@types/nodemailer": "^8.0.2",
         "mongodb-memory-server-core": "^11.4.0",
@@ -321,13 +321,13 @@
 
     "@softistx/alxia-tenancy": ["@softistx/alxia-tenancy@0.8.0", "", { "peerDependencies": { "@softistx/alxia-modules": "^0.6.0", "@softistx/mongo": ">=0.27.0 <1", "mongodb": "^7.7.0", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-UjWZPdGZpHnUnBQgjrX/KDWq1dPyf5sacBC8ys0SPxe4julBeieHdKI+krhm973OAfq/5WPfIO3wm52SruMqYg=="],
 
-    "@softistx/graphql-client": ["@softistx/graphql-client@0.12.0", "", { "dependencies": { "@graphql-typed-document-node/core": "^3.2.0", "@nxgt/httpyz": "^0.5.0" }, "peerDependencies": { "@types/react": "^19.0.0", "graphql": "^16.11.0 || ^17.0.0", "react": "^19.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@types/react", "react"] }, "sha512-lceVKjmO34rq72dnHTb3dl0dwR22+003pHXmH/wnpHHyyRcIwBTO7kWjDR1ofnSqUWmZ/oJiFe/7oBxJkmw0mw=="],
+    "@softistx/graphql-client": ["@softistx/graphql-client@0.13.0", "", { "dependencies": { "@graphql-typed-document-node/core": "^3.2.0", "@nxgt/httpyz": "^0.5.0" }, "peerDependencies": { "@types/react": "^19.0.0", "graphql": "^16.11.0 || ^17.0.0", "react": "^19.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@types/react", "react"] }, "sha512-0/Uval16s6cORm8BYOe77egwSc284FMDlLJe740uUQHM0gY/Tb9J+INoLY6oD/BdQJeb2w1QRargmvItGfKJaA=="],
 
-    "@softistx/graphql-codegen-zod": ["@softistx/graphql-codegen-zod@0.6.0", "", { "dependencies": { "@softistx/graphql-validation": "^0.10.0", "change-case": "^5.4.4" }, "peerDependencies": { "graphql": "^16.11.0 || ^17.0.0", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-QD+SfMr7HpO/72b99aFn8AkBAz2KUa0+nFud9Pp9oSJ/x+DpreVivS/qcpKKYsWbxeXk4wNdAQ39J8gqXJzE7Q=="],
+    "@softistx/graphql-codegen-zod": ["@softistx/graphql-codegen-zod@0.6.1", "", { "dependencies": { "@softistx/graphql-validation": "^0.11.0", "change-case": "^5.4.4" }, "peerDependencies": { "graphql": "^16.11.0 || ^17.0.0", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" } }, "sha512-voeW/mX0wCnxEmK3enoOxmhGDM48AsAA/OZ6wCkTMS0uQS69fGTTV1al0XX4w+gjs6RWjyMQ6a9qw8xVgWhmkg=="],
 
     "@softistx/graphql-scalars": ["@softistx/graphql-scalars@0.8.0", "", { "dependencies": { "@nxgt/zod": "^0.2.0" }, "peerDependencies": { "graphql": "^16.11.0 || ^17.0.0", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "bin": { "nxgt-graphql-scalars": "dist/cli.js" } }, "sha512-fciZ/UWw9TG+GCBACNyANGHJ/tOSXSgh4DmH9afhCJYgEpwa3f/fE7X+jtAy5OP50cH9A5R2KiSQ32mMLJaDCg=="],
 
-    "@softistx/graphql-validation": ["@softistx/graphql-validation@0.10.0", "", { "peerDependencies": { "graphql": "^16.11.0 || ^17.0.0", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "bin": { "nxgt-graphql-validation": "dist/cli.js" } }, "sha512-LulbRXKRAK/fBPG+Kjcz2WYsQohfD56OADZr4e5D/dpQu6GwYY4mOhzdy+kjJGHrYhbjKE9orE6JMrBWRIlJ7g=="],
+    "@softistx/graphql-validation": ["@softistx/graphql-validation@0.11.0", "", { "peerDependencies": { "graphql": "^16.11.0 || ^17.0.0", "typescript": "^6.0.3 || ^7.0.0", "zod": ">=4.6.5 <5" }, "bin": { "nxgt-graphql-validation": "dist/cli.js" } }, "sha512-B537TxItut8GQclZF3w8ODv3yilScO5JG0A6koWtA8MnD6szGjlXgVHWoox2u+7D3cGUCRO0bOUWYZbOvnpLbA=="],
 
     "@softistx/graxia": ["@softistx/graxia@0.18.0", "", { "peerDependencies": { "@softistx/telemetry": "^0.5.0", "graphql": "^17.1.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@softistx/telemetry", "typescript"] }, "sha512-VZdpmrGWFj4DXvpAXj5JUZidBrlQQNcKLC+6JZmqDjhvmSx+OlVxQchM3o7YwwfaiCel8Pjnu5RKmTU504ZLlw=="],
 
