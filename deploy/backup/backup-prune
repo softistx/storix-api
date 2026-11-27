@@ -1,0 +1,11 @@
+#!/bin/sh
+# Deletes local dumps older than BACKUP_RETENTION_DAYS (default 14), but never
+# the newest finished dump: a run of failing nights must not empty the volume.
+# Called from backup-run's exit trap; a failure here is logged, never fatal.
+dir="${BACKUP_DIR:-/backups}"
+days="${BACKUP_RETENTION_DAYS:-14}"
+newest="$(ls "$dir" | grep '^mongo-[0-9TZ]*\.tar$' | sort | tail -1)"
+[ -n "$newest" ] || exit 0
+find "$dir" -name 'mongo-*.tar' ! -name "$newest" -mmin "+$((days * 1440))" -delete \
+  || echo "backup: local prune failed" >&2
+exit 0

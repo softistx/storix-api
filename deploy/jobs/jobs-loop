@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# The scheduler of the scripts no process schedules yet, run by the `jobs`
+# service from the API's image (the working directory holds dist/):
+#
+#   storage sweep   every JOBS_SWEEP_EVERY seconds      (default 3600)
+#   retention       every JOBS_RETENTION_EVERY seconds  (default 3600)
+#   quota reconcile every JOBS_RECONCILE_EVERY seconds  (default 86400)
+#
+# One job at a time, in this order. A job that fails is logged and tried again
+# at its next due time; it never stops the loop or the others. Each script
+# takes its own lease, so a second copy never doubles the work. /tmp/jobs-alive
+# holds the time of the last tick, which the service's healthcheck reads.
+#
+# JOBS_TICK (seconds between two checks, default 30), JOBS_MAX_TICKS (stop
+# after that many ticks, default 0: never) and JOBS_RUN (the command that runs
+# a script, default `bun --no-install`) exist for the specs.
+set -u
+
+tick=${JOBS_TICK:-30}
+max_ticks=${JOBS_MAX_TICKS:-0}
+run=${JOBS_RUN:-bun --no-install}
+alive=${JOBS_ALIVE_FILE:-/tmp/jobs-alive}
+
+names=(storage-sweep retention quota-reconcile)
+every=("${JOBS_SWEEP_EVERY:-3600}" "${JOBS_RETENTION_EVERY:-3600}" "${JOBS_RECONCILE_EVERY:-86400}")
+last=(0 0 0)
+
+stopping=0
+trap 'stopping=1' TERM INT
+
+for i in 0 1 2; do
+  case "${every[$i]}" in
+    '' | *[!0-9]* | 0)
+      echo "jobs: ${names[$i]} interval must be a positive number of seconds" >&2
+      exit 1
+      ;;
+  esac
+done
+
+ticks=0
+while [ "$stopping" -eq 0 ]; do
+  now=$(date +%s)
+  printf '%s' "$now" >"$alive"
+  for i in 0 1 2; do
+    [ "$stopping" -eq 0 ] || break
+    # The first tick runs every job once, so a restart never skips a due run.
+    if [ $((now - last[i])) -ge "${every[$i]}" ]; then
+      echo "jobs: ${names[$i]} start"
+      # shellcheck disable=SC2086
+      if $run "dist/scripts/${names[$i]}.js"; then
+        echo "jobs: ${names[$i]} done"
+      else
+        echo "jobs: ${names[$i]} failed (exit $?), next run in ${every[$i]}s" >&2
+      fi
+      last[i]=$(date +%s)
+    fi
+  done
+  ticks=$((ticks + 1))
+  if [ "$max_ticks" -gt 0 ] && [ "$ticks" -ge "$max_ticks" ]; then break; fi
+  # Interruptible sleep: TERM must not wait for the whole tick.
+  sleep "$tick" &
+  wait $! || true
+done
+echo "jobs: stopped"

@@ -125,3 +125,7 @@ when a code lacks a message in English or French.
 | `validation.errors.too-short` / `too-long` | A string is shorter or longer than its limit. |
 | `validation.errors.too-few` / `too-many` | A list has fewer or more items than its limit. |
 | `validation.errors.invalid-format` | A string does not match its format or pattern. |
+
+## Deploy
+
+`deploy/` is the staging stack: one API image runs the api, the worker, the `jobs` scheduler (sweep, retention, quota reconcile) and the `migrate` one-shot (`db:sync` then `db:migrate`) that `deploy.ts` runs before the roll. Run it as `flock /tmp/deploy.lock bun deploy/deploy.ts`. Runbook: `docs/deployment.md`.

@@ -39,3 +39,7 @@ A module is `src/modules/<name>/` (a kernel module is `src/core/<name>/`, same l
 - **No loose null checks**: never `== null` / `!= null`; compare `=== null` or `=== undefined` by the type (Biome's `noDoubleEquals` with `ignoreNull: false` is on).
 - **Identity**: the `janus.*` files of `src/core/identity` become services under `services/janus/`; the ports (`identity.port.ts`) stay at the root.
 - **Layout moves** change no behaviour: renames, import updates and helper lifts only, reviewed with `git diff -M`; the boundary specs and `docs/` paths stay current.
+
+## Deploy
+
+`deploy/` follows pulsarix-api's: `flock /tmp/deploy.lock bun deploy/deploy.ts` (`--dry-run` first), every service limited and pinned, no secret in the repo, `bun test ./deploy/` in the green bar. Runbook: `docs/deployment.md`.

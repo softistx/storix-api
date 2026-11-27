@@ -15,7 +15,7 @@
     "retention": "bun src/scripts/retention.ts",
     "services:up": "docker compose up -d --wait mongo redis mailpit seaweedfs && docker compose run --rm mongo-init && docker compose up -d media-bucket",
     "services:down": "docker compose down",
-    "build": "bun run generate && bun build src/server.ts src/worker.ts --target=bun --outdir=dist --minify --sourcemap=linked",
+    "build": "bun run generate && bun build src/server.ts src/worker.ts src/scripts/db-sync.ts src/scripts/db-migrate.ts src/scripts/storage-sweep.ts src/scripts/retention.ts src/scripts/quota-reconcile.ts --target=bun --outdir=dist --minify --sourcemap=linked",
     "start": "NODE_ENV=production bun dist/server.js",
     "worker": "NODE_ENV=development bun --watch src/worker.ts",
     "start:worker": "NODE_ENV=production bun dist/worker.js",
