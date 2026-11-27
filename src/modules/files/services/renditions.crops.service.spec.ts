@@ -116,4 +116,17 @@ describe("a crops job settles cropsStatus and leaves status alone", () => {
       cropsStatus: "FAILED",
     });
   });
+
+  test("a full job settles status and clears cropsStatus", async () => {
+    const { a, file, mongo, handler, node } = await movedFile("full.png");
+    await mongo.db.nodes.raw.updateMany(
+      { blobKey: file.key },
+      { $set: { status: "PROCESSING", cropsStatus: "FAILED" } },
+    );
+    await handler(job(a.workspace.id, file.key, false));
+    expect(await node()).toMatchObject({
+      status: "READY",
+      cropsStatus: null,
+    });
+  });
 });
