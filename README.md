@@ -268,7 +268,7 @@ mutation { setStarred(id: "<node id>", starred: true) { id name } }
 query { starred(first: 20) { nodes { id name } pageInfo { endCursor hasNextPage } } }
 mutation { openFile(id: "<file id>") { id name } }
 query { recentFiles(first: 20) { entries { node { id name starred } openedAt } pageInfo { endCursor } } }
-query { workspace { storage { largestFiles(first: 10) { id name size } } } }
+query { storage { largestFiles(first: 10) { id name size } } }
 ```
 
 The detail is in [Files storage](docs/development.md#files-storage-media); every `storage.errors.*` refusal is in
