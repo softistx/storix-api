@@ -1,7 +1,7 @@
 import { tenancy } from "@/config/tenancy";
 import { workspacesMongo } from "@/core/workspaces";
-import { NODE } from "../src/modules/nodes/nodes.harness";
 import type { filesWorld } from "./files.harness";
+import { NODE } from "./nodes.harness";
 import { LIST as VERSIONS, versionsArea } from "./versions.harness";
 
 const TRASHED = `${NODE} trashedAt trashedBy`;

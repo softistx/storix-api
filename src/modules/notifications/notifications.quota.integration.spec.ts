@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { tenancy } from "@/config/tenancy";
 import { setQuota, workspacesMongo } from "@/core/workspaces";
 import { COPY, filesWorld } from "../../../test/files.harness";
+import { setup } from "../../../test/nodes.harness";
 import { ADD_VERSION } from "../../../test/shares.harness";
 import { PURGE, TRASH } from "../../../test/trash.harness";
-import { setup } from "../nodes/nodes.harness";
 
 const files = filesWorld();
 const INBOX = `{ notifications(first: 50) { nodes { kind percent } } }`;

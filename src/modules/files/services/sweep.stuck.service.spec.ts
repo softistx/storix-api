@@ -7,7 +7,7 @@ import {
   filesWorld,
   png,
 } from "../../../../test/files.harness";
-import { setup } from "../../nodes/nodes.harness";
+import { setup } from "../../../../test/nodes.harness";
 import { filesMongo } from "../models";
 import type { RenditionsQueue } from "../rules";
 import { requeueStuck, sweepWorkspace } from "./index";

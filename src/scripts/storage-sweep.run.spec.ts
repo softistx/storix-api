@@ -2,9 +2,9 @@ import { describe, expect, spyOn, test } from "bun:test";
 import { store, tenancy } from "@/config/tenancy";
 import { field } from "../../test/files.area";
 import { ADD, type FileView, filesWorld, png } from "../../test/files.harness";
+import { setup } from "../../test/nodes.harness";
 import { workspacesMongo } from "../core/workspaces";
 import { filesMongo, type RenditionsQueue } from "../modules/files/public";
-import { setup } from "../modules/nodes/nodes.harness";
 import { runStorageSweep } from "./storage-sweep.run";
 
 // Jobs are collected; `refuse` makes the queue throw.

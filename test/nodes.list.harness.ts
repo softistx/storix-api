@@ -1,7 +1,7 @@
 import { store } from "@/config/tenancy";
 import { filesMongo } from "../src/modules/files/public";
-import { NODE, setup } from "../src/modules/nodes/nodes.harness";
 import { type filesWorld, pdf, png } from "./files.harness";
+import { NODE, setup } from "./nodes.harness";
 
 export const LIST = `query($parentId: ID!, $filter: NodeFilter, $sort: NodeSort, $first: Int, $after: String) {
   nodes(parentId: $parentId, filter: $filter, sort: $sort, first: $first, after: $after) {

@@ -8,7 +8,7 @@ import {
   filesWorld,
   png,
 } from "../../../../test/files.harness";
-import { setup } from "../../nodes/nodes.harness";
+import { setup } from "../../../../test/nodes.harness";
 import { filesMongo } from "../models";
 
 const files = filesWorld({ renditions: true });

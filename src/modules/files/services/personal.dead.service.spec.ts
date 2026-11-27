@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { ObjectId } from "mongodb";
 import { store } from "@/config/tenancy";
 import { filesWorld } from "../../../../test/files.harness";
-import { NODE, setup } from "../../nodes/nodes.harness";
+import { NODE, setup } from "../../../../test/nodes.harness";
 import { filesMongo } from "../models";
 import { MAX_READS } from "./index";
 

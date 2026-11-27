@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { filesWorld } from "../../../test/files.harness";
-import { setup } from "../../modules/nodes/nodes.harness";
+import { setup } from "../../../test/nodes.harness";
 
 const files = filesWorld();
 

@@ -1,6 +1,6 @@
 import { S3Client } from "bun";
-import { setup } from "../src/modules/nodes/nodes.harness";
 import { BUCKET, type filesWorld } from "./files.harness";
+import { setup } from "./nodes.harness";
 
 // What the files specs share: reading an answer, counting the bucket's
 // objects, and a member's workspace with its root and shortcuts to call it.

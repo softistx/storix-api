@@ -1,8 +1,8 @@
 import { store, tenancy } from "@/config/tenancy";
 import { workspacesMongo } from "@/core/workspaces";
 import { filesMongo } from "@/modules/files/public";
-import { setup } from "../src/modules/nodes/nodes.harness";
 import { FILE, type FileView, type filesWorld } from "./files.harness";
+import { setup } from "./nodes.harness";
 
 export const VERSIONS = `{ id number key mimeType size createdBy note restoredFrom current createdAt }`;
 export const ADD_VERSION = `mutation($fileId: ID!, $key: String!, $note: String) { addFileVersion(fileId: $fileId, key: $key, note: $note) { ${FILE} } }`;

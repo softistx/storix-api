@@ -3,9 +3,9 @@ import { store } from "@/config/tenancy";
 import { members } from "@/config/wiring";
 import { actionsOf, storedEvents } from "@/core/audit/audit.harness";
 import type { MemberWiring } from "@/core/members";
+import { setup } from "../../../../test/nodes.harness";
 import { world } from "../../../../test/workspaces.harness";
 import { nodesMongo } from "../models";
-import { setup } from "../nodes.harness";
 import { transferTree } from "./transfer.service";
 
 const REMOVE = `mutation($memberId: ID!, $transferTo: ID) { removeMember(memberId: $memberId, transferTo: $transferTo) }`;

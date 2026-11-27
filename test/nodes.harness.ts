@@ -1,4 +1,4 @@
-import { world } from "../../../test/workspaces.harness";
+import { world } from "./workspaces.harness";
 
 export const NODE = "id type name parentId ancestors depth version";
 export const ROOTS = `{ roots { ${NODE} } }`;

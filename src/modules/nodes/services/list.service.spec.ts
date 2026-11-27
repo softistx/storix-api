@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { filesWorld } from "../../../../test/files.harness";
+import { NODE } from "../../../../test/nodes.harness";
 import { LIST, listKit } from "../../../../test/nodes.list.harness";
-import { NODE } from "../nodes.harness";
 
 const files = filesWorld();
 const { fixture, list, rows, names } = listKit(files);

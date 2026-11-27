@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Context } from "@/http/context";
-import { setup } from "../nodes.harness";
+import { setup } from "../../../../test/nodes.harness";
 import { ownerOf } from "./owner.data-loader";
 
 const OWNER = "ownerId owner { accountId name }";

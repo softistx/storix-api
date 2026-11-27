@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, test } from "bun:test";
 import { store } from "@/config/tenancy";
+import { CREATE, MOVE, RENAME, setup } from "../../../../test/nodes.harness";
 import { nodesMongo } from "../models";
-import { CREATE, MOVE, RENAME, setup } from "../nodes.harness";
 
 const databaseOf = async (id: string) => nodesMongo(await store.databaseOf(id));
 

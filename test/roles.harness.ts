@@ -1,9 +1,9 @@
 import { store } from "@/config/tenancy";
 import { nodesMongo } from "@/modules/nodes/public";
 import { createTeam, teamsMongo } from "@/modules/teams/public";
-import { setup } from "../src/modules/nodes/nodes.harness";
 import { sharesMongo } from "../src/modules/shares/models";
 import type { Principal } from "../src/modules/shares/services/grants.service";
+import { setup } from "./nodes.harness";
 
 // A workspace with a tree (a root, a folder under it, a child of the folder
 // and a sibling of the folder), direct handles on its database, and members

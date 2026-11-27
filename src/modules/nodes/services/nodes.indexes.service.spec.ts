@@ -3,10 +3,10 @@ import { ObjectId } from "mongodb";
 import { connection } from "@/config/db";
 import { env } from "@/config/env";
 import { store } from "@/config/tenancy";
+import { setup } from "../../../../test/nodes.harness";
 import { nodesListingDescIndexes } from "../../files/migrations/2026-11-24-nodes-listing-desc-indexes.migration";
 import { nodesListingCollation } from "../migrations/2026-11-15-nodes-listing-collation.migration";
 import { nodesMongo } from "../models";
-import { setup } from "../nodes.harness";
 
 const WORKSPACE_DB = (id: string) => `${env.MONGO_WORKSPACE_PREFIX}${id}`;
 
