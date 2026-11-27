@@ -134,4 +134,54 @@ describe("copies of one blob at different focal points have their own crops", ()
     const keys = await keysOf(a, a.users.owner, original.id);
     expect(keys.cropsKey).toBe(keys.key);
   });
+
+  test("the previous crops keep serving until the new ones settle", async () => {
+    const { a, original } = await twoOwners();
+    await drain(a.workspace.id);
+    const before = await keysOf(a, a.users.owner, original.id);
+    await move(a, a.users.owner, original.id, { x: 0.8, y: 0.2 });
+    const during = await keysOf(a, a.users.owner, original.id);
+    expect(during.cropsKey).toBe(before.cropsKey);
+    await drain(a.workspace.id);
+    const after = await keysOf(a, a.users.owner, original.id);
+    expect(after.cropsKey).toBe(cropsKeyOf(before.key, { x: 0.8, y: 0.2 }));
+    // A second move keeps serving the first one meanwhile, then prunes it.
+    await move(a, a.users.owner, original.id, { x: 0.1, y: 0.9 });
+    expect((await keysOf(a, a.users.owner, original.id)).cropsKey).toBe(
+      after.cropsKey,
+    );
+    await drain(a.workspace.id);
+    const last = await keysOf(a, a.users.owner, original.id);
+    expect(last.cropsKey).toBe(cropsKeyOf(before.key, { x: 0.1, y: 0.9 }));
+    const db = await databaseOf(a.workspace.id);
+    const blob = await db.db.blobs.raw.findOne({ key: before.key });
+    expect(blob?.crops).toEqual([last.cropsKey]);
+    const read = (key: string) =>
+      files.call(a.users.owner, a.workspace.id, `/media/files/${key}/square`);
+    expect((await read(last.cropsKey)).status).toBe(200);
+    expect((await read(after.cropsKey)).status).toBe(404);
+    // The blob's own previews are never pruned.
+    expect(
+      (
+        await files.call(
+          a.users.owner,
+          a.workspace.id,
+          `/media/files/${before.key}/thumb`,
+        )
+      ).status,
+    ).toBe(200);
+  });
+
+  test("a crops key is read as its file: owner and grantee yes, stranger no", async () => {
+    const { a, original } = await twoOwners();
+    await drain(a.workspace.id);
+    await move(a, a.users.owner, original.id, { x: 0.7, y: 0.3 });
+    await drain(a.workspace.id);
+    const { cropsKey } = await keysOf(a, a.users.owner, original.id);
+    const read = (who: typeof a.users.owner) =>
+      files.call(who, a.workspace.id, `/media/files/${cropsKey}/square`);
+    expect((await read(a.users.owner)).status).toBe(200);
+    expect((await read(a.users.viewer)).status).toBe(200);
+    expect((await read(a.users.stranger)).status).toBe(404);
+  });
 });

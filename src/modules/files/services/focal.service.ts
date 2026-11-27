@@ -15,8 +15,8 @@ import { enqueue } from "./enqueue.service";
 // centre) and has the worker redo its four crops from the stored original.
 // `invalid-focal` for a coordinate outside 0 to 1, `not-a-file` for a folder,
 // `not-renderable` for a file that is not a JPEG, PNG or WebP picture. The
-// point is kept to a thousandth and is the tree's: every copy of the same owner and space takes it, a copy
-// another member holds does not. With a
+// point is kept to a thousandth and is the tree's: every copy of the same
+// owner and space takes it, a copy another member holds does not. With a
 // queue a `READY` file stays `READY` and its `cropsStatus` is `PROCESSING`
 // until the crops are stored (`READY`, or `FAILED` when only they failed);
 // without one the point is recorded and the crops stay as they were. A file

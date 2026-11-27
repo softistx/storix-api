@@ -334,7 +334,8 @@ type File implements Node {
   served under for the file's focal point: `GET /media/files/<cropsKey>/<size>`.
   It is `key` for the centre, and another key per focal point otherwise: two
   copies at different points have different crops, copies at the same point
-  share them. `THUMB` and `PREVIEW` stay under `key`.
+  share them. After a move it keeps naming the previous crops until the new
+  ones are ready. `THUMB` and `PREVIEW` stay under `key`.
   """
   cropsKey: String!
   """

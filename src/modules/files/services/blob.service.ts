@@ -14,7 +14,8 @@ export async function recordBlob(
   object: { size: number; mimeType: string },
   refs = 2,
 ) {
-  if (await tx.db.blobs.findFirst({ key })) throw new KeyRecorded();
+  if (await tx.db.blobs.findFirst({ $or: [{ key }, { crops: key }] }))
+    throw new KeyRecorded();
   try {
     await tx.db.blobs.create({ key, ...object, refs });
   } catch (error) {

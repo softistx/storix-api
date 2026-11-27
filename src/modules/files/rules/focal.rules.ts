@@ -15,13 +15,6 @@ export const sameFocal = (focal: Focal | null | undefined) =>
     ? { "focalPoint.x": focal.x, "focalPoint.y": focal.y }
     : { focalPoint: null };
 
-// Whether two stored focal points are the same picture position (`null` and
-// absent are both the centre).
-export const focalEquals = (
-  a: Focal | null | undefined,
-  b: Focal | null | undefined,
-) => (a && b ? a.x === b.x && a.y === b.y : !a && !b);
-
 // A focal point is kept to a thousandth of the picture: finer than a pixel on
 // any rendition, and what the crops' key and the pixels both read.
 const FOCAL_STEP = 1000;

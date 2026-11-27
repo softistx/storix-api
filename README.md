@@ -380,6 +380,13 @@ move is audited as `file.focal` (the target only, never the coordinates).
 
 `File.focalPoint` is the point (null for the centre). `File.renditions` lists what is stored and served now: all six sizes of
 a `READY` picture, `THUMB` and `PREVIEW` of a `READY` PDF, and nothing while the file is `PROCESSING` or `FAILED`;
-`rendition(preset)` is one of them or null. `size` is the name in the URL, `GET /media/files/<key>/<size>`. The kind is
-`private, no-cache`, and `@softistx/alxia-media` serves the stored object's own `ETag`: the crops are rewritten with the new pixels, so
-their `ETag` changes after a move and a client that revalidates gets the new crop (200, not 304).
+`rendition(preset)` is one of them or null. `size` is the name in the URL.
+
+`THUMB` and `PREVIEW` are served at `GET /media/files/<key>/<size>`, under `File.key`. The four crops are served at
+`GET /media/files/<cropsKey>/<size>`, under `File.cropsKey`: a key made for the focal point they were cut for, so two copies of
+one blob at different points never overwrite each other's crops, and copies at the same point share one set. For a picture at
+the centre, `cropsKey` equals `key`. `cropsKey` names the last crops that settled `READY` for the file's point: after a move it
+keeps naming the previous crops, which keep serving while the new ones are made, then it switches (and the crops no copy uses
+any more are deleted). A client builds the four crop URLs from `cropsKey`, never from `key`. Access is the file's: the read
+check maps a crops key back to its blob. The kind is `private, no-cache`, and the key changes with the point, so a client
+that holds a crop never sees pixels of another point under the same URL.

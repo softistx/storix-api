@@ -136,6 +136,7 @@ export async function pushVersion(
         family: familyOf(input.blob.mimeType),
         status: input.status,
         cropsStatus: null,
+        cropsKey: null,
         // A new blob starts its renditions afresh.
         renditionRequeues: 0,
         ...(input.status === "PROCESSING" && { renditionsAt: new Date() }),
@@ -241,7 +242,7 @@ export async function addVersion(
       ? await enqueue(
           mongo,
           renditions,
-          { workspaceId: input.workspaceId, key: input.key },
+          { workspaceId: input.workspaceId, key: input.key, focalPoint: null },
           done.node,
         )
       : done.node;
@@ -302,7 +303,11 @@ export async function restoreVersion(
     ? await enqueue(
         mongo,
         renditions as RenditionsQueue,
-        { workspaceId: input.workspaceId, key: done.node.blobKey ?? "" },
+        {
+          workspaceId: input.workspaceId,
+          key: done.node.blobKey ?? "",
+          focalPoint: done.node.focalPoint ?? null,
+        },
         done.node,
         crypto.randomUUID(),
       )

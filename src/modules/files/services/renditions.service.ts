@@ -21,7 +21,14 @@ import {
   sameFocal,
   targetSize,
 } from "../rules";
-import { fitSide, limits, type MadeRendition, makeFromPdf } from "../utils";
+import {
+  fitSide,
+  limits,
+  type MadeRendition,
+  makeFromPdf,
+  pruneCrops,
+  storeRenditions,
+} from "../utils";
 
 export interface MakeOptions {
   signal?: AbortSignal | undefined;
@@ -142,6 +149,9 @@ async function setStatus(
     },
     {
       [field]: status,
+      // The crops now served are the ones made for this point.
+      ...(status === "READY" &&
+        rendered && { cropsKey: cropsKeyOf(key, rendered.focal) }),
       ...(status === "READY" && {
         renditionRequeues: 0,
         ...(scope === "file" && { cropsStatus: null }),
@@ -200,33 +210,6 @@ export async function markRenditionsFailed(
   await setStatus(mongo, job.key, "FAILED", { scope: "crops" });
 }
 
-// Stores the sizes where `GET /media/files/<key>/<size>` serves them: the
-// previews under the blob's key, the four crops under the key of the focal
-// point they were made for (`cropsKeyOf`). That key is recorded on the blob
-// first, so the sweep and the read check know it before an object exists.
-async function storeRenditions(
-  deps: { mongo: FilesMongo; bucket: MediaBucket },
-  job: { workspaceId: string; key: string; focal: Focal | null | undefined },
-  made: MadeRendition[],
-) {
-  const place = mediaPlace("files", `workspaces/${job.workspaceId}`);
-  const cropsKey = cropsKeyOf(job.key, job.focal);
-  if (cropsKey !== job.key) {
-    await deps.mongo.db.blobs.raw.updateOne(
-      { key: job.key },
-      { $addToSet: { crops: cropsKey } },
-    );
-  }
-  for (const one of made) {
-    const owner = (CROP_SIZES as readonly string[]).includes(one.size)
-      ? cropsKey
-      : job.key;
-    await deps.bucket.put({ key: place(owner, one.size) }, one.bytes, {
-      type: one.contentType,
-    });
-  }
-}
-
 export function renditionsHandler(
   deps: RenditionsWorkDeps,
 ): Handler<typeof renditionJob> {
@@ -277,5 +260,8 @@ export function renditionsHandler(
       authoritative: crops !== true,
       rendered: { focal: focal ?? null },
     });
+    await pruneCrops({ ...deps, mongo }, workspaceId, key).catch((error) =>
+      console.warn(`renditions ${key}: crops not pruned: ${error}`),
+    );
   };
 }

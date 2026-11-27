@@ -8,6 +8,7 @@ import {
   RELEASE_GRACE_MS,
   RELEASED_BRAKE,
   type RenditionsQueue,
+  sameFocal,
 } from "../rules";
 import {
   cannotAfford,
@@ -104,7 +105,8 @@ async function requeueScope(
   scope: "file" | "crops",
   options: StuckOptions,
 ): Promise<StuckReport> {
-  const field = scope === "crops" ? "cropsStatus" : "status";
+  const field: RequeueStep["field"] =
+    scope === "crops" ? "cropsStatus" : "status";
   const now = (options.now ?? (() => new Date()))();
   const cutoff = new Date(
     now.getTime() - (options.stuckAfterMs ?? STUCK_AFTER_MS),
@@ -129,6 +131,7 @@ async function requeueScope(
     .limit(options.batch ?? STUCK_BATCH)
     .toArray();
   const seen = new Set<string>();
+  const step = { queue, workspaceId, scope, field, now, max, log };
   for (const [index, node] of stuck.entries()) {
     const key = node["blobKey"] as string;
     const point = (node["focalPoint"] as Focal | null | undefined) ?? null;
@@ -137,50 +140,79 @@ async function requeueScope(
     if (seen.has(once)) continue;
     seen.add(once);
     const tries = (node["renditionRequeues"] as number | undefined) ?? 0;
-    const blob = { blobKey: key, [field]: "PROCESSING" as const };
-    if (tries >= max) {
-      const done = await nodes.updateMany(blob, {
-        $set: { [field]: "FAILED" },
-      });
-      if (done.modifiedCount > 0) report.failed += 1;
-      continue;
-    }
-    try {
-      await queue.add(
-        {
-          workspaceId,
-          key,
-          focalPoint: point,
-          ...(scope === "crops" && { crops: true }),
-        },
-        {
-          id: renditionJobId(
-            { workspaceId, key },
-            // Unique per attempt: the counter is reset to 0 by a READY, a
-            // focal move or a new version, and the queue keeps the first job
-            // of an id it already holds (failed ones for 7 days).
-            `stuck${tries + 1}-${crypto.randomUUID()}`,
-          ),
-        },
-      );
-    } catch (error) {
-      log(
-        `stuck renditions ${workspaceId}: ${key} not queued: ${error instanceof Error ? error.message : error}`,
-      );
+    const outcome = await requeueOne(mongo, step, key, point, tries);
+    if (outcome === "down") {
       // The queue is probably down, and the refused node keeps its old
       // `renditionsAt`: going on would only retry the same oldest files.
       report.nodesLeft = stuck.length - index;
       break;
     }
-    // On purpose a raw write, past the optimistic lock and the audit: the
-    // sweep works at blob level, not on a node's versions.
-    await nodes.updateMany(blob, {
-      $inc: { renditionRequeues: 1 },
-      $set: { renditionsAt: now },
-    });
-    report.requeued += 1;
+    if (outcome !== "skipped") report[outcome] += 1;
   }
   return report;
+}
+
+interface RequeueStep {
+  queue: RenditionsQueue;
+  workspaceId: string;
+  scope: "file" | "crops";
+  field: "status" | "cropsStatus";
+  now: Date;
+  max: number;
+  log: (message: string) => void;
+}
+
+// One blob at one focal point: queues its job again, or gives it up at the
+// limit. The nodes at other points of the blob are left to their own turn.
+async function requeueOne(
+  mongo: FilesMongo,
+  step: RequeueStep,
+  key: string,
+  point: Focal | null,
+  tries: number,
+): Promise<"requeued" | "failed" | "skipped" | "down"> {
+  const { queue, workspaceId, scope, field } = step;
+  const nodes = mongo.db.nodes.raw;
+  const where = {
+    blobKey: key,
+    [field]: "PROCESSING" as const,
+    ...sameFocal(point),
+  };
+  if (tries >= step.max) {
+    const done = await nodes.updateMany(where, { $set: { [field]: "FAILED" } });
+    return done.modifiedCount > 0 ? "failed" : "skipped";
+  }
+  try {
+    await queue.add(
+      {
+        workspaceId,
+        key,
+        focalPoint: point,
+        ...(scope === "crops" && { crops: true }),
+      },
+      {
+        id: renditionJobId(
+          { workspaceId, key },
+          // Unique per attempt: the counter is reset to 0 by a READY, a
+          // focal move or a new version, and the queue keeps the first job
+          // of an id it already holds (failed ones for 7 days).
+          `stuck${tries + 1}-${crypto.randomUUID()}`,
+        ),
+      },
+    );
+  } catch (error) {
+    step.log(
+      `stuck renditions ${workspaceId}: ${key} not queued: ${error instanceof Error ? error.message : error}`,
+    );
+    return "down";
+  }
+  // On purpose a raw write, past the optimistic lock and the audit: the
+  // sweep works at blob level, not on a node's versions.
+  await nodes.updateMany(where, {
+    $inc: { renditionRequeues: 1 },
+    $set: { renditionsAt: step.now },
+  });
+  return "requeued";
 }
 
 // Reserves a key nobody records: a blob with `refs` 0 under it, released now

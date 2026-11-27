@@ -69,6 +69,11 @@ export const nodes = defineCollection({
       .object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })
       .nullable()
       .default(null),
+    // The key the node's crops are served under: the last crops its renditions
+    // job settled `READY` for its focal point (`cropsKeyOf`). Absent is the
+    // blob's own key. A move keeps it until the new crops are ready, so the
+    // previous ones keep serving meanwhile.
+    cropsKey: z.string().nullable().default(null),
     // The version row (`versions`, the files module) whose blob the node
     // holds; null on a file recorded before versions existed or copied, until
     // its first version is made (`services/versions.service.ts`).
